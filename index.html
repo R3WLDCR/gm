@@ -1,0 +1,202 @@
+﻿<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Werewolf Game Master App</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Werewolf Game Master</p>
+        </div>
+        <div class="top-actions">
+          <details class="sync-panel">
+            <summary>
+              <span id="syncStatusBadge" class="sync-status-badge">端末内</span>
+              <span id="syncStatusText">端末内に保存中</span>
+            </summary>
+            <div id="syncConfigNotice" class="sync-notice" hidden>Supabaseの接続設定が必要です</div>
+            <div id="syncSignedOutPanel" class="sync-auth-panel">
+              <form id="loginForm" class="sync-form">
+                <input id="loginEmailInput" type="email" placeholder="メール" autocomplete="email" />
+                <input id="loginPasswordInput" type="password" placeholder="パスワード" autocomplete="current-password" />
+                <button class="primary-button" type="submit">ログイン</button>
+              </form>
+              <form id="signupForm" class="sync-form">
+                <input id="signupEmailInput" type="email" placeholder="メール" autocomplete="email" />
+                <input id="signupPasswordInput" type="password" placeholder="パスワード" autocomplete="new-password" />
+                <button class="secondary-button" type="submit">登録</button>
+              </form>
+            </div>
+            <div id="syncSignedInPanel" class="sync-signed-in" hidden>
+              <span id="syncAccountEmail">-</span>
+              <span>最終同期: <strong id="lastSyncText">未同期</strong></span>
+              <div class="sync-actions">
+                <button id="manualSyncBtn" class="secondary-button" type="button">同期</button>
+                <button id="downloadCloudBtn" class="secondary-button" type="button" hidden>クラウド取得</button>
+                <button id="uploadLocalBtn" class="secondary-button" type="button" hidden>この端末で上書き</button>
+                <button id="logoutBtn" class="secondary-button" type="button">ログアウト</button>
+              </div>
+            </div>
+          </details>
+          <button id="resetFirstNightBtn" class="secondary-button danger" type="button">初日へ戻す</button>
+        </div>
+      </header>
+
+      <nav class="screen-tabs" aria-label="画面切り替え">
+        <button class="screen-tab active" data-screen="setup" type="button">名簿</button>
+        <button class="screen-tab" data-screen="deal" type="button">円卓</button>
+        <button class="screen-tab" data-screen="table" type="button">昼</button>
+        <button class="screen-tab" data-screen="action" type="button">夜</button>
+        <button class="screen-tab" data-screen="log" type="button">ログ</button>
+      </nav>
+
+      <main class="workspace">
+        <section class="panel setup-panel screen-panel active" data-screen-panel="setup">
+          <div class="panel-heading">
+            <div></div>
+            <span id="balanceBadge" class="status-badge">0 / 0</span>
+          </div>
+
+          <div class="field-row">
+            <label for="playerName">参加者</label>
+            <div class="inline-entry">
+              <input id="playerName" type="text" placeholder="名前" autocomplete="off" />
+              <button id="addPlayerBtn" class="primary-button">追加</button>
+            </div>
+          </div>
+
+          <div class="player-sort-tabs" aria-label="名簿の並び替え">
+            <button class="playerSortBtn active" data-sort="manual" type="button">手動順</button>
+            <button class="playerSortBtn" data-sort="daily" type="button">今日</button>
+            <button class="playerSortBtn" data-sort="total" type="button">累計</button>
+          </div>
+
+          <div id="playerList" class="player-list" aria-live="polite"></div>
+
+          <button id="startBtn" class="primary-button wide">スタート</button>
+
+        </section>
+
+        <section class="panel deal-panel screen-panel" data-screen-panel="deal" aria-labelledby="dealTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">Round Table</p>
+              <h2 id="dealTitle">円卓</h2>
+            </div>
+            <div class="panel-actions">
+              <button id="progressStartBtn" class="primary-button" hidden>スタート</button>
+              <button id="startRoleDealBtn" class="secondary-button">配役</button>
+              <button id="shuffleSeatsBtn" class="secondary-button">席替え</button>
+              <span id="dealPlayerCount" class="status-badge">0人</span>
+            </div>
+          </div>
+          <div id="roundProgressStatus" class="round-progress-status">準備中</div>
+
+          <div id="roundTable" class="round-table" aria-live="polite"></div>
+        </section>
+
+        <section class="panel table-panel screen-panel" data-screen-panel="table" aria-labelledby="tableTitle">
+          <div class="phase-visual" aria-hidden="true">
+            <div id="phaseOrb" class="phase-orb">
+              <span id="phaseInitial">準</span>
+            </div>
+          </div>
+
+          <div class="panel-heading table-heading">
+            <div>
+              <p class="section-kicker">Control</p>
+              <h2 id="tableTitle"><span id="dayLabel">準備中</span></h2>
+            </div>
+          </div>
+
+          <div class="timer-strip">
+            <div class="timer-face">
+              <div class="timer-ring" aria-label="残り時間">
+                <div class="timer-ring-inner">
+                  <span id="timerDisplay">05:00</span>
+                  <div class="timer-controls">
+                    <button id="timerStart" class="subtle-button timer-start-button">開始</button>
+                    <button id="timerReset" class="subtle-button">戻る</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="timer-corner-actions">
+              <button id="voteStartBtn" class="primary-button vote-start-button" hidden>投票</button>
+              <button id="skipToVoteBtn" class="skip-vote-button" type="button">skip</button>
+            </div>
+            <div class="timer-keypad" aria-label="タイマー分数">
+              <button class="timerPresetBtn" data-minutes="7">7</button>
+              <button class="timerPresetBtn" data-minutes="8">8</button>
+              <button class="timerPresetBtn" data-minutes="9">9</button>
+              <button class="timerPresetBtn" data-minutes="4">4</button>
+              <button class="timerPresetBtn" data-minutes="5">5</button>
+              <button class="timerPresetBtn" data-minutes="6">6</button>
+              <button class="timerPresetBtn" data-minutes="1">1</button>
+              <button class="timerPresetBtn" data-minutes="2">2</button>
+              <button class="timerPresetBtn" data-minutes="3">3</button>
+            </div>
+          </div>
+
+          <div class="vote-table-actions" hidden>
+            <button id="backToTimerBtn" class="secondary-button vote-back-button" type="button">戻る</button>
+            <button id="exileBtn" class="primary-button exile-button" disabled>追放</button>
+          </div>
+          <div id="voteRoundTable" class="round-table vote-round-table" aria-live="polite"></div>
+
+        </section>
+
+        <section class="panel action-panel screen-panel" data-screen-panel="action" aria-labelledby="actionTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">Actions</p>
+              <h2 id="actionTitle">夜の行動</h2>
+            </div>
+            <div class="panel-actions">
+              <button id="previousActionRoleBtn" class="secondary-button">前の役職</button>
+              <button id="nextDayBtn" class="secondary-button">次の日</button>
+            </div>
+          </div>
+
+          <div class="action-stack">
+            <div class="action-status">
+              <strong id="actionRoleTitle">夜の行動</strong>
+              <span id="actionHelp">対象を選んでください</span>
+            </div>
+            <div id="actionRoundTable" class="round-table action-round-table" aria-live="polite"></div>
+          </div>
+        </section>
+
+        <section class="panel log-panel screen-panel" data-screen-panel="log" aria-labelledby="logTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="section-kicker">Log</p>
+              <h2 id="logTitle">進行ログ</h2>
+            </div>
+            <button id="copyLogBtn" class="secondary-button">コピー</button>
+          </div>
+          <textarea id="freeMemo" placeholder="自由メモ"></textarea>
+          <div id="logList" class="log-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="roleDialog" class="role-dialog">
+      <form method="dialog">
+        <p id="roleDialogName" class="dialog-name"></p>
+        <h3 id="roleDialogRole"></h3>
+        <p id="roleDialogTeam" class="dialog-team"></p>
+        <button class="primary-button wide">閉じる</button>
+      </form>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./sync-config.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
+
