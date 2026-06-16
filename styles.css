@@ -123,8 +123,8 @@ h2 {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  z-index: 20;
-  width: min(380px, calc(100vw - 28px));
+  z-index: 100;
+  width: min(460px, calc(100vw - 28px));
 }
 
 .sync-auth-panel,
@@ -141,7 +141,7 @@ h2 {
 
 .sync-form {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   gap: 8px;
 }
 
