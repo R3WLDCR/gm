@@ -1188,7 +1188,7 @@ textarea:focus {
   top: 50%;
   transform: translate(-50%, -50%);
   font-family: "DIN Alternate", "Aptos Display", "Segoe UI", system-ui, sans-serif;
-  font-size: clamp(3rem, 9vw, 7rem);
+  font-size: clamp(3.6rem, 11vw, 8.8rem);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 0.9;
@@ -1630,11 +1630,26 @@ body.timer-fullscreen-view .timer-ring {
 }
 
 body.timer-fullscreen-view .timer-ring-inner .timer-controls {
-  bottom: clamp(20px, 7%, 58px);
+  position: fixed;
+  left: auto;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  transform: none;
+  z-index: 20;
+  gap: 10px;
+}
+
+body.timer-fullscreen-view .timer-ring-inner .timer-controls .subtle-button {
+  min-height: clamp(42px, 6svh, 54px);
+  padding: 0 clamp(14px, 3vw, 22px);
+  border: 1px solid rgba(12, 122, 103, 0.22);
+  background: rgba(237, 242, 238, 0.9);
+  box-shadow: 0 12px 28px rgba(24, 34, 29, 0.14);
+  backdrop-filter: blur(8px);
 }
 
 body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
-  font-size: clamp(6.4rem, 22vw, 16rem);
+  font-size: clamp(8.4rem, 30vw, 22rem);
 }
 
 @media (max-width: 900px) {
@@ -1949,11 +1964,12 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
   }
 
   body.timer-fullscreen-view .timer-ring-inner .timer-controls {
-    bottom: clamp(12px, 5%, 34px);
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
   }
 
   body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
-    font-size: clamp(5.4rem, 16vw, 12rem);
+    font-size: clamp(7.8rem, 22vw, 16rem);
   }
 
   body.participant-action-view .medium-result-card,
