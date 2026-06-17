@@ -17,7 +17,7 @@
       <header class="topbar">
         <div class="title-row">
           <p class="eyebrow">Werewolf Game Master</p>
-          <span id="appVersionBadge" class="version-badge">v1.1.2</span>
+          <span id="appVersionBadge" class="version-badge">v1.2.0</span>
         </div>
         <div class="top-actions">
           <details id="syncPanel" class="sync-panel">
@@ -61,6 +61,11 @@
         <button class="screen-tab" data-screen="action" type="button">夜</button>
         <button class="screen-tab" data-screen="log" type="button">ログ</button>
       </nav>
+
+      <div id="victoryBanner" class="victory-banner" hidden>
+        <span>ゲーム終了</span>
+        <strong id="victoryWinnerText">村人陣営の勝利</strong>
+      </div>
 
       <main class="workspace">
         <section class="panel setup-panel screen-panel active" data-screen-panel="setup">

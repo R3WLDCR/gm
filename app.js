@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.1.2";
+const APP_VERSION = "v1.2.0";
 
 const state = {
   players: [],
@@ -56,6 +56,7 @@ const state = {
   nightStartGuardedPlayerId: "",
   playerSortMode: "manual",
   participationCountedForDeal: false,
+  gameWinner: "",
 };
 
 const phaseLabels = {
@@ -143,6 +144,8 @@ document.addEventListener("DOMContentLoaded", () => {
     "uploadLocalBtn",
     "logoutBtn",
     "appVersionBadge",
+    "victoryBanner",
+    "victoryWinnerText",
   ].forEach((id) => {
     els[id] = document.getElementById(id);
   });
@@ -255,6 +258,7 @@ function toggleParticipation(id) {
 }
 
 function startRoundTable() {
+  clearGameWinner();
   state.screen = "deal";
   state.participationCountedForDeal = false;
   state.roleDealQueue = [];
@@ -272,6 +276,7 @@ function startRoundTable() {
 }
 
 function startProgress() {
+  clearGameWinner();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   state.screen = "table";
@@ -286,6 +291,7 @@ function startProgress() {
 }
 
 function startNightActions() {
+  clearGameWinner();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   state.screen = "action";
@@ -444,6 +450,7 @@ function assignRoles() {
   state.phase = "night";
   state.day = 1;
   state.votes = {};
+  clearGameWinner();
   resetTimerValue(240);
   addLog("配役完了。1日目の夜へ");
   renderAndStore();
@@ -457,6 +464,7 @@ function setRoleCount(id, delta) {
 }
 
 function setPhase(phase) {
+  clearGameWinner();
   state.screen = "table";
   state.phase = phase;
   if (phase === "night") resetTimerValue(240);
@@ -658,6 +666,7 @@ function resetGame() {
   state.attackedPlayerIds = [];
   state.playerSortMode = "manual";
   state.participationCountedForDeal = false;
+  state.gameWinner = "";
   resetActionSelection();
   renderAndStore();
 }
@@ -683,6 +692,7 @@ function resetToFirstNight() {
   state.actionBlockedSeconds = 0;
   state.guardedPlayerId = "";
   state.lastGuardedPlayerId = "";
+  state.gameWinner = "";
   state.nightStartGuardedPlayerId = "";
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
@@ -697,6 +707,7 @@ function resetToFirstNight() {
 
 function render() {
   renderScreen();
+  renderVictoryBanner();
   renderHeader();
   renderPlayers();
   renderRoles();
@@ -708,6 +719,14 @@ function render() {
   renderLog();
   renderSyncStatus();
   fitSingleLineNames();
+}
+
+function renderVictoryBanner() {
+  const ended = Boolean(state.gameWinner);
+  els.victoryBanner?.toggleAttribute("hidden", !ended);
+  if (els.victoryWinnerText) {
+    els.victoryWinnerText.textContent = ended ? `${state.gameWinner}の勝利` : "";
+  }
 }
 
 function fitSingleLineNames() {
@@ -1161,6 +1180,7 @@ function exileSelectedPlayer() {
   state.voteSelectedPlayerId = "";
   const result = getGameResult();
   if (result.ended) {
+    setGameWinner(result.winner);
     addLog(`ゲーム終了: ${result.winner}の勝利`);
   } else {
     startNightActions();
@@ -1393,6 +1413,7 @@ function resolveNightAttack(player) {
 function finishNightActions() {
   const result = getGameResult();
   if (result.ended) {
+    setGameWinner(result.winner);
     addLog(`ゲーム終了: ${result.winner}の勝利`);
   } else {
     state.screen = "table";
@@ -1507,6 +1528,14 @@ function getGameResult() {
     return { ended: true, winner: "人狼陣営" };
   }
   return { ended: false, winner: "" };
+}
+
+function setGameWinner(winner) {
+  state.gameWinner = winner;
+}
+
+function clearGameWinner() {
+  state.gameWinner = "";
 }
 
 function getRoleDealCenterHtml() {
@@ -2160,6 +2189,7 @@ function getStatePayload() {
     nightStartGuardedPlayerId: state.nightStartGuardedPlayerId,
     playerSortMode: state.playerSortMode,
     participationCountedForDeal: state.participationCountedForDeal,
+    gameWinner: state.gameWinner,
   };
 }
 
@@ -2208,6 +2238,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.nightStartGuardedPlayerId = saved.nightStartGuardedPlayerId || state.lastGuardedPlayerId || "";
   state.playerSortMode = ["manual", "daily", "total"].includes(saved.playerSortMode) ? saved.playerSortMode : "manual";
   state.participationCountedForDeal = saved.participationCountedForDeal === true;
+  state.gameWinner = saved.gameWinner || "";
   if (resetActionScreen && state.screen === "action") {
     state.actionRoleIndex = 0;
     state.actionComplete = false;

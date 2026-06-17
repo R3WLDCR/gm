@@ -223,6 +223,36 @@ h2 {
   color: white;
 }
 
+.victory-banner {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  margin: 0 0 16px;
+  padding: 18px;
+  border: 2px solid rgba(199, 139, 43, 0.55);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #fff8e8, #edf5f2);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.victory-banner[hidden] {
+  display: none;
+}
+
+.victory-banner span {
+  color: var(--gold);
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.victory-banner strong {
+  color: var(--ink);
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 1;
+  font-weight: 900;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: 1fr;
