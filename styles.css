@@ -1103,7 +1103,10 @@ textarea:focus {
 
 .timer-ring {
   --timer-progress: 360deg;
-  width: min(78vh, 82vw, 680px);
+  inline-size: min(78vh, 82vw, 680px);
+  block-size: min(78vh, 82vw, 680px);
+  flex: 0 0 auto;
+  align-self: center;
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -1154,6 +1157,7 @@ textarea:focus {
 
 #timerDisplay.timer-count-hidden {
   opacity: 0;
+  visibility: hidden;
 }
 
 #timerDisplay.timer-warning {
@@ -1571,7 +1575,8 @@ textarea:focus {
   }
 
   .timer-ring {
-    width: min(58svh, 82vw, 520px);
+    inline-size: min(58svh, 82vw, 520px);
+    block-size: min(58svh, 82vw, 520px);
   }
 
   .round-table,

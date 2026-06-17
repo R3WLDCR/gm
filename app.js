@@ -736,13 +736,13 @@ function renderHeader() {
   els.dayLabel.textContent = state.phase === "setup" ? phase[0] : `${state.day}日目 ${phase[0]}`;
   els.phaseInitial.textContent = phase[1];
   els.timerDisplay.textContent = formatTime(state.timerSeconds);
-  els.timerDisplay.classList.toggle("timer-count-hidden", state.timerSeconds > 60);
-  els.timerDisplay.classList.toggle("timer-warning", state.timerSeconds > 0 && state.timerSeconds <= 60);
+  els.timerDisplay.classList.toggle("timer-count-hidden", state.timerSeconds > 30);
+  els.timerDisplay.classList.toggle("timer-warning", state.timerSeconds > 0 && state.timerSeconds <= 30);
   els.timerDisplay.classList.toggle("timer-ended", state.timerSeconds === 0);
   const timerRing = document.querySelector(".timer-ring");
   timerRing?.setAttribute("aria-label", `残り時間 ${formatTime(state.timerSeconds)}`);
   timerRing?.style.setProperty("--timer-progress", getTimerProgress());
-  timerRing?.classList.toggle("timer-warning", state.timerSeconds > 0 && state.timerSeconds <= 60);
+  timerRing?.classList.toggle("timer-warning", state.timerSeconds > 0 && state.timerSeconds <= 30);
   timerRing?.classList.toggle("timer-ended", state.timerSeconds === 0);
   els.voteStartBtn.hidden = state.timerSeconds !== 0 || !state.timerFocus;
   els.timerStart.textContent = state.timerRunning ? "⏸" : "開始";
