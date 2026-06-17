@@ -1152,6 +1152,10 @@ textarea:focus {
     0 18px 42px rgba(23, 32, 27, 0.32);
 }
 
+#timerDisplay.timer-count-hidden {
+  opacity: 0;
+}
+
 #timerDisplay.timer-warning {
   color: #fff200;
   -webkit-text-stroke: 2px rgba(23, 32, 27, 0.72);
