@@ -1519,3 +1519,75 @@ textarea:focus {
     grid-column: 1 / 3;
   }
 }
+
+@media (min-width: 700px) and (max-width: 900px) {
+  .app-shell {
+    padding: 16px;
+  }
+
+  .topbar {
+    gap: 10px;
+    padding-bottom: 14px;
+  }
+
+  .panel {
+    padding: 14px;
+  }
+
+  .screen-tabs {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+    padding: 5px;
+  }
+
+  .screen-tab {
+    min-height: 44px;
+    padding: 0 6px;
+    font-size: 0.9rem;
+  }
+
+  .segmented {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .sync-form {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(88px, auto);
+  }
+
+  .table-panel {
+    min-height: 650px;
+  }
+
+  .table-panel:not(.timer-focus) .timer-strip {
+    min-height: min(52svh, 520px);
+  }
+
+  .table-panel.timer-focus .timer-strip {
+    min-height: min(54svh, 540px);
+  }
+
+  .table-panel.timer-focus .timer-face {
+    min-height: min(44svh, 440px);
+  }
+
+  .timer-ring {
+    width: min(58svh, 82vw, 520px);
+  }
+
+  .round-table,
+  .vote-round-table {
+    min-height: 620px;
+  }
+
+  .seat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .seat-card {
+    min-height: 116px;
+  }
+
+  .action-round-table {
+    min-height: min(62svh, 560px);
+  }
+}
