@@ -1122,6 +1122,7 @@ textarea:focus {
 }
 
 .timer-ring-inner {
+  position: relative;
   width: 100%;
   aspect-ratio: 1;
   display: grid;
@@ -1131,6 +1132,14 @@ textarea:focus {
   border-radius: 50%;
   background: transparent;
   overflow: visible;
+}
+
+.timer-ring-inner .timer-controls {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(22px, 8%, 58px);
+  transform: translateX(-50%);
+  justify-content: center;
 }
 
 .timer-ring.timer-warning {
@@ -1144,6 +1153,10 @@ textarea:focus {
 }
 
 #timerDisplay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   font-family: "Segoe UI Variable Display", "Segoe UI", "Yu Gothic UI", system-ui, sans-serif;
   font-size: clamp(3rem, 9vw, 7rem);
   font-weight: 800;
@@ -1623,6 +1636,10 @@ textarea:focus {
 
   .timer-ring {
     --timer-ring-size: min(62svh, 56vw, 500px);
+  }
+
+  .timer-ring-inner .timer-controls {
+    bottom: clamp(16px, 6%, 34px);
   }
 
   .action-round-table {
