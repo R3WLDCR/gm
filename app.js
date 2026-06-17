@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.2.2";
+const APP_VERSION = "v1.3.0";
 
 const state = {
   players: [],
@@ -706,6 +706,7 @@ function resetToFirstNight() {
 
 function render() {
   renderScreen();
+  renderParticipantViewMode();
   renderVictoryBanner();
   renderHeader();
   renderPlayers();
@@ -720,6 +721,17 @@ function render() {
   fitSingleLineNames();
 }
 
+function renderParticipantViewMode() {
+  document.body.classList.toggle("participant-action-view", isParticipantActionView());
+}
+
+function isParticipantActionView() {
+  if (state.screen !== "action") return false;
+  const roleId = getCurrentActionRoleId();
+  if (roleId === "medium") return Boolean(getLastExiledPlayer());
+  return Boolean(state.actionSelectedTargetId && ["seer", "knight", "werewolf"].includes(roleId));
+}
+
 function renderVictoryBanner() {
   const ended = Boolean(state.gameWinner);
   els.victoryBanner?.toggleAttribute("hidden", !ended);
@@ -729,7 +741,7 @@ function renderVictoryBanner() {
 }
 
 function fitSingleLineNames() {
-  document.querySelectorAll(".player-row strong, .round-seat strong, .seat-name, .medium-result-card strong").forEach((element) => {
+  document.querySelectorAll(".player-row strong, .round-seat strong, .seat-name, .medium-result-card strong, .dialog-name").forEach((element) => {
     element.style.fontSize = "";
     const baseSize = Number.parseFloat(getComputedStyle(element).fontSize);
     const maxWidth = element.clientWidth;

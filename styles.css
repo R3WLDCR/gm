@@ -1488,6 +1488,161 @@ textarea:focus {
   font-size: 2.4rem;
 }
 
+body.participant-action-view {
+  overflow: hidden;
+}
+
+body.participant-action-view .app-shell {
+  width: 100%;
+  min-height: 100svh;
+  padding: 0;
+}
+
+body.participant-action-view .topbar,
+body.participant-action-view .screen-tabs,
+body.participant-action-view .victory-banner,
+body.participant-action-view .action-panel > .panel-heading,
+body.participant-action-view .action-status {
+  display: none;
+}
+
+body.participant-action-view .workspace,
+body.participant-action-view .action-panel.active,
+body.participant-action-view .action-stack {
+  min-height: 100svh;
+}
+
+body.participant-action-view .action-panel.active {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+body.participant-action-view .action-stack {
+  width: 100%;
+  display: grid;
+  place-items: center;
+  gap: 0;
+}
+
+body.participant-action-view .action-round-table {
+  width: 100%;
+  min-height: 100svh;
+  border: 0;
+  border-radius: 0;
+  display: grid;
+  place-items: center;
+}
+
+body.participant-action-view .medium-result-card,
+body.participant-action-view .blocked-role-card {
+  width: min(100%, 960px);
+  min-height: 100svh;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+body.participant-action-view .medium-result-card {
+  grid-template-rows: auto minmax(0, auto) auto;
+  padding: clamp(22px, 5svh, 52px) clamp(16px, 5vw, 52px);
+  gap: clamp(12px, 3svh, 32px);
+}
+
+body.participant-action-view .medium-result-card strong {
+  font-size: clamp(4.8rem, 18vw, 12rem);
+}
+
+body.participant-action-view .medium-result-card.has-result strong {
+  font-size: clamp(3.6rem, 13vw, 8rem);
+}
+
+body.participant-action-view .medium-result-card em {
+  font-size: clamp(7rem, 24vw, 17rem);
+}
+
+body.participant-action-view .action-confirm-actions {
+  width: min(560px, 92vw);
+}
+
+body.participant-action-view .medium-ok-button {
+  min-height: clamp(58px, 9svh, 82px);
+}
+
+@media (max-width: 900px) {
+  .role-dialog {
+    width: 100vw;
+    max-width: none;
+    height: 100svh;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .role-dialog form {
+    min-height: 100svh;
+    place-items: center;
+    align-content: center;
+    gap: clamp(18px, 4svh, 34px);
+    padding: clamp(22px, 5svh, 52px) clamp(16px, 6vw, 54px);
+    text-align: center;
+  }
+
+  .dialog-name {
+    max-width: 100%;
+    font-size: clamp(2.4rem, 9vw, 5.5rem);
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .role-dialog h3 {
+    font-size: clamp(4.2rem, 17vw, 10rem);
+    line-height: 0.95;
+  }
+
+  .dialog-team {
+    font-size: clamp(1.4rem, 5vw, 3rem);
+  }
+
+  .role-dialog .wide {
+    width: min(420px, 86vw);
+    min-height: clamp(62px, 10svh, 88px);
+    font-size: clamp(1.4rem, 4vw, 2rem);
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .role-dialog form {
+    grid-template-columns: minmax(0, 1fr) minmax(160px, 28vw);
+    grid-template-areas:
+      "name close"
+      "role close"
+      "team close";
+    column-gap: clamp(18px, 4vw, 42px);
+    row-gap: 8px;
+  }
+
+  .role-dialog .dialog-name {
+    grid-area: name;
+  }
+
+  .role-dialog h3 {
+    grid-area: role;
+    font-size: clamp(3.4rem, 12vw, 7rem);
+  }
+
+  .role-dialog .dialog-team {
+    grid-area: team;
+  }
+
+  .role-dialog .wide {
+    grid-area: close;
+  }
+}
+
 @media (max-width: 1180px) {
   .setup-panel.active,
   .action-stack {
@@ -1712,5 +1867,44 @@ textarea:focus {
   .medium-ok-button {
     min-height: 54px;
     font-size: 1.25rem;
+  }
+}
+
+@media (orientation: landscape) and (min-width: 700px) and (max-width: 1180px) {
+  body.participant-action-view .medium-result-card,
+  body.participant-action-view .blocked-role-card {
+    width: 100%;
+    min-height: 100svh;
+    padding: clamp(14px, 4svh, 32px) clamp(20px, 5vw, 54px);
+    gap: clamp(8px, 2svh, 20px);
+  }
+
+  body.participant-action-view .medium-result-card strong {
+    font-size: clamp(3.4rem, 11vw, 7.4rem);
+  }
+
+  body.participant-action-view .medium-result-card.has-result strong {
+    font-size: clamp(2.8rem, 8vw, 5.6rem);
+  }
+
+  body.participant-action-view .medium-result-card em {
+    font-size: clamp(5.2rem, 15vw, 9.5rem);
+  }
+
+  body.participant-action-view .medium-result-card span {
+    font-size: clamp(1rem, 3vw, 1.6rem);
+  }
+
+  body.participant-action-view .action-confirm-actions {
+    width: min(500px, 86vw);
+  }
+
+  body.participant-action-view .medium-ok-button {
+    min-height: clamp(48px, 10svh, 64px);
+    font-size: clamp(1.1rem, 3vw, 1.55rem);
+  }
+
+  body.participant-action-view .blocked-role-card strong {
+    font-size: clamp(5rem, 16vw, 10rem);
   }
 }
