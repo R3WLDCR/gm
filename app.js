@@ -123,6 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "roleDialogName",
     "roleDialogRole",
     "roleDialogTeam",
+    "syncPanel",
     "syncStatusBadge",
     "syncStatusText",
     "syncConfigNotice",
@@ -2005,6 +2006,8 @@ function renderSyncStatus() {
   if (!els.syncStatusBadge) return;
   const configured = Boolean(supabaseClient);
   const signedIn = Boolean(syncUser);
+  const shouldOpen = !configured || !signedIn || Boolean(pendingCloudRecord) || ["error", "remote", "conflict", "unconfigured"].includes(syncMeta.status);
+  els.syncPanel.open = shouldOpen;
   els.syncConfigNotice.hidden = configured;
   els.syncSignedOutPanel.hidden = signedIn || !configured;
   els.syncSignedInPanel.hidden = !signedIn;
