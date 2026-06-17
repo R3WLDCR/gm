@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.2.1";
+const APP_VERSION = "v1.2.2";
 
 const state = {
   players: [],
@@ -620,7 +620,7 @@ function nextDay() {
 }
 
 async function copyLog() {
-  const text = state.logs.map((log) => `[${log.time}] ${log.text}`).join("\n");
+  const text = formatCurrentGameLogForCopy();
   try {
     await navigator.clipboard.writeText(text);
     addLog("ログをコピーした");
@@ -1901,6 +1901,50 @@ async function handleSignup(event) {
   renderSyncStatus();
   addLog("確認メールを送信しました");
   renderAndStore();
+}
+
+function formatCurrentGameLogForCopy() {
+  const copyExcludedTexts = new Set(["ログをコピーした", "コピーできなかった", "保存した"]);
+  const latestStartIndex = state.logs.findIndex((log) => log.text === "配役完了。1日目の夜へ");
+  const sourceLogs = latestStartIndex >= 0 ? state.logs.slice(0, latestStartIndex + 1) : state.logs;
+  const entries = sourceLogs.filter((log) => !copyExcludedTexts.has(log.text)).reverse();
+  const lines = ["【人狼GMログ】"];
+  const winner = getWinnerFromLogs(entries);
+
+  if (winner) {
+    lines.push(`結果: ${winner}の勝利`);
+  }
+
+  let currentSection = "";
+  entries.forEach((log) => {
+    const section = getLogSection(log.text, currentSection);
+    if (section && section !== currentSection) {
+      lines.push("", `■ ${section}`);
+      currentSection = section;
+    }
+    lines.push(log.text);
+  });
+
+  return lines.join("\n").trim();
+}
+
+function getWinnerFromLogs(entries) {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    const match = entries[index].text.match(/^ゲーム終了: (.+)の勝利$/);
+    if (match) return match[1];
+  }
+  return state.gameWinner || "";
+}
+
+function getLogSection(text, currentSection) {
+  let match = text.match(/^配役完了。(\d+)日目の夜へ$/) || text.match(/^(\d+)日目の夜へ$/);
+  if (match) return `${match[1]}日目 夜`;
+
+  match = text.match(/^(\d+)日目の昼へ$/);
+  if (match) return `${match[1]}日目 昼`;
+
+  if (text === "進行開始") return currentSection || "1日目 夜";
+  return currentSection;
 }
 
 async function handleLogout() {
