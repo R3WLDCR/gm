@@ -1332,6 +1332,7 @@ textarea:focus {
   line-height: 0.92;
   font-weight: 900;
   white-space: nowrap;
+  overflow: visible;
 }
 
 .medium-result-card.has-result strong {
@@ -1600,6 +1601,18 @@ textarea:focus {
 }
 
 @media (orientation: landscape) and (min-width: 900px) and (max-width: 1180px) {
+  .action-panel .panel-heading {
+    margin-bottom: 8px;
+  }
+
+  .action-status {
+    gap: 2px;
+  }
+
+  .action-status strong {
+    font-size: 1.65rem;
+  }
+
   .table-panel.timer-focus .timer-strip {
     min-height: min(74svh, 540px);
   }
@@ -1610,5 +1623,47 @@ textarea:focus {
 
   .timer-ring {
     --timer-ring-size: min(62svh, 56vw, 500px);
+  }
+
+  .action-round-table {
+    min-height: min(70svh, 520px);
+  }
+
+  .action-round-table .round-seat {
+    width: clamp(132px, 13vw, 168px);
+    min-height: 70px;
+    padding: 7px;
+  }
+
+  .action-round-table .round-seat strong {
+    max-width: 100%;
+    font-size: 1rem;
+  }
+
+  .medium-result-card {
+    width: min(720px, 94%);
+    min-height: min(64svh, 470px);
+    gap: clamp(8px, 2svh, 18px);
+  }
+
+  .medium-result-card strong {
+    font-size: clamp(3.4rem, 10vw, 6.5rem);
+  }
+
+  .medium-result-card.has-result strong {
+    font-size: clamp(2.8rem, 8vw, 5.4rem);
+  }
+
+  .medium-result-card em {
+    font-size: clamp(6rem, 16vw, 10rem);
+  }
+
+  .action-confirm-actions {
+    width: min(460px, 88%);
+  }
+
+  .medium-ok-button {
+    min-height: 54px;
+    font-size: 1.25rem;
   }
 }

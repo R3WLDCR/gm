@@ -211,6 +211,8 @@ function bindEvents() {
   els.uploadLocalBtn?.addEventListener("click", uploadLocalState);
   els.logoutBtn?.addEventListener("click", handleLogout);
   window.addEventListener("online", () => synchronizeNow());
+  window.addEventListener("resize", fitSingleLineNames);
+  window.addEventListener("orientationchange", () => window.setTimeout(fitSingleLineNames, 120));
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") synchronizeNow();
   });
