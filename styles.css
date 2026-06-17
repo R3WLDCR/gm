@@ -1961,20 +1961,20 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
   body.participant-action-view .blocked-role-card {
     width: 100%;
     min-height: 100svh;
-    padding: clamp(14px, 4svh, 32px) clamp(20px, 5vw, 54px);
-    gap: clamp(8px, 2svh, 20px);
+    padding: clamp(10px, 3svh, 22px) clamp(16px, 4vw, 44px);
+    gap: clamp(6px, 1.5svh, 14px);
   }
 
   body.participant-action-view .medium-result-card strong {
-    font-size: clamp(3.4rem, 11vw, 7.4rem);
+    font-size: clamp(4.2rem, 15vw, 9.5rem);
   }
 
   body.participant-action-view .medium-result-card.has-result strong {
-    font-size: clamp(2.8rem, 8vw, 5.6rem);
+    font-size: clamp(3.3rem, 10vw, 6.6rem);
   }
 
   body.participant-action-view .medium-result-card em {
-    font-size: clamp(5.2rem, 15vw, 9.5rem);
+    font-size: clamp(6.4rem, 20vw, 12.5rem);
   }
 
   body.participant-action-view .medium-result-card span {
@@ -1986,11 +1986,55 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
   }
 
   body.participant-action-view .medium-ok-button {
-    min-height: clamp(48px, 10svh, 64px);
-    font-size: clamp(1.1rem, 3vw, 1.55rem);
+    min-height: clamp(44px, 8svh, 58px);
+    font-size: clamp(1rem, 2.4vw, 1.35rem);
   }
 
   body.participant-action-view .blocked-role-card strong {
     font-size: clamp(5rem, 16vw, 10rem);
+  }
+}
+
+body.participant-action-view .seer-result-card,
+body.participant-action-view .medium-only-result-card,
+body.participant-action-view .knight-result-card {
+  width: 100%;
+  min-height: 100svh;
+  max-width: none;
+}
+
+body.participant-action-view .seer-result-card:not(.has-result) strong,
+body.participant-action-view .knight-result-card strong {
+  font-size: clamp(6rem, 22vw, 15rem);
+}
+
+body.participant-action-view .seer-result-card.has-result strong,
+body.participant-action-view .medium-only-result-card.has-result strong {
+  font-size: clamp(4.2rem, 14vw, 9rem);
+}
+
+body.participant-action-view .seer-result-card.has-result em,
+body.participant-action-view .medium-only-result-card.has-result em {
+  font-size: clamp(9rem, 30vw, 20rem);
+}
+
+body.participant-action-view .action-confirm-actions {
+  align-self: end;
+}
+
+@media (orientation: landscape) and (min-width: 700px) and (max-width: 1180px) {
+  body.participant-action-view .seer-result-card:not(.has-result) strong,
+  body.participant-action-view .knight-result-card strong {
+    font-size: clamp(5rem, 17vw, 11rem);
+  }
+
+  body.participant-action-view .seer-result-card.has-result strong,
+  body.participant-action-view .medium-only-result-card.has-result strong {
+    font-size: clamp(3.8rem, 11vw, 7rem);
+  }
+
+  body.participant-action-view .seer-result-card.has-result em,
+  body.participant-action-view .medium-only-result-card.has-result em {
+    font-size: clamp(7rem, 22vw, 13.5rem);
   }
 }
