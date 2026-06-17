@@ -1103,8 +1103,11 @@ textarea:focus {
 
 .timer-ring {
   --timer-progress: 360deg;
-  inline-size: min(78vh, 82vw, 680px);
-  block-size: min(78vh, 82vw, 680px);
+  --timer-ring-size: min(78vh, 82vw, 680px);
+  width: var(--timer-ring-size);
+  height: var(--timer-ring-size);
+  inline-size: var(--timer-ring-size);
+  block-size: var(--timer-ring-size);
   flex: 0 0 auto;
   align-self: center;
   aspect-ratio: 1;
@@ -1575,8 +1578,7 @@ textarea:focus {
   }
 
   .timer-ring {
-    inline-size: min(58svh, 82vw, 520px);
-    block-size: min(58svh, 82vw, 520px);
+    --timer-ring-size: min(58svh, 82vw, 520px);
   }
 
   .round-table,
@@ -1594,5 +1596,19 @@ textarea:focus {
 
   .action-round-table {
     min-height: min(62svh, 560px);
+  }
+}
+
+@media (orientation: landscape) and (min-width: 900px) and (max-width: 1180px) {
+  .table-panel.timer-focus .timer-strip {
+    min-height: min(74svh, 540px);
+  }
+
+  .table-panel.timer-focus .timer-face {
+    min-height: min(64svh, 480px);
+  }
+
+  .timer-ring {
+    --timer-ring-size: min(62svh, 56vw, 500px);
   }
 }
