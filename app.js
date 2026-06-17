@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.2.0";
+const APP_VERSION = "v1.2.1";
 
 const state = {
   players: [],
@@ -538,7 +538,6 @@ function startTimer() {
     if (state.timerSeconds === 0) {
       stopTimer();
       state.timerRunning = false;
-      addLog("タイマー終了");
     }
     render();
     store();
