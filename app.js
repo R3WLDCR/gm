@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.3.0";
+const APP_VERSION = "v1.3.1";
 
 const state = {
   players: [],
@@ -723,6 +723,7 @@ function render() {
 
 function renderParticipantViewMode() {
   document.body.classList.toggle("participant-action-view", isParticipantActionView());
+  document.body.classList.toggle("timer-fullscreen-view", isTimerFullscreenView());
 }
 
 function isParticipantActionView() {
@@ -730,6 +731,10 @@ function isParticipantActionView() {
   const roleId = getCurrentActionRoleId();
   if (roleId === "medium") return Boolean(getLastExiledPlayer());
   return Boolean(state.actionSelectedTargetId && ["seer", "knight", "werewolf"].includes(roleId));
+}
+
+function isTimerFullscreenView() {
+  return state.screen === "table" && state.timerRunning && state.timerFocus && !state.showVoteTable;
 }
 
 function renderVictoryBanner() {

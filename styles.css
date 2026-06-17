@@ -1572,6 +1572,72 @@ body.participant-action-view .medium-ok-button {
   min-height: clamp(58px, 9svh, 82px);
 }
 
+body.timer-fullscreen-view {
+  overflow: hidden;
+}
+
+body.timer-fullscreen-view .app-shell {
+  width: 100%;
+  min-height: 100svh;
+  padding: 0;
+}
+
+body.timer-fullscreen-view .topbar,
+body.timer-fullscreen-view .screen-tabs,
+body.timer-fullscreen-view .victory-banner,
+body.timer-fullscreen-view .table-heading,
+body.timer-fullscreen-view .phase-visual,
+body.timer-fullscreen-view .timer-corner-actions {
+  display: none;
+}
+
+body.timer-fullscreen-view .workspace,
+body.timer-fullscreen-view .table-panel.active {
+  min-height: 100svh;
+}
+
+body.timer-fullscreen-view .table-panel.active {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  overflow: hidden;
+}
+
+body.timer-fullscreen-view .timer-strip {
+  width: 100%;
+  min-height: 100svh;
+  margin: 0;
+  padding: clamp(12px, 3svh, 32px);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+}
+
+body.timer-fullscreen-view .timer-face {
+  width: 100%;
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+}
+
+body.timer-fullscreen-view .timer-ring {
+  --timer-ring-size: min(78svh, 88vw, 720px);
+}
+
+body.timer-fullscreen-view .timer-ring-inner .timer-controls {
+  bottom: clamp(20px, 7%, 58px);
+}
+
+body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
+  font-size: clamp(6.4rem, 22vw, 16rem);
+}
+
 @media (max-width: 900px) {
   .role-dialog {
     width: 100vw;
@@ -1611,6 +1677,10 @@ body.participant-action-view .medium-ok-button {
     width: min(420px, 86vw);
     min-height: clamp(62px, 10svh, 88px);
     font-size: clamp(1.4rem, 4vw, 2rem);
+  }
+
+  body.timer-fullscreen-view .timer-ring {
+    --timer-ring-size: min(74svh, 92vw, 680px);
   }
 }
 
@@ -1871,6 +1941,22 @@ body.participant-action-view .medium-ok-button {
 }
 
 @media (orientation: landscape) and (min-width: 700px) and (max-width: 1180px) {
+  body.timer-fullscreen-view .timer-strip {
+    padding: clamp(8px, 2svh, 22px);
+  }
+
+  body.timer-fullscreen-view .timer-ring {
+    --timer-ring-size: min(86svh, 64vw, 620px);
+  }
+
+  body.timer-fullscreen-view .timer-ring-inner .timer-controls {
+    bottom: clamp(12px, 5%, 34px);
+  }
+
+  body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
+    font-size: clamp(5.4rem, 16vw, 12rem);
+  }
+
   body.participant-action-view .medium-result-card,
   body.participant-action-view .blocked-role-card {
     width: 100%;
