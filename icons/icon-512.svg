@@ -1,8 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="人狼GM">
-  <rect width="512" height="512" rx="102" fill="#0c7a67"/>
-  <circle cx="256" cy="256" r="154" fill="#fbfcf8"/>
-  <path d="M157 221 205 144l51 69 53-69 46 77c-25 16-57 26-99 26s-75-10-99-26Z" fill="#17201b"/>
-  <path d="M147 275c24 64 62 96 109 96s85-32 109-96c-33 22-69 33-109 33s-76-11-109-33Z" fill="#17201b"/>
-  <circle cx="200" cy="256" r="19" fill="#c78b2b"/>
-  <circle cx="312" cy="256" r="19" fill="#c78b2b"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Werewolf GM">
+  <defs>
+    <linearGradient id="bg" x1="70" y1="54" x2="442" y2="458" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#17201b"/>
+      <stop offset="1" stop-color="#0c7a67"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="22" stdDeviation="22" flood-color="#0b1511" flood-opacity=".28"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="158" fill="none" stroke="#fbfcf8" stroke-width="28" opacity=".96"/>
+  <circle cx="256" cy="256" r="94" fill="#fbfcf8" filter="url(#shadow)"/>
+  <path d="M329 128a67 67 0 1 0 55 101 86 86 0 1 1-55-101Z" fill="#c78b2b"/>
+  <g fill="#fbfcf8">
+    <circle cx="256" cy="80" r="21"/>
+    <circle cx="381" cy="131" r="21"/>
+    <circle cx="432" cy="256" r="21"/>
+    <circle cx="381" cy="381" r="21"/>
+    <circle cx="256" cy="432" r="21"/>
+    <circle cx="131" cy="381" r="21"/>
+    <circle cx="80" cy="256" r="21"/>
+    <circle cx="131" cy="131" r="21"/>
+  </g>
+  <text x="256" y="289" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="92" font-weight="800" letter-spacing="0" fill="#17201b">GM</text>
 </svg>
