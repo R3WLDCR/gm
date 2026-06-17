@@ -19,6 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
+const APP_VERSION = "v1.1.0";
 
 const state = {
   players: [],
@@ -141,6 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "downloadCloudBtn",
     "uploadLocalBtn",
     "logoutBtn",
+    "appVersionBadge",
   ].forEach((id) => {
     els[id] = document.getElementById(id);
   });
@@ -730,6 +732,7 @@ function renderScreen() {
 }
 
 function renderHeader() {
+  if (els.appVersionBadge) els.appVersionBadge.textContent = APP_VERSION;
   const activePlayerCount = getActivePlayers().length;
   els.balanceBadge.textContent = `${activePlayerCount} / ${state.players.length}`;
   els.balanceBadge.style.background = activePlayerCount ? "#edf5f2" : "#fae8ea";
