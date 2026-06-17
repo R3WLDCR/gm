@@ -1367,6 +1367,7 @@ textarea:focus {
 
 .medium-result-card strong {
   width: 100%;
+  min-width: 0;
   max-width: 100%;
   display: block;
   padding: 0 12px;
@@ -1375,6 +1376,7 @@ textarea:focus {
   font-weight: 900;
   white-space: nowrap;
   overflow: visible;
+  text-align: center;
 }
 
 .medium-result-card.has-result strong {
@@ -1479,6 +1481,8 @@ textarea:focus {
 .dialog-name,
 .dialog-team {
   margin: 0;
+  min-width: 0;
+  max-width: 100%;
   color: var(--muted);
   font-weight: 800;
 }
@@ -1672,10 +1676,12 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
   }
 
   .dialog-name {
+    width: 100%;
     max-width: 100%;
     font-size: clamp(2.4rem, 9vw, 5.5rem);
     line-height: 1;
     white-space: nowrap;
+    overflow: visible;
   }
 
   .role-dialog h3 {

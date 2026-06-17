@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.3.4";
+const APP_VERSION = "v1.3.5";
 
 const state = {
   players: [],
@@ -719,6 +719,7 @@ function render() {
   renderLog();
   renderSyncStatus();
   fitSingleLineNames();
+  window.requestAnimationFrame(fitSingleLineNames);
 }
 
 function renderParticipantViewMode() {
@@ -748,12 +749,14 @@ function renderVictoryBanner() {
 function fitSingleLineNames() {
   document.querySelectorAll(".player-row strong, .round-seat strong, .seat-name, .medium-result-card strong, .dialog-name").forEach((element) => {
     element.style.fontSize = "";
-    const baseSize = Number.parseFloat(getComputedStyle(element).fontSize);
+    let currentSize = Number.parseFloat(getComputedStyle(element).fontSize);
     const maxWidth = element.clientWidth;
-    if (!baseSize || !maxWidth || element.scrollWidth <= maxWidth) return;
+    if (!currentSize || !maxWidth) return;
 
-    const nextSize = Math.max(8, Math.floor((baseSize * maxWidth) / element.scrollWidth));
-    element.style.fontSize = `${nextSize}px`;
+    for (let i = 0; i < 6 && element.scrollWidth > maxWidth; i += 1) {
+      currentSize = Math.max(6, Math.floor((currentSize * maxWidth) / element.scrollWidth));
+      element.style.fontSize = `${currentSize}px`;
+    }
   });
 }
 
@@ -1818,6 +1821,7 @@ function revealRole(player) {
   els.roleDialogRole.textContent = role ? role.name : "未配役";
   els.roleDialogTeam.textContent = role ? role.team : "";
   els.roleDialog.showModal();
+  window.requestAnimationFrame(fitSingleLineNames);
 }
 
 function addLog(text) {
