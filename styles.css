@@ -2332,9 +2332,17 @@ body.participant-action-view .medium-only-result-card.has-result strong {
   font-size: clamp(4.2rem, 14vw, 9rem);
 }
 
+body.participant-action-view .seer-result-card.has-result strong {
+  font-size: clamp(3.2rem, 10vw, 6.4rem);
+}
+
 body.participant-action-view .seer-result-card.has-result em,
 body.participant-action-view .medium-only-result-card.has-result em {
   font-size: clamp(9rem, 30vw, 20rem);
+}
+
+body.participant-action-view .seer-result-card.has-result em {
+  font-size: clamp(10.5rem, 34vw, 23rem);
 }
 
 body.participant-action-view .action-confirm-actions {
@@ -2352,8 +2360,16 @@ body.participant-action-view .action-confirm-actions {
     font-size: clamp(4.6rem, 14vw, 8.8rem);
   }
 
+  body.participant-action-view .seer-result-card.has-result strong {
+    font-size: clamp(3.2rem, 9vw, 5.8rem);
+  }
+
   body.participant-action-view .seer-result-card.has-result em,
   body.participant-action-view .medium-only-result-card.has-result em {
     font-size: clamp(8.4rem, 26vw, 16rem);
+  }
+
+  body.participant-action-view .seer-result-card.has-result em {
+    font-size: clamp(9.4rem, 29vw, 18rem);
   }
 }
