@@ -17,7 +17,7 @@
       <header class="topbar">
         <div class="title-row">
           <p class="eyebrow">Werewolf Game Master</p>
-          <span id="appVersionBadge" class="version-badge">v1.5.1</span>
+          <span id="appVersionBadge" class="version-badge">v1.5.2</span>
         </div>
         <div class="top-actions">
           <details id="syncPanel" class="sync-panel">
@@ -63,9 +63,21 @@
       </nav>
 
       <div id="victoryBanner" class="victory-banner" hidden>
-        <span id="victoryLeadText">ゲーム終了</span>
-        <strong id="victoryWinnerText">市民の勝利</strong>
-        <p id="victoryMessageText">人狼の脅威は去りました。</p>
+        <div class="victory-phone" aria-hidden="true">
+          <div class="victory-phone-notch"></div>
+          <div id="victoryVisualMark" class="victory-visual-mark">✦</div>
+          <div class="victory-silhouettes">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <div class="victory-claw">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+        <div class="victory-copy">
+          <span id="victoryLeadText">ゲーム終了</span>
+          <strong id="victoryWinnerText">市民勝利</strong>
+          <p id="victoryMessageText">人狼の脅威は去りました。</p>
+        </div>
       </div>
 
       <main class="workspace">

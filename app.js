@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.5.1";
+const APP_VERSION = "v1.5.2";
 
 const state = {
   players: [],
@@ -146,6 +146,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "appVersionBadge",
     "victoryBanner",
     "victoryLeadText",
+    "victoryVisualMark",
     "victoryWinnerText",
     "victoryMessageText",
   ].forEach((id) => {
@@ -747,6 +748,9 @@ function renderVictoryBanner() {
   if (els.victoryLeadText) {
     els.victoryLeadText.textContent = ended ? "ゲーム終了" : "";
   }
+  if (els.victoryVisualMark) {
+    els.victoryVisualMark.textContent = state.gameWinner === "人狼陣営" ? "✦" : "✧";
+  }
   if (els.victoryWinnerText) {
     els.victoryWinnerText.textContent = getVictoryTitle(state.gameWinner);
   }
@@ -756,14 +760,14 @@ function renderVictoryBanner() {
 }
 
 function getVictoryTitle(winner) {
-  if (winner === "人狼陣営") return "人狼の勝利";
-  if (winner === "村人陣営") return "市民の勝利";
+  if (winner === "人狼陣営") return "人狼勝利";
+  if (winner === "村人陣営") return "市民勝利";
   return "";
 }
 
 function getVictoryMessage(winner) {
-  if (winner === "人狼陣営") return "夜の支配者が村を飲み込みました。";
-  if (winner === "村人陣営") return "人狼の脅威は去りました。";
+  if (winner === "人狼陣営") return "血が零れている";
+  if (winner === "村人陣営") return "光の演出";
   return "";
 }
 
