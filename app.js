@@ -19,7 +19,9 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.5.4";
+const APP_VERSION = "v1.5.5";
+const ACTION_GATE_MIN_SECONDS = 7;
+const ACTION_GATE_MAX_SECONDS = 12;
 
 const state = {
   players: [],
@@ -49,6 +51,7 @@ const state = {
   actionResultVisible: false,
   actionGateRoleId: "",
   actionGateSeconds: 0,
+  actionGateBaseSeconds: 0,
   actionBlockedRoleId: "",
   actionBlockedSeconds: 0,
   guardedPlayerId: "",
@@ -306,6 +309,7 @@ function startNightActions() {
   state.actionComplete = false;
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
+  state.actionGateBaseSeconds = 0;
   state.actionBlockedRoleId = "";
   state.actionBlockedSeconds = 0;
   state.guardedPlayerId = "";
@@ -499,6 +503,7 @@ function restartNightActions() {
   state.actionComplete = false;
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
+  state.actionGateBaseSeconds = 0;
   state.actionBlockedRoleId = "";
   state.actionBlockedSeconds = 0;
   state.guardedPlayerId = "";
@@ -613,6 +618,7 @@ function nextDay() {
   state.actionComplete = false;
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
+  state.actionGateBaseSeconds = 0;
   state.actionBlockedRoleId = "";
   state.actionBlockedSeconds = 0;
   state.guardedPlayerId = "";
@@ -660,6 +666,7 @@ function resetGame() {
   state.actionComplete = false;
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
+  state.actionGateBaseSeconds = 0;
   state.actionBlockedRoleId = "";
   state.actionBlockedSeconds = 0;
   state.guardedPlayerId = "";
@@ -690,6 +697,7 @@ function resetToFirstNight() {
   state.actionComplete = false;
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
+  state.actionGateBaseSeconds = 0;
   state.actionBlockedRoleId = "";
   state.actionBlockedSeconds = 0;
   state.guardedPlayerId = "";
@@ -984,7 +992,7 @@ function renderActionRoundTable() {
     return;
   }
 
-  if (state.screen === "action" && (roleId === "seer" || roleId === "knight")) {
+  if (state.screen === "action" && (roleId === "seer" || roleId === "knight" || roleId === "werewolf")) {
     startActionGateCountdown(roleId);
   }
 
@@ -1280,6 +1288,7 @@ function backToPreviousActionRole() {
   stopBlockedRoleCountdown();
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
+  state.actionGateBaseSeconds = 0;
   state.actionBlockedRoleId = "";
   state.actionBlockedSeconds = 0;
   state.actionComplete = false;
@@ -1304,6 +1313,7 @@ function backToExileScreen() {
   state.actionComplete = false;
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
+  state.actionGateBaseSeconds = 0;
   state.actionBlockedRoleId = "";
   state.actionBlockedSeconds = 0;
   state.guardedPlayerId = "";
@@ -1321,7 +1331,8 @@ function startActionGateCountdown(roleId) {
   if (state.actionGateRoleId === `${roleId}:done`) return;
   stopActionGateCountdown();
   state.actionGateRoleId = roleId;
-  state.actionGateSeconds = 10;
+  state.actionGateBaseSeconds = getRandomActionGateSeconds();
+  state.actionGateSeconds = state.actionGateBaseSeconds;
   actionGateTimerId = window.setInterval(() => {
     state.actionGateSeconds = Math.max(0, state.actionGateSeconds - 1);
     if (state.actionGateSeconds === 0) {
@@ -1329,6 +1340,10 @@ function startActionGateCountdown(roleId) {
     }
     renderAndStore();
   }, 1000);
+}
+
+function getRandomActionGateSeconds() {
+  return Math.floor(Math.random() * (ACTION_GATE_MAX_SECONDS - ACTION_GATE_MIN_SECONDS + 1)) + ACTION_GATE_MIN_SECONDS;
 }
 
 function stopActionGateCountdown() {
@@ -1498,6 +1513,7 @@ function backActionSelection() {
     stopActionGateCountdown();
     state.actionGateRoleId = "";
     state.actionGateSeconds = 0;
+    state.actionGateBaseSeconds = 0;
   }
   resetActionSelection();
   renderAndStore();
@@ -2281,6 +2297,7 @@ function getStatePayload() {
     actionResultVisible: state.actionResultVisible,
     actionGateRoleId: state.actionGateRoleId,
     actionGateSeconds: state.actionGateSeconds,
+    actionGateBaseSeconds: state.actionGateBaseSeconds,
     actionBlockedRoleId: state.actionBlockedRoleId,
     actionBlockedSeconds: state.actionBlockedSeconds,
     guardedPlayerId: state.guardedPlayerId,
@@ -2330,6 +2347,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.actionResultVisible = saved.actionResultVisible === true;
   state.actionGateRoleId = saved.actionGateRoleId || "";
   state.actionGateSeconds = Number.isFinite(Number(saved.actionGateSeconds)) ? Number(saved.actionGateSeconds) : 0;
+  state.actionGateBaseSeconds = Number.isFinite(Number(saved.actionGateBaseSeconds)) ? Number(saved.actionGateBaseSeconds) : 0;
   state.actionBlockedRoleId = saved.actionBlockedRoleId || "";
   state.actionBlockedSeconds = Number.isFinite(Number(saved.actionBlockedSeconds)) ? Number(saved.actionBlockedSeconds) : 0;
   state.guardedPlayerId = saved.guardedPlayerId || "";
@@ -2343,6 +2361,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     state.actionComplete = false;
     state.actionGateRoleId = "";
     state.actionGateSeconds = 0;
+    state.actionGateBaseSeconds = 0;
     state.actionBlockedRoleId = "";
     state.actionBlockedSeconds = 0;
     state.guardedPlayerId = "";
