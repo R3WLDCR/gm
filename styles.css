@@ -1034,11 +1034,16 @@ textarea:focus {
 }
 
 .vote-table-actions {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 20;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
+  width: min(460px, calc(100vw - 28px));
+  margin: 0;
 }
 
 .vote-table-actions[hidden] {
@@ -1046,15 +1051,19 @@ textarea:focus {
 }
 
 .exile-button {
-  width: min(360px, 100%);
-  min-height: 72px;
-  font-size: 2rem;
+  flex: 1 1 auto;
+  width: auto;
+  min-height: clamp(54px, 8svh, 68px);
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+  box-shadow: 0 12px 28px rgba(24, 34, 29, 0.14);
 }
 
 .vote-back-button {
-  min-width: 110px;
-  min-height: 56px;
-  font-size: 1.2rem;
+  flex: 0 0 auto;
+  min-width: clamp(86px, 16vw, 112px);
+  min-height: clamp(48px, 7svh, 60px);
+  font-size: clamp(1rem, 2.2vw, 1.2rem);
+  box-shadow: 0 12px 28px rgba(24, 34, 29, 0.14);
 }
 
 .exile-button:disabled {
@@ -1064,6 +1073,7 @@ textarea:focus {
 
 .vote-round-table {
   min-height: 680px;
+  padding-bottom: clamp(86px, 14svh, 120px);
 }
 
 .vote-round-table[hidden] {
@@ -1887,6 +1897,23 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
   .round-table,
   .vote-round-table {
     min-height: 620px;
+  }
+
+  .vote-table-actions {
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    width: min(380px, 46vw);
+    gap: 8px;
+  }
+
+  .exile-button {
+    min-height: clamp(48px, 8svh, 58px);
+    font-size: clamp(1.2rem, 2.4vw, 1.5rem);
+  }
+
+  .vote-back-button {
+    min-width: clamp(76px, 12vw, 96px);
+    min-height: clamp(44px, 7svh, 52px);
   }
 
   .seat-grid {
