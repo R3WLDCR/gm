@@ -280,54 +280,49 @@ h2 {
   display: none;
 }
 
-.victory-banner.victory-werewolf {
-  min-height: min(76svh, 760px);
-  padding: 0;
-  background: #190709;
-}
-
-.victory-banner.victory-werewolf::before,
-.victory-banner.victory-werewolf .victory-phone,
-.victory-banner.victory-werewolf .victory-copy {
-  display: none;
-}
-
-.victory-banner.victory-werewolf .victory-image-werewolf {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: 100%;
-  height: 100%;
-  min-height: min(76svh, 760px);
-  object-fit: cover;
-}
-
-body.werewolf-victory-view {
+body.victory-fullscreen-view {
   overflow: hidden;
 }
 
-body.werewolf-victory-view .app-shell {
+body.victory-fullscreen-view .app-shell {
   width: 100%;
   min-height: 100svh;
   padding: 0;
 }
 
-body.werewolf-victory-view .topbar,
-body.werewolf-victory-view .screen-tabs,
-body.werewolf-victory-view .workspace {
+body.victory-fullscreen-view .topbar,
+body.victory-fullscreen-view .screen-tabs,
+body.victory-fullscreen-view .workspace {
   display: none;
 }
 
-body.werewolf-victory-view .victory-banner.victory-werewolf {
+body.victory-fullscreen-view .victory-banner {
   width: 100%;
   min-height: 100svh;
   margin: 0;
   border: 0;
   border-radius: 0;
+  padding: 0;
 }
 
-body.werewolf-victory-view .victory-banner.victory-werewolf .victory-image-werewolf {
+body.victory-fullscreen-view .victory-banner::before,
+body.victory-fullscreen-view .victory-phone,
+body.victory-fullscreen-view .victory-copy {
+  display: none;
+}
+
+body.victory-fullscreen-view .victory-image {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
   min-height: 100svh;
+  object-fit: cover;
+}
+
+body.werewolf-victory-view .victory-banner.victory-werewolf .victory-image-werewolf,
+body.village-victory-view .victory-banner.victory-village .victory-image-village {
+  display: block;
 }
 
 .victory-phone {
