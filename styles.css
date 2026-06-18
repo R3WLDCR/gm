@@ -1551,28 +1551,42 @@ body.participant-action-view .blocked-role-card {
 
 body.participant-action-view .medium-result-card {
   grid-template-rows: auto minmax(0, auto) auto;
-  padding: clamp(22px, 5svh, 52px) clamp(16px, 5vw, 52px);
-  gap: clamp(12px, 3svh, 32px);
+  padding: clamp(10px, 3svh, 30px) clamp(10px, 3vw, 34px);
+  gap: clamp(6px, 2svh, 22px);
 }
 
 body.participant-action-view .medium-result-card strong {
-  font-size: clamp(4.8rem, 18vw, 12rem);
+  font-size: clamp(5.8rem, 22vw, 15rem);
 }
 
 body.participant-action-view .medium-result-card.has-result strong {
-  font-size: clamp(3.6rem, 13vw, 8rem);
+  font-size: clamp(4.4rem, 16vw, 10rem);
 }
 
 body.participant-action-view .medium-result-card em {
-  font-size: clamp(7rem, 24vw, 17rem);
+  font-size: clamp(8.6rem, 30vw, 21rem);
 }
 
 body.participant-action-view .action-confirm-actions {
-  width: min(560px, 92vw);
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  width: min(360px, 54vw);
+  z-index: 20;
 }
 
 body.participant-action-view .medium-ok-button {
-  min-height: clamp(58px, 9svh, 82px);
+  min-height: clamp(44px, 7svh, 62px);
+  font-size: clamp(1.05rem, 2.4vw, 1.45rem);
+  box-shadow: 0 12px 28px rgba(24, 34, 29, 0.14);
+}
+
+body.participant-action-view .medium-result-card > .medium-ok-button {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  width: min(180px, 30vw);
+  z-index: 20;
 }
 
 body.timer-fullscreen-view {
@@ -1670,33 +1684,37 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
     min-height: 100svh;
     place-items: center;
     align-content: center;
-    gap: clamp(18px, 4svh, 34px);
-    padding: clamp(22px, 5svh, 52px) clamp(16px, 6vw, 54px);
+    gap: clamp(10px, 3svh, 26px);
+    padding: clamp(10px, 3svh, 28px) clamp(10px, 4vw, 34px);
     text-align: center;
   }
 
   .dialog-name {
     width: 100%;
     max-width: 100%;
-    font-size: clamp(2.4rem, 9vw, 5.5rem);
+    font-size: clamp(3rem, 11vw, 7rem);
     line-height: 1;
     white-space: nowrap;
     overflow: visible;
   }
 
   .role-dialog h3 {
-    font-size: clamp(4.2rem, 17vw, 10rem);
+    font-size: clamp(5.4rem, 22vw, 13rem);
     line-height: 0.95;
   }
 
   .dialog-team {
-    font-size: clamp(1.4rem, 5vw, 3rem);
+    font-size: clamp(1.7rem, 6vw, 3.8rem);
   }
 
   .role-dialog .wide {
-    width: min(420px, 86vw);
-    min-height: clamp(62px, 10svh, 88px);
-    font-size: clamp(1.4rem, 4vw, 2rem);
+    position: fixed;
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+    width: min(180px, 30vw);
+    min-height: clamp(44px, 7svh, 62px);
+    font-size: clamp(1.05rem, 2.4vw, 1.45rem);
+    box-shadow: 0 12px 28px rgba(24, 34, 29, 0.14);
   }
 
   body.timer-fullscreen-view .timer-ring {
@@ -1706,13 +1724,12 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
 
 @media (max-width: 900px) and (orientation: landscape) {
   .role-dialog form {
-    grid-template-columns: minmax(0, 1fr) minmax(160px, 28vw);
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "name close"
-      "role close"
-      "team close";
-    column-gap: clamp(18px, 4vw, 42px);
-    row-gap: 8px;
+      "name"
+      "role"
+      "team";
+    row-gap: clamp(6px, 2svh, 14px);
   }
 
   .role-dialog .dialog-name {
@@ -1721,16 +1738,13 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
 
   .role-dialog h3 {
     grid-area: role;
-    font-size: clamp(3.4rem, 12vw, 7rem);
+    font-size: clamp(5rem, 18vw, 10.5rem);
   }
 
   .role-dialog .dialog-team {
     grid-area: team;
   }
 
-  .role-dialog .wide {
-    grid-area: close;
-  }
 }
 
 @media (max-width: 1180px) {
@@ -1982,20 +1996,20 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
   body.participant-action-view .blocked-role-card {
     width: 100%;
     min-height: 100svh;
-    padding: clamp(10px, 3svh, 22px) clamp(16px, 4vw, 44px);
-    gap: clamp(6px, 1.5svh, 14px);
+    padding: clamp(6px, 2svh, 14px) clamp(10px, 3vw, 28px);
+    gap: clamp(4px, 1svh, 10px);
   }
 
   body.participant-action-view .medium-result-card strong {
-    font-size: clamp(4.2rem, 15vw, 9.5rem);
+    font-size: clamp(5.2rem, 19vw, 12rem);
   }
 
   body.participant-action-view .medium-result-card.has-result strong {
-    font-size: clamp(3.3rem, 10vw, 6.6rem);
+    font-size: clamp(4.2rem, 13vw, 8.2rem);
   }
 
   body.participant-action-view .medium-result-card em {
-    font-size: clamp(6.4rem, 20vw, 12.5rem);
+    font-size: clamp(8rem, 25vw, 15rem);
   }
 
   body.participant-action-view .medium-result-card span {
@@ -2003,16 +2017,16 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
   }
 
   body.participant-action-view .action-confirm-actions {
-    width: min(500px, 86vw);
+    width: min(360px, 48vw);
   }
 
   body.participant-action-view .medium-ok-button {
-    min-height: clamp(44px, 8svh, 58px);
-    font-size: clamp(1rem, 2.4vw, 1.35rem);
+    min-height: clamp(38px, 7svh, 52px);
+    font-size: clamp(1rem, 2.2vw, 1.3rem);
   }
 
   body.participant-action-view .blocked-role-card strong {
-    font-size: clamp(5rem, 16vw, 10rem);
+    font-size: clamp(6.4rem, 20vw, 12.5rem);
   }
 }
 
@@ -2046,16 +2060,16 @@ body.participant-action-view .action-confirm-actions {
 @media (orientation: landscape) and (min-width: 700px) and (max-width: 1180px) {
   body.participant-action-view .seer-result-card:not(.has-result) strong,
   body.participant-action-view .knight-result-card strong {
-    font-size: clamp(5rem, 17vw, 11rem);
+    font-size: clamp(6.2rem, 20vw, 13rem);
   }
 
   body.participant-action-view .seer-result-card.has-result strong,
   body.participant-action-view .medium-only-result-card.has-result strong {
-    font-size: clamp(3.8rem, 11vw, 7rem);
+    font-size: clamp(4.6rem, 14vw, 8.8rem);
   }
 
   body.participant-action-view .seer-result-card.has-result em,
   body.participant-action-view .medium-only-result-card.has-result em {
-    font-size: clamp(7rem, 22vw, 13.5rem);
+    font-size: clamp(8.4rem, 26vw, 16rem);
   }
 }
