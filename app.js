@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.3.9";
+const APP_VERSION = "v1.4.0";
 
 const state = {
   players: [],
@@ -777,8 +777,9 @@ function renderHeader() {
   const phase = phaseLabels[state.phase];
   els.dayLabel.textContent = state.phase === "setup" ? phase[0] : `${state.day}日目 ${phase[0]}`;
   els.phaseInitial.textContent = phase[1];
-  els.timerDisplay.textContent = formatTimerDisplay(state.timerSeconds);
-  els.timerDisplay.classList.toggle("timer-count-hidden", state.timerSeconds > 30);
+  const timerDisplayText = formatTimerDisplay(state.timerSeconds);
+  els.timerDisplay.textContent = timerDisplayText;
+  els.timerDisplay.classList.toggle("timer-count-hidden", timerDisplayText === "");
   els.timerDisplay.classList.toggle("timer-warning", state.timerSeconds > 0 && state.timerSeconds <= 30);
   els.timerDisplay.classList.toggle("timer-ended", state.timerSeconds === 0);
   const timerRing = document.querySelector(".timer-ring");
@@ -1862,7 +1863,16 @@ function formatTime(seconds) {
 }
 
 function formatTimerDisplay(seconds) {
-  return String(Math.max(0, Math.min(30, seconds))).padStart(2, "0");
+  const safeSeconds = Math.max(0, seconds);
+  if (!state.timerRunning && safeSeconds === state.timerBase) {
+    return String(Math.max(1, Math.ceil(safeSeconds / 60)));
+  }
+  if (safeSeconds === 30 || safeSeconds === 20) return String(safeSeconds);
+  if (safeSeconds <= 10) return String(safeSeconds).padStart(2, "0");
+  if (safeSeconds > 0 && safeSeconds % 60 === 0) {
+    return String(safeSeconds / 60);
+  }
+  return "";
 }
 
 function escapeHtml(value) {
