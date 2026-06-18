@@ -224,16 +224,50 @@ h2 {
 }
 
 .victory-banner {
+  position: relative;
   display: grid;
+  min-height: min(54svh, 520px);
   place-items: center;
-  gap: 4px;
+  align-content: center;
+  gap: clamp(10px, 2svh, 18px);
   margin: 0 0 16px;
-  padding: 18px;
+  padding: clamp(28px, 7svh, 72px) clamp(16px, 5vw, 64px);
+  overflow: hidden;
   border: 2px solid rgba(199, 139, 43, 0.55);
   border-radius: 8px;
   background: linear-gradient(135deg, #fff8e8, #edf5f2);
   box-shadow: var(--shadow);
   text-align: center;
+}
+
+.victory-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.5), transparent 22rem),
+    radial-gradient(circle at 82% 70%, rgba(199, 139, 43, 0.22), transparent 20rem);
+  pointer-events: none;
+}
+
+.victory-banner > * {
+  position: relative;
+  z-index: 1;
+}
+
+.victory-banner.victory-village {
+  border-color: rgba(12, 122, 103, 0.45);
+  background:
+    linear-gradient(135deg, rgba(237, 248, 242, 0.98), rgba(255, 250, 232, 0.96)),
+    #edf8f2;
+}
+
+.victory-banner.victory-werewolf {
+  border-color: rgba(185, 79, 90, 0.58);
+  background:
+    radial-gradient(circle at 18% 28%, rgba(185, 79, 90, 0.35), transparent 24rem),
+    linear-gradient(135deg, #202840, #5a2734 55%, #191d2e);
+  color: white;
 }
 
 .victory-banner[hidden] {
@@ -242,15 +276,35 @@ h2 {
 
 .victory-banner span {
   color: var(--gold);
-  font-size: 0.86rem;
+  font-size: clamp(1rem, 2.4vw, 1.5rem);
   font-weight: 900;
 }
 
 .victory-banner strong {
   color: var(--ink);
-  font-size: clamp(2rem, 5vw, 4rem);
-  line-height: 1;
+  font-size: clamp(4.5rem, 14vw, 12rem);
+  line-height: 0.92;
   font-weight: 900;
+}
+
+.victory-banner p {
+  max-width: 20em;
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(1.2rem, 3vw, 2rem);
+  font-weight: 800;
+}
+
+.victory-banner.victory-werewolf span,
+.victory-banner.victory-werewolf strong,
+.victory-banner.victory-werewolf p {
+  color: white;
+}
+
+.victory-banner.victory-werewolf strong {
+  text-shadow:
+    0 0 22px rgba(255, 255, 255, 0.18),
+    0 18px 42px rgba(0, 0, 0, 0.32);
 }
 
 .workspace {
