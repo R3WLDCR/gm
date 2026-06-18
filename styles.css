@@ -276,6 +276,32 @@ h2 {
   display: none;
 }
 
+.victory-image {
+  display: none;
+}
+
+.victory-banner.victory-werewolf {
+  min-height: min(76svh, 760px);
+  padding: 0;
+  background: #190709;
+}
+
+.victory-banner.victory-werewolf::before,
+.victory-banner.victory-werewolf .victory-phone,
+.victory-banner.victory-werewolf .victory-copy {
+  display: none;
+}
+
+.victory-banner.victory-werewolf .victory-image-werewolf {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: min(76svh, 760px);
+  object-fit: cover;
+}
+
 .victory-phone {
   position: relative;
   width: min(30vw, 260px);
