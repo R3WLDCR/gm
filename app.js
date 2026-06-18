@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.3.8";
+const APP_VERSION = "v1.3.9";
 
 const state = {
   players: [],
@@ -730,7 +730,6 @@ function renderParticipantViewMode() {
 function isParticipantActionView() {
   if (state.screen !== "action") return false;
   const roleId = getCurrentActionRoleId();
-  if (roleId === "medium") return Boolean(getLastExiledPlayer());
   return Boolean(state.actionSelectedTargetId && ["seer", "knight", "werewolf"].includes(roleId));
 }
 
