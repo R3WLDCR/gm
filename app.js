@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.5.3";
+const APP_VERSION = "v1.5.4";
 
 const state = {
   players: [],
@@ -1894,7 +1894,7 @@ function formatTimerDisplay(seconds) {
     return String(Math.max(1, Math.ceil(safeSeconds / 60)));
   }
   if (safeSeconds === 30 || safeSeconds === 20) return String(safeSeconds);
-  if (safeSeconds <= 10) return String(safeSeconds).padStart(2, "0");
+  if (safeSeconds <= 10) return String(safeSeconds);
   if (safeSeconds > 0 && safeSeconds % 60 === 0) {
     return String(safeSeconds / 60);
   }
