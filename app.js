@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.5.13";
+const APP_VERSION = "v1.5.14";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -81,6 +81,7 @@ let actionRenderKey = "";
 let syncTimer = null;
 let supabaseClient = null;
 let syncUser = null;
+let syncAuthReady = false;
 let pendingCloudRecord = null;
 let applyingCloudState = false;
 let hadLocalDataAtStartup = Boolean(localStorage.getItem(STORAGE_KEY));
@@ -1968,14 +1969,18 @@ function escapeHtml(value) {
 async function initializeSync() {
   const config = window.SYNC_CONFIG || {};
   if (!window.supabase || !config.supabaseUrl || !config.supabaseAnonKey) {
+    syncAuthReady = true;
     syncMeta.status = "unconfigured";
     renderSyncStatus();
     return;
   }
   supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+  renderSyncStatus();
   const { data } = await supabaseClient.auth.getSession();
+  syncAuthReady = true;
   syncUser = data.session?.user || null;
   supabaseClient.auth.onAuthStateChange((_event, session) => {
+    syncAuthReady = true;
     syncUser = session?.user || null;
     pendingCloudRecord = null;
     renderSyncStatus();
@@ -2200,16 +2205,21 @@ function renderSyncStatus() {
   if (!els.syncStatusBadge) return;
   const configured = Boolean(supabaseClient);
   const signedIn = Boolean(syncUser);
-  const shouldOpen = !configured || !signedIn || Boolean(pendingCloudRecord) || ["error", "remote", "conflict", "unconfigured"].includes(syncMeta.status);
+  const authChecking = configured && !syncAuthReady;
+  const shouldOpen =
+    !configured ||
+    (!signedIn && !authChecking) ||
+    Boolean(pendingCloudRecord) ||
+    ["error", "remote", "conflict", "unconfigured"].includes(syncMeta.status);
   els.syncPanel.open = shouldOpen;
   els.syncConfigNotice.hidden = configured;
-  els.syncSignedOutPanel.hidden = signedIn || !configured;
+  els.syncSignedOutPanel.hidden = signedIn || !configured || authChecking;
   els.syncSignedInPanel.hidden = !signedIn;
   els.syncAccountEmail.textContent = syncUser?.email || "-";
   els.lastSyncText.textContent = formatSyncTime(syncMeta.lastSyncedAt) || "未同期";
   els.downloadCloudBtn.hidden = !pendingCloudRecord;
   els.uploadLocalBtn.hidden = !pendingCloudRecord;
-  els.manualSyncBtn.disabled = !signedIn || syncMeta.status === "syncing";
+  els.manualSyncBtn.disabled = !signedIn || authChecking || syncMeta.status === "syncing";
   const statusMap = {
     unconfigured: ["未設定", "Supabaseの接続設定が必要です"],
     local: ["端末内", signedIn ? "未同期の変更があります" : "端末内に保存中"],
@@ -2221,9 +2231,9 @@ function renderSyncStatus() {
     error: ["エラー", syncMeta.error || "同期できませんでした"],
   };
   const [badge, text] = statusMap[syncMeta.status] || statusMap.local;
-  els.syncStatusBadge.textContent = signedIn ? badge : configured ? "未ログイン" : "未設定";
+  els.syncStatusBadge.textContent = authChecking ? "確認中" : signedIn ? badge : configured ? "未ログイン" : "未設定";
   els.syncStatusBadge.className = `sync-status-badge status-${syncMeta.status}`;
-  els.syncStatusText.textContent = signedIn ? text : configured ? "ログインすると同期できます" : text;
+  els.syncStatusText.textContent = authChecking ? "ログイン状態を確認中" : signedIn ? text : configured ? "ログインすると同期できます" : text;
 }
 
 function restoreSyncMeta() {
