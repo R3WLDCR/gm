@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.5.12";
+const APP_VERSION = "v1.5.13";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -742,9 +742,10 @@ function render() {
 function renderParticipantViewMode() {
   document.body.classList.toggle("participant-action-view", isParticipantActionView());
   document.body.classList.toggle("timer-fullscreen-view", isTimerFullscreenView());
-  document.body.classList.toggle("victory-fullscreen-view", isVictoryFullscreenView());
-  document.body.classList.toggle("werewolf-victory-view", state.gameWinner === "人狼陣営");
-  document.body.classList.toggle("village-victory-view", state.gameWinner === "村人陣営");
+  const victoryFullscreen = isVictoryFullscreenView();
+  document.body.classList.toggle("victory-fullscreen-view", victoryFullscreen);
+  document.body.classList.toggle("werewolf-victory-view", victoryFullscreen && state.gameWinner === "人狼陣営");
+  document.body.classList.toggle("village-victory-view", victoryFullscreen && state.gameWinner === "村人陣営");
 }
 
 function isVictoryFullscreenView() {
