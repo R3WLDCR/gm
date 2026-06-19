@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.5.10";
+const APP_VERSION = "v1.5.11";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -1391,7 +1391,7 @@ function startBlockedRoleCountdown(roleId) {
   if (state.actionBlockedRoleId === roleId && actionBlockedTimerId) return;
   stopBlockedRoleCountdown();
   state.actionBlockedRoleId = roleId;
-  state.actionBlockedSeconds = 10;
+  state.actionBlockedSeconds = getRandomActionGateSeconds();
   renderAndStore();
   actionBlockedTimerId = window.setInterval(() => {
     state.actionBlockedSeconds = Math.max(0, state.actionBlockedSeconds - 1);
