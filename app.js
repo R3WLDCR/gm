@@ -19,9 +19,10 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.5.8";
+const APP_VERSION = "v1.5.9";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
+const VICTORY_BACK_DELAY_MS = 10000;
 
 const state = {
   players: [],
@@ -60,6 +61,8 @@ const state = {
   playerSortMode: "manual",
   participationCountedForDeal: false,
   gameWinner: "",
+  victoryShownAt: 0,
+  victoryDismissed: false,
 };
 
 const phaseLabels = {
@@ -73,6 +76,7 @@ const els = {};
 let timerId = null;
 let actionGateTimerId = null;
 let actionBlockedTimerId = null;
+let victoryBackTimerId = null;
 let actionRenderKey = "";
 let syncTimer = null;
 let supabaseClient = null;
@@ -152,6 +156,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "victoryVisualMark",
     "victoryWinnerText",
     "victoryMessageText",
+    "victoryBackBtn",
   ].forEach((id) => {
     els[id] = document.getElementById(id);
   });
@@ -212,6 +217,7 @@ function bindEvents() {
   els.previousActionRoleBtn?.addEventListener("click", backToPreviousActionRole);
   els.nextDayBtn.addEventListener("click", nextDay);
   els.copyLogBtn.addEventListener("click", copyLog);
+  els.victoryBackBtn?.addEventListener("click", dismissVictoryFullscreen);
   els.progressStartBtn.addEventListener("click", startProgress);
   els.startRoleDealBtn.addEventListener("click", startRoleDeal);
   els.shuffleSeatsBtn.addEventListener("click", shuffleSeats);
@@ -736,9 +742,13 @@ function render() {
 function renderParticipantViewMode() {
   document.body.classList.toggle("participant-action-view", isParticipantActionView());
   document.body.classList.toggle("timer-fullscreen-view", isTimerFullscreenView());
-  document.body.classList.toggle("victory-fullscreen-view", state.gameWinner === "人狼陣営" || state.gameWinner === "村人陣営");
+  document.body.classList.toggle("victory-fullscreen-view", isVictoryFullscreenView());
   document.body.classList.toggle("werewolf-victory-view", state.gameWinner === "人狼陣営");
   document.body.classList.toggle("village-victory-view", state.gameWinner === "村人陣営");
+}
+
+function isVictoryFullscreenView() {
+  return Boolean(state.gameWinner && !state.victoryDismissed);
 }
 
 function isParticipantActionView() {
@@ -767,6 +777,21 @@ function renderVictoryBanner() {
   }
   if (els.victoryMessageText) {
     els.victoryMessageText.textContent = getVictoryMessage(state.gameWinner);
+  }
+  if (els.victoryBackBtn) {
+    const canBack = ended && Date.now() - (state.victoryShownAt || 0) >= VICTORY_BACK_DELAY_MS;
+    els.victoryBackBtn.hidden = !canBack || state.victoryDismissed;
+  }
+  scheduleVictoryBackButton(ended);
+}
+
+function scheduleVictoryBackButton(ended) {
+  if (victoryBackTimerId) window.clearTimeout(victoryBackTimerId);
+  victoryBackTimerId = null;
+  if (!ended || state.victoryDismissed) return;
+  const remaining = VICTORY_BACK_DELAY_MS - (Date.now() - (state.victoryShownAt || 0));
+  if (remaining > 0) {
+    victoryBackTimerId = window.setTimeout(render, remaining);
   }
 }
 
@@ -1596,10 +1621,19 @@ function getGameResult() {
 
 function setGameWinner(winner) {
   state.gameWinner = winner;
+  state.victoryShownAt = Date.now();
+  state.victoryDismissed = false;
 }
 
 function clearGameWinner() {
   state.gameWinner = "";
+  state.victoryShownAt = 0;
+  state.victoryDismissed = false;
+}
+
+function dismissVictoryFullscreen() {
+  state.victoryDismissed = true;
+  renderAndStore();
 }
 
 function getRoleDealCenterHtml() {
@@ -2309,6 +2343,8 @@ function getStatePayload() {
     playerSortMode: state.playerSortMode,
     participationCountedForDeal: state.participationCountedForDeal,
     gameWinner: state.gameWinner,
+    victoryShownAt: state.victoryShownAt,
+    victoryDismissed: state.victoryDismissed,
   };
 }
 
@@ -2359,6 +2395,8 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.playerSortMode = ["manual", "daily", "total"].includes(saved.playerSortMode) ? saved.playerSortMode : "manual";
   state.participationCountedForDeal = saved.participationCountedForDeal === true;
   state.gameWinner = saved.gameWinner || "";
+  state.victoryShownAt = Number.isFinite(Number(saved.victoryShownAt)) ? Number(saved.victoryShownAt) : 0;
+  state.victoryDismissed = saved.victoryDismissed === true;
   if (resetActionScreen && state.screen === "action") {
     state.actionRoleIndex = 0;
     state.actionComplete = false;
