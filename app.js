@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.5.14";
+const APP_VERSION = "v1.5.15";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -2221,7 +2221,7 @@ function renderSyncStatus() {
   els.uploadLocalBtn.hidden = !pendingCloudRecord;
   els.manualSyncBtn.disabled = !signedIn || authChecking || syncMeta.status === "syncing";
   const statusMap = {
-    unconfigured: ["未設定", "Supabaseの接続設定が必要です"],
+    unconfigured: ["未設定", "同期設定を確認してください"],
     local: ["端末内", signedIn ? "未同期の変更があります" : "端末内に保存中"],
     offline: ["オフライン", "通信復帰後に同期します"],
     syncing: ["同期中", syncMeta.error || "同期中"],

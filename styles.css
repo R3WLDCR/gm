@@ -146,6 +146,10 @@ h2 {
   margin-top: 8px;
 }
 
+.sync-panel[open] > div[hidden] {
+  display: none;
+}
+
 .sync-auth-panel,
 .sync-signed-in,
 .sync-notice {
@@ -2130,6 +2134,10 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
     position: static;
     width: 100%;
     margin-top: 8px;
+  }
+
+  .sync-panel[open] > div[hidden] {
+    display: none;
   }
 
   .sync-form {
