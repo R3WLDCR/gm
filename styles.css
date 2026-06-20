@@ -1290,6 +1290,7 @@ textarea:focus {
 
 .timer-strip {
   position: relative;
+  isolation: isolate;
   z-index: 1;
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(180px, 260px);
@@ -1960,7 +1961,26 @@ body.timer-fullscreen-view .timer-strip {
   place-items: center;
 }
 
+body.timer-fullscreen-view .timer-strip::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgba(10, 16, 22, 0.08), rgba(10, 16, 22, 0.22)),
+    url("./images/dusk-village.png") center / cover no-repeat;
+  opacity: 0;
+  transform: scale(1.04);
+  pointer-events: none;
+}
+
+body.timer-fullscreen-view .timer-strip:has(.timer-ring.timer-ended)::before {
+  animation: timerEndSceneFade 2.8s ease-out forwards;
+}
+
 body.timer-fullscreen-view .timer-face {
+  position: relative;
+  z-index: 1;
   width: 100%;
   min-height: 100svh;
   display: grid;
@@ -1969,6 +1989,17 @@ body.timer-fullscreen-view .timer-face {
 
 body.timer-fullscreen-view .timer-ring {
   --timer-ring-size: min(78svh, 88vw, 720px);
+}
+
+body.timer-fullscreen-view .timer-ring.timer-ended {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+body.timer-fullscreen-view .timer-ring.timer-ended .timer-ring-inner {
+  background: transparent;
+  box-shadow: none;
 }
 
 body.timer-fullscreen-view .timer-ring-inner .timer-controls {
@@ -2011,6 +2042,20 @@ body.timer-fullscreen-view .vote-start-button {
 
 body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
   font-size: clamp(8.4rem, 30vw, 22rem);
+}
+
+@keyframes timerEndSceneFade {
+  from {
+    opacity: 0;
+    filter: blur(8px) saturate(0.85);
+    transform: scale(1.04);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0) saturate(1);
+    transform: scale(1);
+  }
 }
 
 @media (max-width: 900px) {

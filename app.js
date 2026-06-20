@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.5.15";
+const APP_VERSION = "v1.5.16";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -842,7 +842,7 @@ function renderHeader() {
   const phase = phaseLabels[state.phase];
   els.dayLabel.textContent = state.phase === "setup" ? phase[0] : `${state.day}日目 ${phase[0]}`;
   els.phaseInitial.textContent = phase[1];
-  const timerDisplayText = formatTimerDisplay(state.timerSeconds);
+  const timerDisplayText = state.timerSeconds === 0 ? "" : formatTimerDisplay(state.timerSeconds);
   els.timerDisplay.textContent = timerDisplayText;
   els.timerDisplay.classList.toggle("timer-count-hidden", timerDisplayText === "");
   els.timerDisplay.classList.toggle("timer-warning", state.timerSeconds > 0 && state.timerSeconds <= 30);
