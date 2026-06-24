@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.5.16";
+const APP_VERSION = "v1.5.18";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -41,7 +41,6 @@ const state = {
   attackedPlayerIds: [],
   votes: {},
   logs: [],
-  memo: "",
   roleDealQueue: [],
   roleDealIndex: 0,
   roleDealSelectedPlayerIds: [],
@@ -128,7 +127,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "nextDayBtn",
     "logList",
     "copyLogBtn",
-    "freeMemo",
     "roleDialog",
     "roleDialogName",
     "roleDialogRole",
@@ -234,10 +232,6 @@ function bindEvents() {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") synchronizeNow();
   });
-  els.freeMemo.addEventListener("input", () => {
-    state.memo = els.freeMemo.value;
-    store();
-  });
 }
 
 function addPlayer() {
@@ -273,11 +267,14 @@ function toggleParticipation(id) {
 function startRoundTable() {
   clearGameWinner();
   state.screen = "deal";
+  state.phase = "setup";
+  state.day = 0;
   state.participationCountedForDeal = false;
   state.roleDealQueue = [];
   state.roleDealIndex = 0;
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
+  state.actionComplete = false;
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
   getActivePlayers().forEach((player) => {
@@ -664,7 +661,6 @@ function resetGame() {
   state.timerResetCount = 0;
   state.votes = {};
   state.logs = [];
-  state.memo = "";
   state.roleDealQueue = [];
   state.roleDealIndex = 0;
   state.roleDealSelectedPlayerIds = [];
@@ -854,7 +850,6 @@ function renderHeader() {
   timerRing?.classList.toggle("timer-ended", state.timerSeconds === 0);
   els.voteStartBtn.hidden = state.timerSeconds !== 0 || !state.timerFocus;
   els.timerStart.textContent = state.timerRunning ? "⏸" : "開始";
-  els.freeMemo.value = state.memo;
   document.querySelector(".table-panel")?.classList.toggle("timer-focus", state.timerFocus);
   document.querySelector(".table-panel")?.classList.toggle("vote-table-mode", state.showVoteTable);
   document.querySelector(".vote-table-actions")?.toggleAttribute("hidden", !state.showVoteTable);
@@ -1238,7 +1233,7 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
 }
 
 function isRoundTableDealMode() {
-  return state.phase === "setup" || (state.phase === "night" && state.day <= 1 && !state.actionComplete && (state.roleDealQueue.length > 0 || isRoleDealComplete()));
+  return state.phase === "setup" || (state.phase === "night" && state.day <= 1 && !state.actionComplete);
 }
 
 function getSeatStatus(player) {
@@ -2335,7 +2330,6 @@ function getStatePayload() {
     attackedPlayerIds: state.attackedPlayerIds,
     votes: state.votes,
     logs: state.logs,
-    memo: state.memo,
     roleDealQueue: state.roleDealQueue,
     roleDealIndex: state.roleDealIndex,
     roleDealSelectedPlayerIds: state.roleDealSelectedPlayerIds,
@@ -2387,7 +2381,6 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.timerRunning = false;
   state.votes = saved.votes || {};
   state.logs = saved.logs || [];
-  state.memo = saved.memo || "";
   state.roleDealQueue = saved.roleDealQueue || [];
   state.roleDealIndex = saved.roleDealIndex || 0;
   state.roleDealSelectedPlayerIds = saved.roleDealSelectedPlayerIds || (saved.roleDealSelectedPlayerId ? [saved.roleDealSelectedPlayerId] : []);
