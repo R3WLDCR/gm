@@ -1394,6 +1394,95 @@ textarea:focus {
   display: none;
 }
 
+.table-panel.plea-timer-mode .timer-strip,
+.table-panel.plea-timer-mode .vote-table-actions,
+.table-panel.plea-timer-mode .vote-round-table {
+  display: none;
+}
+
+.plea-timer-view {
+  position: relative;
+  min-height: 680px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(250, 204, 21, 0.18), transparent 38%),
+    linear-gradient(180deg, #17201b 0%, #25322b 58%, #141a17 100%);
+  color: white;
+}
+
+.plea-timer-view[hidden] {
+  display: none;
+}
+
+.plea-timer-content {
+  width: min(920px, 92vw);
+  display: grid;
+  justify-items: center;
+  gap: clamp(8px, 2svh, 22px);
+  text-align: center;
+}
+
+.plea-kicker {
+  margin: 0;
+  font-size: clamp(1rem, 2.2vw, 1.35rem);
+  font-weight: 800;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.plea-target-name {
+  display: block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: visible;
+  font-size: clamp(3.2rem, 10vw, 8rem);
+  font-weight: 900;
+  line-height: 1;
+  color: #fff8dc;
+  text-shadow: 0 12px 34px rgba(0, 0, 0, 0.42);
+}
+
+.plea-timer-display {
+  display: block;
+  font-family: "Bahnschrift", "Cascadia Mono", "Consolas", "DIN Alternate", monospace;
+  font-size: clamp(7rem, 24vw, 18rem);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 0.9;
+  color: #facc15;
+  text-shadow:
+    0 0 18px rgba(250, 204, 21, 0.38),
+    0 18px 46px rgba(0, 0, 0, 0.38);
+}
+
+.plea-timer-display.plea-timer-ended {
+  color: #f8fafc;
+}
+
+.plea-back-button,
+.plea-exile-button {
+  position: absolute;
+  z-index: 2;
+  min-height: clamp(48px, 7svh, 64px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+}
+
+.plea-back-button {
+  left: max(14px, env(safe-area-inset-left));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  min-width: clamp(86px, 16vw, 112px);
+}
+
+.plea-exile-button {
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  min-width: clamp(128px, 24vw, 190px);
+  font-size: clamp(1.3rem, 3vw, 1.75rem);
+}
+
 .vote-start-button {
   min-width: 96px;
   min-height: 48px;
@@ -1919,7 +2008,17 @@ body.timer-fullscreen-view {
   overflow: hidden;
 }
 
+body.plea-fullscreen-view {
+  overflow: hidden;
+}
+
 body.timer-fullscreen-view .app-shell {
+  width: 100%;
+  min-height: 100svh;
+  padding: 0;
+}
+
+body.plea-fullscreen-view .app-shell {
   width: 100%;
   min-height: 100svh;
   padding: 0;
@@ -1933,8 +2032,21 @@ body.timer-fullscreen-view .phase-visual {
   display: none;
 }
 
+body.plea-fullscreen-view .topbar,
+body.plea-fullscreen-view .screen-tabs,
+body.plea-fullscreen-view .victory-banner,
+body.plea-fullscreen-view .table-heading,
+body.plea-fullscreen-view .phase-visual {
+  display: none;
+}
+
 body.timer-fullscreen-view .workspace,
 body.timer-fullscreen-view .table-panel.active {
+  min-height: 100svh;
+}
+
+body.plea-fullscreen-view .workspace,
+body.plea-fullscreen-view .table-panel.active {
   min-height: 100svh;
 }
 
@@ -1947,6 +2059,31 @@ body.timer-fullscreen-view .table-panel.active {
   box-shadow: none;
   background: transparent;
   overflow: hidden;
+}
+
+body.plea-fullscreen-view .table-panel.active {
+  display: grid;
+  place-items: stretch;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  overflow: hidden;
+}
+
+body.plea-fullscreen-view .plea-timer-view {
+  width: 100%;
+  min-height: 100svh;
+  border-radius: 0;
+}
+
+body.plea-fullscreen-view .plea-target-name {
+  font-size: clamp(4.6rem, 15vw, 12rem);
+}
+
+body.plea-fullscreen-view .plea-timer-display {
+  font-size: clamp(9rem, 30vw, 22rem);
 }
 
 body.timer-fullscreen-view .timer-strip {
@@ -2386,6 +2523,18 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
 @media (orientation: landscape) and (min-width: 700px) and (max-width: 1180px) {
   body.timer-fullscreen-view .timer-strip {
     padding: clamp(8px, 2svh, 22px);
+  }
+
+  body.plea-fullscreen-view .plea-timer-content {
+    gap: clamp(2px, 1svh, 10px);
+  }
+
+  body.plea-fullscreen-view .plea-target-name {
+    font-size: clamp(4rem, 13vw, 8.5rem);
+  }
+
+  body.plea-fullscreen-view .plea-timer-display {
+    font-size: clamp(8rem, 24vw, 16rem);
   }
 
   body.timer-fullscreen-view .timer-ring {

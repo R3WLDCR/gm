@@ -17,7 +17,7 @@
       <header class="topbar">
         <div class="title-row">
           <p class="eyebrow">Werewolf Game Master</p>
-          <span id="appVersionBadge" class="version-badge">v1.5.18</span>
+          <span id="appVersionBadge" class="version-badge">v1.6.0</span>
         </div>
         <div class="top-actions">
           <details id="syncPanel" class="sync-panel">
@@ -176,6 +176,15 @@
             <button id="exileBtn" class="primary-button exile-button" disabled>追放</button>
           </div>
           <div id="voteRoundTable" class="round-table vote-round-table" aria-live="polite"></div>
+          <div id="pleaTimerView" class="plea-timer-view" hidden>
+            <button id="pleaBackBtn" class="secondary-button plea-back-button" type="button">戻る</button>
+            <div class="plea-timer-content">
+              <p class="plea-kicker">弁明</p>
+              <strong id="pleaTargetName" class="plea-target-name">吊対象</strong>
+              <span id="pleaTimerDisplay" class="plea-timer-display">30</span>
+            </div>
+            <button id="pleaExileBtn" class="primary-button plea-exile-button" type="button" hidden>追放</button>
+          </div>
 
         </section>
 

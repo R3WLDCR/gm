@@ -19,10 +19,11 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.5.18";
+const APP_VERSION = "v1.6.0";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
+const PLEA_TIMER_SECONDS = 30;
 
 const state = {
   players: [],
@@ -37,6 +38,10 @@ const state = {
   timerResetCount: 0,
   showVoteTable: false,
   voteSelectedPlayerId: "",
+  showPleaTimer: false,
+  pleaTargetPlayerId: "",
+  pleaSeconds: PLEA_TIMER_SECONDS,
+  pleaRunning: false,
   exiledPlayerIds: [],
   attackedPlayerIds: [],
   votes: {},
@@ -73,6 +78,7 @@ const phaseLabels = {
 
 const els = {};
 let timerId = null;
+let pleaTimerId = null;
 let actionGateTimerId = null;
 let actionBlockedTimerId = null;
 let victoryBackTimerId = null;
@@ -120,6 +126,11 @@ document.addEventListener("DOMContentLoaded", () => {
     "backToTimerBtn",
     "exileBtn",
     "voteRoundTable",
+    "pleaTimerView",
+    "pleaTargetName",
+    "pleaTimerDisplay",
+    "pleaBackBtn",
+    "pleaExileBtn",
     "actionRoleTitle",
     "actionHelp",
     "actionRoundTable",
@@ -205,6 +216,8 @@ function bindEvents() {
   els.skipToVoteBtn.addEventListener("click", skipTimerToVoteButton);
   els.backToTimerBtn.addEventListener("click", backToTimerScreen);
   els.exileBtn.addEventListener("click", exileSelectedPlayer);
+  els.pleaBackBtn?.addEventListener("click", backFromPleaTimer);
+  els.pleaExileBtn?.addEventListener("click", confirmPleaExile);
   document.querySelectorAll(".timerPresetBtn").forEach((button) => {
     button.addEventListener("click", () => setTimerMinutes(Number(button.dataset.minutes)));
   });
@@ -266,6 +279,7 @@ function toggleParticipation(id) {
 
 function startRoundTable() {
   clearGameWinner();
+  resetPleaTimerState();
   state.screen = "deal";
   state.phase = "setup";
   state.day = 0;
@@ -304,6 +318,7 @@ function startNightActions() {
   clearGameWinner();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
+  resetPleaTimerState();
   state.screen = "action";
   state.phase = "night";
   state.showVoteTable = false;
@@ -324,6 +339,7 @@ function startNightActions() {
 }
 
 function showVoteRoundTable() {
+  resetPleaTimerState();
   state.screen = "table";
   state.phase = "vote";
   state.timerRunning = false;
@@ -335,6 +351,7 @@ function showVoteRoundTable() {
 }
 
 function skipTimerToVoteButton() {
+  resetPleaTimerState();
   state.screen = "table";
   state.phase = "day";
   state.timerSeconds = 0;
@@ -347,6 +364,7 @@ function skipTimerToVoteButton() {
 }
 
 function backToTimerScreen() {
+  resetPleaTimerState();
   state.phase = "day";
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
@@ -523,6 +541,7 @@ function shiftTimer(delta) {
 }
 
 function setTimerMinutes(minutes) {
+  resetPleaTimerState();
   resetTimerValue(Math.max(1, minutes) * 60);
   state.timerFocus = true;
   state.timerResetCount = 0;
@@ -561,6 +580,32 @@ function stopTimer() {
   timerId = null;
 }
 
+function startPleaTimer() {
+  stopPleaTimer();
+  state.pleaRunning = true;
+  pleaTimerId = window.setInterval(() => {
+    state.pleaSeconds = Math.max(0, state.pleaSeconds - 1);
+    if (state.pleaSeconds === 0) {
+      stopPleaTimer();
+    }
+    renderAndStore();
+  }, 1000);
+}
+
+function stopPleaTimer() {
+  if (pleaTimerId) window.clearInterval(pleaTimerId);
+  pleaTimerId = null;
+  state.pleaRunning = false;
+}
+
+function resetPleaTimerState() {
+  stopPleaTimer();
+  state.showPleaTimer = false;
+  state.pleaTargetPlayerId = "";
+  state.pleaSeconds = PLEA_TIMER_SECONDS;
+  state.pleaRunning = false;
+}
+
 function resetTimer() {
   const wasRunning = state.timerRunning;
   state.timerSeconds = state.timerBase;
@@ -577,6 +622,7 @@ function resetTimer() {
 }
 
 function resetTimerValue(seconds) {
+  resetPleaTimerState();
   state.timerBase = seconds;
   state.timerSeconds = seconds;
   state.timerRunning = false;
@@ -646,6 +692,7 @@ async function copyLog() {
 function resetGame() {
   if (!confirm("卓を初期化しますか？")) return;
   stopTimer();
+  resetPleaTimerState();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   localStorage.removeItem(STORAGE_KEY);
@@ -686,6 +733,7 @@ function resetGame() {
 function resetToFirstNight() {
   if (!confirm("進行を初日夜に戻しますか？")) return;
   stopTimer();
+  resetPleaTimerState();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   state.screen = "deal";
@@ -739,6 +787,7 @@ function render() {
 function renderParticipantViewMode() {
   document.body.classList.toggle("participant-action-view", isParticipantActionView());
   document.body.classList.toggle("timer-fullscreen-view", isTimerFullscreenView());
+  document.body.classList.toggle("plea-fullscreen-view", isPleaFullscreenView());
   const victoryFullscreen = isVictoryFullscreenView();
   document.body.classList.toggle("victory-fullscreen-view", victoryFullscreen);
   document.body.classList.toggle("werewolf-victory-view", victoryFullscreen && state.gameWinner === "人狼陣営");
@@ -757,7 +806,11 @@ function isParticipantActionView() {
 }
 
 function isTimerFullscreenView() {
-  return state.screen === "table" && state.timerFocus && (state.timerRunning || state.timerSeconds === 0) && !state.showVoteTable;
+  return state.screen === "table" && state.timerFocus && (state.timerRunning || state.timerSeconds === 0) && !state.showVoteTable && !state.showPleaTimer;
+}
+
+function isPleaFullscreenView() {
+  return state.screen === "table" && state.showPleaTimer;
 }
 
 function renderVictoryBanner() {
@@ -807,7 +860,7 @@ function getVictoryMessage(winner) {
 }
 
 function fitSingleLineNames() {
-  document.querySelectorAll(".player-row strong, .round-seat strong, .seat-name, .medium-result-card strong, .dialog-name").forEach((element) => {
+  document.querySelectorAll(".player-row strong, .round-seat strong, .seat-name, .medium-result-card strong, .dialog-name, .plea-target-name").forEach((element) => {
     element.style.fontSize = "";
     let currentSize = Number.parseFloat(getComputedStyle(element).fontSize);
     const maxWidth = element.clientWidth;
@@ -852,10 +905,13 @@ function renderHeader() {
   els.timerStart.textContent = state.timerRunning ? "⏸" : "開始";
   document.querySelector(".table-panel")?.classList.toggle("timer-focus", state.timerFocus);
   document.querySelector(".table-panel")?.classList.toggle("vote-table-mode", state.showVoteTable);
+  document.querySelector(".table-panel")?.classList.toggle("plea-timer-mode", state.showPleaTimer);
   document.querySelector(".vote-table-actions")?.toggleAttribute("hidden", !state.showVoteTable);
   if (els.exileBtn) {
     els.exileBtn.disabled = !state.voteSelectedPlayerId;
+    els.exileBtn.textContent = "弁明";
   }
+  renderPleaTimerView();
   if (els.previousActionRoleBtn) {
     els.previousActionRoleBtn.disabled = !canGoPreviousActionRole();
   }
@@ -989,6 +1045,24 @@ function renderVoteRoundTable() {
     return;
   }
   renderRoundTableInto(els.voteRoundTable, { hideRoles: true, voteMode: true });
+}
+
+function renderPleaTimerView() {
+  if (!els.pleaTimerView) return;
+  els.pleaTimerView.hidden = !state.showPleaTimer;
+  if (!state.showPleaTimer) return;
+  const player = findPlayer(state.pleaTargetPlayerId);
+  if (els.pleaTargetName) {
+    els.pleaTargetName.textContent = player?.name || "吊対象";
+  }
+  if (els.pleaTimerDisplay) {
+    els.pleaTimerDisplay.textContent = String(Math.max(0, state.pleaSeconds));
+    els.pleaTimerDisplay.classList.toggle("plea-timer-ended", state.pleaSeconds === 0);
+  }
+  if (els.pleaExileBtn) {
+    els.pleaExileBtn.hidden = state.pleaSeconds > 0;
+    els.pleaExileBtn.disabled = state.pleaSeconds > 0;
+  }
 }
 
 function renderActionRoundTable() {
@@ -1250,6 +1324,37 @@ function selectVotePlayer(id) {
 
 function exileSelectedPlayer() {
   if (!state.voteSelectedPlayerId) return;
+  state.pleaTargetPlayerId = state.voteSelectedPlayerId;
+  state.pleaSeconds = PLEA_TIMER_SECONDS;
+  state.showPleaTimer = true;
+  state.showVoteTable = false;
+  state.timerRunning = false;
+  state.timerFocus = false;
+  stopTimer();
+  startPleaTimer();
+  renderAndStore();
+}
+
+function backFromPleaTimer() {
+  const targetId = state.pleaTargetPlayerId;
+  resetPleaTimerState();
+  state.screen = "table";
+  state.phase = "vote";
+  state.showVoteTable = true;
+  state.voteSelectedPlayerId = targetId;
+  renderAndStore();
+}
+
+function confirmPleaExile() {
+  if (!state.showPleaTimer || state.pleaSeconds > 0) return;
+  const targetId = state.pleaTargetPlayerId;
+  resetPleaTimerState();
+  state.voteSelectedPlayerId = targetId;
+  confirmSelectedPlayerExile();
+}
+
+function confirmSelectedPlayerExile() {
+  if (!state.voteSelectedPlayerId) return;
   if (!state.exiledPlayerIds.includes(state.voteSelectedPlayerId)) {
     state.exiledPlayerIds.push(state.voteSelectedPlayerId);
   }
@@ -1329,6 +1434,7 @@ function backToExileScreen() {
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   stopTimer();
+  resetPleaTimerState();
   state.screen = "table";
   state.phase = "vote";
   state.timerRunning = false;
@@ -2326,6 +2432,10 @@ function getStatePayload() {
     timerResetCount: state.timerResetCount,
     showVoteTable: state.showVoteTable,
     voteSelectedPlayerId: state.voteSelectedPlayerId,
+    showPleaTimer: state.showPleaTimer,
+    pleaTargetPlayerId: state.pleaTargetPlayerId,
+    pleaSeconds: state.pleaSeconds,
+    pleaRunning: state.pleaRunning,
     exiledPlayerIds: state.exiledPlayerIds,
     attackedPlayerIds: state.attackedPlayerIds,
     votes: state.votes,
@@ -2376,6 +2486,15 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.timerResetCount = saved.timerResetCount || 0;
   state.showVoteTable = saved.showVoteTable || false;
   state.voteSelectedPlayerId = saved.voteSelectedPlayerId || "";
+  state.showPleaTimer = saved.showPleaTimer === true;
+  state.pleaTargetPlayerId = saved.pleaTargetPlayerId || "";
+  state.pleaSeconds = Number.isFinite(Number(saved.pleaSeconds)) ? Number(saved.pleaSeconds) : PLEA_TIMER_SECONDS;
+  state.pleaRunning = false;
+  if (state.showPleaTimer) {
+    state.screen = "table";
+    state.phase = "vote";
+    state.showVoteTable = false;
+  }
   state.exiledPlayerIds = saved.exiledPlayerIds || [];
   state.attackedPlayerIds = saved.attackedPlayerIds || [];
   state.timerRunning = false;
