@@ -1580,7 +1580,11 @@ textarea:focus {
 
 .table-panel.plea-timer-mode .timer-strip,
 .table-panel.plea-timer-mode .vote-table-actions,
-.table-panel.plea-timer-mode .vote-round-table {
+.table-panel.plea-timer-mode .vote-round-table,
+.table-panel.revote-plea-timer-mode .timer-strip,
+.table-panel.revote-plea-timer-mode .vote-table-actions,
+.table-panel.revote-plea-timer-mode .vote-control-panel,
+.table-panel.revote-plea-timer-mode .vote-round-table {
   display: none;
 }
 
@@ -1599,6 +1603,10 @@ textarea:focus {
 
 .plea-timer-view[hidden] {
   display: none;
+}
+
+.revote-candidate-names {
+  color: #fff8dc;
 }
 
 .plea-timer-content {
@@ -2196,6 +2204,10 @@ body.plea-fullscreen-view {
   overflow: hidden;
 }
 
+body.revote-plea-fullscreen-view {
+  overflow: hidden;
+}
+
 body.timer-fullscreen-view .app-shell {
   width: 100%;
   min-height: 100svh;
@@ -2203,6 +2215,12 @@ body.timer-fullscreen-view .app-shell {
 }
 
 body.plea-fullscreen-view .app-shell {
+  width: 100%;
+  min-height: 100svh;
+  padding: 0;
+}
+
+body.revote-plea-fullscreen-view .app-shell {
   width: 100%;
   min-height: 100svh;
   padding: 0;
@@ -2224,6 +2242,14 @@ body.plea-fullscreen-view .phase-visual {
   display: none;
 }
 
+body.revote-plea-fullscreen-view .topbar,
+body.revote-plea-fullscreen-view .screen-tabs,
+body.revote-plea-fullscreen-view .victory-banner,
+body.revote-plea-fullscreen-view .table-heading,
+body.revote-plea-fullscreen-view .phase-visual {
+  display: none;
+}
+
 body.timer-fullscreen-view .workspace,
 body.timer-fullscreen-view .table-panel.active {
   min-height: 100svh;
@@ -2231,6 +2257,11 @@ body.timer-fullscreen-view .table-panel.active {
 
 body.plea-fullscreen-view .workspace,
 body.plea-fullscreen-view .table-panel.active {
+  min-height: 100svh;
+}
+
+body.revote-plea-fullscreen-view .workspace,
+body.revote-plea-fullscreen-view .table-panel.active {
   min-height: 100svh;
 }
 
@@ -2256,7 +2287,24 @@ body.plea-fullscreen-view .table-panel.active {
   overflow: hidden;
 }
 
+body.revote-plea-fullscreen-view .table-panel.active {
+  display: grid;
+  place-items: stretch;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  overflow: hidden;
+}
+
 body.plea-fullscreen-view .plea-timer-view {
+  width: 100%;
+  min-height: 100svh;
+  border-radius: 0;
+}
+
+body.revote-plea-fullscreen-view .revote-plea-timer-view {
   width: 100%;
   min-height: 100svh;
   border-radius: 0;
@@ -2266,7 +2314,15 @@ body.plea-fullscreen-view .plea-target-name {
   font-size: clamp(4.6rem, 15vw, 12rem);
 }
 
+body.revote-plea-fullscreen-view .revote-candidate-names {
+  font-size: clamp(3.5rem, 10vw, 8.5rem);
+}
+
 body.plea-fullscreen-view .plea-timer-display {
+  font-size: clamp(9rem, 30vw, 22rem);
+}
+
+body.revote-plea-fullscreen-view .plea-timer-display {
   font-size: clamp(9rem, 30vw, 22rem);
 }
 
@@ -2748,7 +2804,15 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
     font-size: clamp(4rem, 13vw, 8.5rem);
   }
 
+  body.revote-plea-fullscreen-view .revote-candidate-names {
+    font-size: clamp(3.2rem, 9vw, 6.8rem);
+  }
+
   body.plea-fullscreen-view .plea-timer-display {
+    font-size: clamp(8rem, 24vw, 16rem);
+  }
+
+  body.revote-plea-fullscreen-view .plea-timer-display {
     font-size: clamp(8rem, 24vw, 16rem);
   }
 
