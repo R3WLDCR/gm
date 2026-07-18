@@ -1368,11 +1368,29 @@ textarea:focus {
   justify-content: flex-end;
   align-items: center;
   gap: 10px;
-  width: min(460px, calc(100vw - 28px));
+  width: min(620px, calc(100vw - 28px));
   margin: 0;
 }
 
 .vote-table-actions[hidden] {
+  display: none;
+}
+
+.direct-plea-target {
+  flex: 1 1 150px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(12, 122, 103, 0.22);
+  border-radius: 7px;
+  background: rgba(237, 245, 242, 0.94);
+  color: var(--ink);
+  font-size: clamp(0.9rem, 2vw, 1.05rem);
+  font-weight: 900;
+  line-height: 1.2;
+  box-shadow: 0 12px 28px rgba(24, 34, 29, 0.12);
+}
+
+.direct-plea-target[hidden] {
   display: none;
 }
 
@@ -2706,7 +2724,7 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
   .vote-table-actions {
     right: max(10px, env(safe-area-inset-right));
     bottom: max(10px, env(safe-area-inset-bottom));
-    width: min(380px, 46vw);
+    width: min(560px, 58vw);
     gap: 8px;
   }
 
