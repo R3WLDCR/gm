@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.6.0";
+const APP_VERSION = "v1.7.0";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -45,6 +45,10 @@ const state = {
   exiledPlayerIds: [],
   attackedPlayerIds: [],
   votes: {},
+  voteRecords: [],
+  voteVoterId: "",
+  voteTargetId: "",
+  revoteCandidateIds: [],
   logs: [],
   roleDealQueue: [],
   roleDealIndex: 0,
@@ -126,6 +130,14 @@ document.addEventListener("DOMContentLoaded", () => {
     "backToTimerBtn",
     "exileBtn",
     "voteRoundTable",
+    "voteVoterSelect",
+    "voteTargetSelect",
+    "recordVoteBtn",
+    "clearVotesBtn",
+    "sendTopVoteToPleaBtn",
+    "voteSummary",
+    "voteRecordList",
+    "revoteNotice",
     "pleaTimerView",
     "pleaTargetName",
     "pleaTimerDisplay",
@@ -216,6 +228,17 @@ function bindEvents() {
   els.skipToVoteBtn.addEventListener("click", skipTimerToVoteButton);
   els.backToTimerBtn.addEventListener("click", backToTimerScreen);
   els.exileBtn.addEventListener("click", exileSelectedPlayer);
+  els.voteVoterSelect?.addEventListener("change", () => {
+    state.voteVoterId = els.voteVoterSelect.value;
+    renderAndStore();
+  });
+  els.voteTargetSelect?.addEventListener("change", () => {
+    state.voteTargetId = els.voteTargetSelect.value;
+    renderAndStore();
+  });
+  els.recordVoteBtn?.addEventListener("click", recordVote);
+  els.clearVotesBtn?.addEventListener("click", resetVoteRecords);
+  els.sendTopVoteToPleaBtn?.addEventListener("click", sendTopVoteToPlea);
   els.pleaBackBtn?.addEventListener("click", backFromPleaTimer);
   els.pleaExileBtn?.addEventListener("click", confirmPleaExile);
   document.querySelectorAll(".timerPresetBtn").forEach((button) => {
@@ -280,6 +303,7 @@ function toggleParticipation(id) {
 function startRoundTable() {
   clearGameWinner();
   resetPleaTimerState();
+  resetVoteSession();
   state.screen = "deal";
   state.phase = "setup";
   state.day = 0;
@@ -319,6 +343,7 @@ function startNightActions() {
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   resetPleaTimerState();
+  resetVoteSession();
   state.screen = "action";
   state.phase = "night";
   state.showVoteTable = false;
@@ -340,6 +365,7 @@ function startNightActions() {
 
 function showVoteRoundTable() {
   resetPleaTimerState();
+  resetVoteSession();
   state.screen = "table";
   state.phase = "vote";
   state.timerRunning = false;
@@ -352,6 +378,7 @@ function showVoteRoundTable() {
 
 function skipTimerToVoteButton() {
   resetPleaTimerState();
+  resetVoteSession();
   state.screen = "table";
   state.phase = "day";
   state.timerSeconds = 0;
@@ -365,6 +392,7 @@ function skipTimerToVoteButton() {
 
 function backToTimerScreen() {
   resetPleaTimerState();
+  resetVoteSession();
   state.phase = "day";
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
@@ -542,6 +570,7 @@ function shiftTimer(delta) {
 
 function setTimerMinutes(minutes) {
   resetPleaTimerState();
+  resetVoteSession();
   resetTimerValue(Math.max(1, minutes) * 60);
   state.timerFocus = true;
   state.timerResetCount = 0;
@@ -623,6 +652,7 @@ function resetTimer() {
 
 function resetTimerValue(seconds) {
   resetPleaTimerState();
+  resetVoteSession();
   state.timerBase = seconds;
   state.timerSeconds = seconds;
   state.timerRunning = false;
@@ -658,9 +688,85 @@ function addVote() {
   renderAndStore();
 }
 
+function resetVoteSession() {
+  state.votes = {};
+  state.voteRecords = [];
+  state.voteVoterId = "";
+  state.voteTargetId = "";
+  state.revoteCandidateIds = [];
+}
+
+function resetVoteRecords() {
+  resetVoteSession();
+  renderAndStore();
+}
+
+function recordVote() {
+  const voter = findPlayer(state.voteVoterId);
+  const target = findPlayer(state.voteTargetId);
+  if (!voter || !target || !voter.alive || !target.alive) return;
+  if (state.voteRecords.some((record) => record.voterId === voter.id)) return;
+  const targetCandidates = getVoteTargetPlayers();
+  if (!targetCandidates.some((player) => player.id === target.id)) return;
+  const order = state.voteRecords.length + 1;
+  state.voteRecords.push({ order, voterId: voter.id, targetId: target.id });
+  syncVoteCountsFromRecords();
+  addLog(`投票${order}: ${voter.name} → ${target.name}`);
+  state.voteVoterId = "";
+  state.voteTargetId = "";
+  renderAndStore();
+}
+
+function sendTopVoteToPlea() {
+  const topIds = getTopVotedPlayerIds();
+  if (!topIds.length) return;
+  if (topIds.length > 1) {
+    state.revoteCandidateIds = topIds;
+    state.voteRecords = [];
+    state.votes = {};
+    state.voteVoterId = "";
+    state.voteTargetId = "";
+    addLog("同票のため再投票");
+    renderAndStore();
+    return;
+  }
+  startPleaForTarget(topIds[0]);
+}
+
+function getVoteTargetPlayers() {
+  const living = getLivingPlayers();
+  if (!state.revoteCandidateIds.length) return living;
+  const candidateSet = new Set(state.revoteCandidateIds);
+  return living.filter((player) => candidateSet.has(player.id));
+}
+
+function getVoteVoterPlayers() {
+  const votedIds = new Set(state.voteRecords.map((record) => record.voterId));
+  return getLivingPlayers().filter((player) => !votedIds.has(player.id));
+}
+
+function syncVoteCountsFromRecords() {
+  state.votes = state.voteRecords.reduce((counts, record) => {
+    counts[record.targetId] = (counts[record.targetId] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function getTopVotedPlayerIds() {
+  syncVoteCountsFromRecords();
+  const entries = Object.entries(state.votes).filter(([id]) => {
+    const player = findPlayer(id);
+    return player && player.alive && isActivePlayer(player);
+  });
+  if (!entries.length) return [];
+  const maxCount = Math.max(...entries.map(([, count]) => count));
+  return entries.filter(([, count]) => count === maxCount).map(([id]) => id);
+}
+
 function nextDay() {
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
+  resetVoteSession();
   state.day += 1;
   state.phase = "night";
   state.votes = {};
@@ -693,6 +799,7 @@ function resetGame() {
   if (!confirm("卓を初期化しますか？")) return;
   stopTimer();
   resetPleaTimerState();
+  resetVoteSession();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   localStorage.removeItem(STORAGE_KEY);
@@ -734,6 +841,7 @@ function resetToFirstNight() {
   if (!confirm("進行を初日夜に戻しますか？")) return;
   stopTimer();
   resetPleaTimerState();
+  resetVoteSession();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   state.screen = "deal";
@@ -776,6 +884,7 @@ function render() {
   renderRoundTable();
   renderVoteRoundTable();
   renderActionRoundTable();
+  renderVoteControls();
   renderSelectors();
   renderVotes();
   renderLog();
@@ -907,9 +1016,10 @@ function renderHeader() {
   document.querySelector(".table-panel")?.classList.toggle("vote-table-mode", state.showVoteTable);
   document.querySelector(".table-panel")?.classList.toggle("plea-timer-mode", state.showPleaTimer);
   document.querySelector(".vote-table-actions")?.toggleAttribute("hidden", !state.showVoteTable);
+  document.querySelector(".vote-control-panel")?.toggleAttribute("hidden", !state.showVoteTable);
   if (els.exileBtn) {
     els.exileBtn.disabled = !state.voteSelectedPlayerId;
-    els.exileBtn.textContent = "弁明";
+    els.exileBtn.textContent = "直接弁明へ";
   }
   renderPleaTimerView();
   if (els.previousActionRoleBtn) {
@@ -1044,7 +1154,75 @@ function renderVoteRoundTable() {
     els.voteRoundTable.innerHTML = "";
     return;
   }
-  renderRoundTableInto(els.voteRoundTable, { hideRoles: true, voteMode: true });
+  renderRoundTableInto(els.voteRoundTable, { hideRoles: true, voteMode: true, players: getLivingPlayers() });
+}
+
+function renderVoteControls() {
+  if (!state.showVoteTable) return;
+  const voters = getVoteVoterPlayers();
+  const targets = getVoteTargetPlayers();
+  if (!voters.some((player) => player.id === state.voteVoterId)) state.voteVoterId = "";
+  if (!targets.some((player) => player.id === state.voteTargetId)) state.voteTargetId = "";
+  renderPlayerSelect(els.voteVoterSelect, voters, state.voteVoterId, "投票者を選択");
+  renderPlayerSelect(els.voteTargetSelect, targets, state.voteTargetId, "投票先を選択");
+  if (els.recordVoteBtn) {
+    els.recordVoteBtn.disabled = !state.voteVoterId || !state.voteTargetId;
+  }
+  if (els.sendTopVoteToPleaBtn) {
+    els.sendTopVoteToPleaBtn.disabled = !state.voteRecords.length;
+  }
+  if (els.revoteNotice) {
+    els.revoteNotice.hidden = !state.revoteCandidateIds.length;
+    if (state.revoteCandidateIds.length) {
+      els.revoteNotice.textContent = `同票のため再投票: ${targets.map((player) => player.name).join("・")}`;
+    }
+  }
+  renderVoteSummary();
+  renderVoteRecordList();
+}
+
+function renderPlayerSelect(select, players, selectedId, placeholder) {
+  if (!select) return;
+  select.innerHTML = `<option value="">${placeholder}</option>${players
+    .map((player) => `<option value="${player.id}">${escapeHtml(player.name)}</option>`)
+    .join("")}`;
+  select.value = selectedId;
+}
+
+function renderVoteSummary() {
+  if (!els.voteSummary) return;
+  syncVoteCountsFromRecords();
+  const rows = Object.entries(state.votes)
+    .map(([id, count]) => ({ player: findPlayer(id), count }))
+    .filter((row) => row.player && row.player.alive && isActivePlayer(row.player))
+    .sort((a, b) => b.count - a.count || a.player.name.localeCompare(b.player.name, "ja"));
+  if (!rows.length) {
+    els.voteSummary.innerHTML = '<div class="vote-empty">票なし</div>';
+    return;
+  }
+  const maxCount = rows[0].count;
+  els.voteSummary.innerHTML = rows
+    .map(
+      ({ player, count }) =>
+        `<div class="vote-summary-row ${count === maxCount ? "top" : ""}"><strong>${escapeHtml(player.name)}</strong><span>${count}票</span></div>`,
+    )
+    .join("");
+}
+
+function renderVoteRecordList() {
+  if (!els.voteRecordList) return;
+  if (!state.voteRecords.length) {
+    els.voteRecordList.innerHTML = '<div class="vote-empty">履歴なし</div>';
+    return;
+  }
+  els.voteRecordList.innerHTML = state.voteRecords
+    .map((record, index) => {
+      const voter = findPlayer(record.voterId);
+      const target = findPlayer(record.targetId);
+      const order = record.order || index + 1;
+      return `<div class="vote-record-row"><span>${order}票目</span><strong>${escapeHtml(voter?.name || "不明")}</strong><em>→</em><strong>${escapeHtml(target?.name || "不明")}</strong></div>`;
+    })
+    .join("");
 }
 
 function renderPleaTimerView() {
@@ -1324,7 +1502,14 @@ function selectVotePlayer(id) {
 
 function exileSelectedPlayer() {
   if (!state.voteSelectedPlayerId) return;
-  state.pleaTargetPlayerId = state.voteSelectedPlayerId;
+  startPleaForTarget(state.voteSelectedPlayerId);
+}
+
+function startPleaForTarget(playerId) {
+  const player = findPlayer(playerId);
+  if (!player || !player.alive || !isActivePlayer(player)) return;
+  state.voteSelectedPlayerId = player.id;
+  state.pleaTargetPlayerId = player.id;
   state.pleaSeconds = PLEA_TIMER_SECONDS;
   state.showPleaTimer = true;
   state.showVoteTable = false;
@@ -1435,6 +1620,7 @@ function backToExileScreen() {
   stopBlockedRoleCountdown();
   stopTimer();
   resetPleaTimerState();
+  resetVoteSession();
   state.screen = "table";
   state.phase = "vote";
   state.timerRunning = false;
@@ -2439,6 +2625,10 @@ function getStatePayload() {
     exiledPlayerIds: state.exiledPlayerIds,
     attackedPlayerIds: state.attackedPlayerIds,
     votes: state.votes,
+    voteRecords: state.voteRecords,
+    voteVoterId: state.voteVoterId,
+    voteTargetId: state.voteTargetId,
+    revoteCandidateIds: state.revoteCandidateIds,
     logs: state.logs,
     roleDealQueue: state.roleDealQueue,
     roleDealIndex: state.roleDealIndex,
@@ -2499,6 +2689,11 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.attackedPlayerIds = saved.attackedPlayerIds || [];
   state.timerRunning = false;
   state.votes = saved.votes || {};
+  state.voteRecords = Array.isArray(saved.voteRecords) ? saved.voteRecords : [];
+  state.voteVoterId = saved.voteVoterId || "";
+  state.voteTargetId = saved.voteTargetId || "";
+  state.revoteCandidateIds = Array.isArray(saved.revoteCandidateIds) ? saved.revoteCandidateIds : [];
+  if (state.voteRecords.length) syncVoteCountsFromRecords();
   state.logs = saved.logs || [];
   state.roleDealQueue = saved.roleDealQueue || [];
   state.roleDealIndex = saved.roleDealIndex || 0;
