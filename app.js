@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.7.1";
+const APP_VERSION = "v1.8.0";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -50,6 +50,7 @@ const state = {
   voteTargetId: "",
   editingVoteRecordIndex: -1,
   revoteCandidateIds: [],
+  revoteAssignIndex: 0,
   logs: [],
   roleDealQueue: [],
   roleDealIndex: 0,
@@ -139,6 +140,10 @@ document.addEventListener("DOMContentLoaded", () => {
     "voteSummary",
     "voteRecordList",
     "revoteNotice",
+    "revoteAssistPanel",
+    "revoteFixedTargetName",
+    "revoteAssignedText",
+    "revoteNextBtn",
     "pleaTimerView",
     "pleaTargetName",
     "pleaTimerDisplay",
@@ -240,6 +245,7 @@ function bindEvents() {
   els.recordVoteBtn?.addEventListener("click", recordVote);
   els.clearVotesBtn?.addEventListener("click", resetVoteRecords);
   els.sendTopVoteToPleaBtn?.addEventListener("click", sendTopVoteToPlea);
+  els.revoteNextBtn?.addEventListener("click", advanceRevoteAssignment);
   els.pleaBackBtn?.addEventListener("click", backFromPleaTimer);
   els.pleaExileBtn?.addEventListener("click", confirmPleaExile);
   document.querySelectorAll(".timerPresetBtn").forEach((button) => {
@@ -696,6 +702,7 @@ function resetVoteSession() {
   state.voteTargetId = "";
   state.editingVoteRecordIndex = -1;
   state.revoteCandidateIds = [];
+  state.revoteAssignIndex = 0;
 }
 
 function resetVoteRecords() {
@@ -722,6 +729,7 @@ function recordVote() {
   state.voteVoterId = "";
   state.voteTargetId = "";
   state.editingVoteRecordIndex = -1;
+  startRevoteIfCompletedTie();
   renderAndStore();
 }
 
@@ -738,15 +746,81 @@ function sendTopVoteToPlea() {
   const topIds = getTopVotedPlayerIds();
   if (!topIds.length) return;
   if (topIds.length > 1) {
-    state.revoteCandidateIds = topIds;
-    state.voteRecords = [];
-    state.votes = {};
-    state.voteVoterId = "";
-    state.voteTargetId = "";
-    addLog("同票のため再投票");
+    startRevoteAssignment(topIds);
     renderAndStore();
     return;
   }
+  startPleaForTarget(topIds[0]);
+}
+
+function startRevoteIfCompletedTie() {
+  if (isRevoteAssignmentMode()) return;
+  if (state.voteRecords.length < getLivingPlayers().length) return;
+  const topIds = getTopVotedPlayerIds();
+  if (topIds.length > 1) {
+    startRevoteAssignment(topIds);
+  }
+}
+
+function startRevoteAssignment(candidateIds) {
+  state.revoteCandidateIds = candidateIds.filter((id) => {
+    const player = findPlayer(id);
+    return player && player.alive && isActivePlayer(player);
+  });
+  state.revoteAssignIndex = 0;
+  state.voteRecords = [];
+  state.votes = {};
+  state.voteVoterId = "";
+  state.voteTargetId = "";
+  state.editingVoteRecordIndex = -1;
+  addLog("同票のため再投票");
+}
+
+function isRevoteAssignmentMode() {
+  return state.revoteCandidateIds.length > 1;
+}
+
+function getCurrentRevoteTargetId() {
+  if (!isRevoteAssignmentMode()) return "";
+  return state.revoteCandidateIds[Math.min(state.revoteAssignIndex, state.revoteCandidateIds.length - 2)] || "";
+}
+
+function getLastRevoteTargetId() {
+  if (!isRevoteAssignmentMode()) return "";
+  return state.revoteCandidateIds[state.revoteCandidateIds.length - 1] || "";
+}
+
+function advanceRevoteAssignment() {
+  if (!isRevoteAssignmentMode()) return;
+  if (state.revoteAssignIndex < state.revoteCandidateIds.length - 2) {
+    state.revoteAssignIndex += 1;
+    renderAndStore();
+    return;
+  }
+  finalizeRevoteAssignment();
+}
+
+function finalizeRevoteAssignment() {
+  const lastTargetId = getLastRevoteTargetId();
+  if (!lastTargetId) return;
+  getLivingPlayers().forEach((player) => {
+    if (state.voteRecords.some((record) => record.voterId === player.id)) return;
+    state.voteRecords.push({
+      order: state.voteRecords.length + 1,
+      voterId: player.id,
+      targetId: lastTargetId,
+    });
+  });
+  syncVoteCountsFromRecords();
+  const topIds = getTopVotedPlayerIds();
+  if (!topIds.length) return;
+  if (topIds.length > 1) {
+    startRevoteAssignment(topIds);
+    renderAndStore();
+    return;
+  }
+  state.revoteCandidateIds = [];
+  state.revoteAssignIndex = 0;
   startPleaForTarget(topIds[0]);
 }
 
@@ -767,6 +841,16 @@ function getEditingVoteRecordIndex() {
   return Number.isInteger(state.editingVoteRecordIndex) && state.editingVoteRecordIndex >= 0 && state.editingVoteRecordIndex < state.voteRecords.length
     ? state.editingVoteRecordIndex
     : -1;
+}
+
+function getVoteAssignmentForVoter(voterId) {
+  const record = state.voteRecords.find((item) => item.voterId === voterId);
+  if (!record) return null;
+  const target = findPlayer(record.targetId);
+  return {
+    targetId: record.targetId,
+    targetName: target?.name || "不明",
+  };
 }
 
 function syncVoteCountsFromRecords() {
@@ -1183,10 +1267,12 @@ function renderVoteRoundTable() {
 
 function renderVoteControls() {
   if (!state.showVoteTable) return;
+  const revoteMode = isRevoteAssignmentMode();
   const voters = getVoteVoterPlayers();
   const targets = getVoteTargetPlayers();
   if (!voters.some((player) => player.id === state.voteVoterId)) state.voteVoterId = "";
   if (!targets.some((player) => player.id === state.voteTargetId)) state.voteTargetId = "";
+  document.querySelector(".vote-input-grid")?.toggleAttribute("hidden", revoteMode);
   renderPlayerSelect(els.voteVoterSelect, voters, state.voteVoterId, "投票者を選択");
   renderPlayerSelect(els.voteTargetSelect, targets, state.voteTargetId, "投票先を選択");
   if (els.recordVoteBtn) {
@@ -1194,16 +1280,38 @@ function renderVoteControls() {
     els.recordVoteBtn.textContent = getEditingVoteRecordIndex() >= 0 ? "投票を修正" : "投票を記録";
   }
   if (els.sendTopVoteToPleaBtn) {
-    els.sendTopVoteToPleaBtn.disabled = !state.voteRecords.length;
+    els.sendTopVoteToPleaBtn.disabled = revoteMode || !state.voteRecords.length;
   }
   if (els.revoteNotice) {
-    els.revoteNotice.hidden = !state.revoteCandidateIds.length;
-    if (state.revoteCandidateIds.length) {
+    els.revoteNotice.hidden = !revoteMode;
+    if (revoteMode) {
       els.revoteNotice.textContent = `同票のため再投票: ${targets.map((player) => player.name).join("・")}`;
     }
   }
+  renderRevoteAssist();
   renderVoteSummary();
   renderVoteRecordList();
+}
+
+function renderRevoteAssist() {
+  if (!els.revoteAssistPanel) return;
+  const revoteMode = isRevoteAssignmentMode();
+  els.revoteAssistPanel.hidden = !revoteMode;
+  if (!revoteMode) return;
+  const currentTarget = findPlayer(getCurrentRevoteTargetId());
+  const lastTarget = findPlayer(getLastRevoteTargetId());
+  const assignedCount = state.voteRecords.filter((record) => record.targetId === currentTarget?.id).length;
+  const remainingCount = getLivingPlayers().filter((player) => !state.voteRecords.some((record) => record.voterId === player.id)).length;
+  if (els.revoteFixedTargetName) {
+    els.revoteFixedTargetName.textContent = currentTarget ? `${currentTarget.name} に投票` : "投票先";
+  }
+  if (els.revoteAssignedText) {
+    els.revoteAssignedText.textContent = `${assignedCount}人選択 / 残り${remainingCount}人`;
+  }
+  if (els.revoteNextBtn) {
+    const finalStep = state.revoteAssignIndex >= state.revoteCandidateIds.length - 2;
+    els.revoteNextBtn.textContent = finalStep && lastTarget ? `残りを${lastTarget.name}へ` : "次の投票先へ";
+  }
 }
 
 function renderPlayerSelect(select, players, selectedId, placeholder) {
@@ -1482,9 +1590,10 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
     const role = hideRoles ? null : getRole(player.roleId);
     const status = getSeatStatus(player);
     const actionDisabled = actionMode && !canSelectActionTarget(getCurrentActionRoleId(), player);
+    const voteAssignment = voteMode ? getVoteAssignmentForVoter(player.id) : null;
     const seat = document.createElement("button");
     seat.type = "button";
-    seat.className = `round-seat ${player.alive ? "" : "dead"} ${actionDisabled ? "action-disabled" : ""} ${status ? `status-${status.type}` : ""} ${state.exiledPlayerIds.includes(player.id) ? "exiled" : ""} ${voteMode && state.voteSelectedPlayerId === player.id ? "vote-selected" : ""} ${!hideRoles && player.roleId ? "assigned" : ""} ${hideRoles ? "" : getRoleColorClass(player.roleId)} ${!hideRoles && shouldBlinkSeerTarget(player) ? "seer-blink" : ""} ${
+    seat.className = `round-seat ${player.alive ? "" : "dead"} ${actionDisabled ? "action-disabled" : ""} ${status ? `status-${status.type}` : ""} ${state.exiledPlayerIds.includes(player.id) ? "exiled" : ""} ${voteMode && state.voteSelectedPlayerId === player.id ? "vote-selected" : ""} ${voteAssignment ? "vote-assigned" : ""} ${voteAssignment?.targetId === getCurrentRevoteTargetId() ? "vote-assigned-current" : ""} ${!hideRoles && player.roleId ? "assigned" : ""} ${hideRoles ? "" : getRoleColorClass(player.roleId)} ${!hideRoles && shouldBlinkSeerTarget(player) ? "seer-blink" : ""} ${
       state.roleDealSelectedPlayerIds.includes(player.id) ? "selected" : ""
     }`;
     seat.disabled = actionDisabled;
@@ -1494,7 +1603,7 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
     seat.style.setProperty("--seat-y", `${y}%`);
     seat.innerHTML = `
       <strong>${escapeHtml(player.name)}</strong>
-      <small>${role ? escapeHtml(role.name) : hideRoles ? "" : "未配役"}</small>
+      <small>${role ? escapeHtml(role.name) : voteAssignment ? `→ ${escapeHtml(voteAssignment.targetName)}` : hideRoles ? "" : "未配役"}</small>
       ${status ? `<span class="seat-status-badge">${status.label}</span>` : ""}
     `;
     if (actionMode) {
@@ -1525,8 +1634,37 @@ function getSeatStatus(player) {
 }
 
 function selectVotePlayer(id) {
+  if (isRevoteAssignmentMode()) {
+    toggleRevoteVoter(id);
+    return;
+  }
   state.voteSelectedPlayerId = state.voteSelectedPlayerId === id ? "" : id;
   renderAndStore();
+}
+
+function toggleRevoteVoter(voterId) {
+  const voter = findPlayer(voterId);
+  const targetId = getCurrentRevoteTargetId();
+  if (!voter || !voter.alive || !targetId) return;
+  const existingIndex = state.voteRecords.findIndex((record) => record.voterId === voter.id);
+  if (existingIndex >= 0 && state.voteRecords[existingIndex].targetId === targetId) {
+    state.voteRecords.splice(existingIndex, 1);
+    renumberVoteRecords();
+  } else if (existingIndex >= 0) {
+    state.voteRecords[existingIndex] = { ...state.voteRecords[existingIndex], targetId };
+  } else {
+    state.voteRecords.push({
+      order: state.voteRecords.length + 1,
+      voterId: voter.id,
+      targetId,
+    });
+  }
+  syncVoteCountsFromRecords();
+  renderAndStore();
+}
+
+function renumberVoteRecords() {
+  state.voteRecords = state.voteRecords.map((record, index) => ({ ...record, order: index + 1 }));
 }
 
 function exileSelectedPlayer() {
@@ -2659,6 +2797,7 @@ function getStatePayload() {
     voteTargetId: state.voteTargetId,
     editingVoteRecordIndex: state.editingVoteRecordIndex,
     revoteCandidateIds: state.revoteCandidateIds,
+    revoteAssignIndex: state.revoteAssignIndex,
     logs: state.logs,
     roleDealQueue: state.roleDealQueue,
     roleDealIndex: state.roleDealIndex,
@@ -2724,6 +2863,12 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.voteTargetId = saved.voteTargetId || "";
   state.editingVoteRecordIndex = Number.isInteger(saved.editingVoteRecordIndex) ? saved.editingVoteRecordIndex : -1;
   state.revoteCandidateIds = Array.isArray(saved.revoteCandidateIds) ? saved.revoteCandidateIds : [];
+  state.revoteAssignIndex = Number.isInteger(saved.revoteAssignIndex) ? saved.revoteAssignIndex : 0;
+  if (state.revoteCandidateIds.length > 1) {
+    state.revoteAssignIndex = Math.max(0, Math.min(state.revoteAssignIndex, state.revoteCandidateIds.length - 2));
+  } else {
+    state.revoteAssignIndex = 0;
+  }
   if (state.voteRecords.length) syncVoteCountsFromRecords();
   state.logs = saved.logs || [];
   state.roleDealQueue = saved.roleDealQueue || [];

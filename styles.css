@@ -1141,6 +1141,18 @@ textarea:focus {
   border-color: var(--rose);
 }
 
+.round-seat.vote-assigned {
+  outline: 4px solid rgba(12, 122, 103, 0.2);
+  border-color: rgba(12, 122, 103, 0.55);
+  background: #edf5f2;
+}
+
+.round-seat.vote-assigned-current {
+  outline: 5px solid rgba(250, 204, 21, 0.34);
+  border-color: #d9a317;
+  background: #fff7d6;
+}
+
 .round-seat.exiled {
   opacity: 0.68;
   border-color: var(--rose);
@@ -1388,6 +1400,40 @@ textarea:focus {
 
 .revote-notice[hidden] {
   display: none;
+}
+
+.revote-assist-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid rgba(250, 204, 21, 0.42);
+  border-radius: 8px;
+  background: #fffdf0;
+}
+
+.revote-assist-panel[hidden],
+.vote-input-grid[hidden] {
+  display: none;
+}
+
+.revote-assist-panel div {
+  display: grid;
+  gap: 3px;
+}
+
+.revote-assist-panel span,
+.revote-assist-panel small {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.revote-assist-panel strong {
+  min-width: 0;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .vote-input-grid {
@@ -2334,6 +2380,10 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
 }
 
 @media (max-width: 900px) {
+  .revote-assist-panel {
+    grid-template-columns: 1fr;
+  }
+
   .vote-input-grid,
   .vote-result-grid {
     grid-template-columns: 1fr;

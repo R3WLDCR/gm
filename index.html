@@ -17,7 +17,7 @@
       <header class="topbar">
         <div class="title-row">
           <p class="eyebrow">Werewolf Game Master</p>
-          <span id="appVersionBadge" class="version-badge">v1.7.1</span>
+          <span id="appVersionBadge" class="version-badge">v1.8.0</span>
         </div>
         <div class="top-actions">
           <details id="syncPanel" class="sync-panel">
@@ -177,6 +177,14 @@
           </div>
           <div class="vote-control-panel" hidden>
             <div id="revoteNotice" class="revote-notice" hidden>同票のため再投票</div>
+            <div id="revoteAssistPanel" class="revote-assist-panel" hidden>
+              <div>
+                <span>円卓で投票者をタップ</span>
+                <strong id="revoteFixedTargetName">投票先</strong>
+                <small id="revoteAssignedText">0人選択</small>
+              </div>
+              <button id="revoteNextBtn" class="primary-button" type="button">次の投票先へ</button>
+            </div>
             <div class="vote-input-grid">
               <label>
                 投票者
