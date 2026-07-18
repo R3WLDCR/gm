@@ -1616,6 +1616,7 @@ textarea:focus {
   white-space: normal;
 }
 
+.plea-button,
 .exile-button {
   flex: 1 1 auto;
   width: auto;
@@ -1632,6 +1633,7 @@ textarea:focus {
   box-shadow: 0 12px 28px rgba(24, 34, 29, 0.14);
 }
 
+.plea-button:disabled,
 .exile-button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
@@ -2748,6 +2750,7 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
     max-height: 120px;
   }
 
+  .plea-button,
   .exile-button {
     min-height: clamp(48px, 8svh, 58px);
     font-size: clamp(1.2rem, 2.4vw, 1.5rem);

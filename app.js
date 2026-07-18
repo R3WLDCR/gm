@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.8.8";
+const APP_VERSION = "v1.9.0";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -136,6 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "voteStartBtn",
     "skipToVoteBtn",
     "backToTimerBtn",
+    "pleaBtn",
     "exileBtn",
     "voteRoundTable",
     "voteVoterSelect",
@@ -243,7 +244,8 @@ function bindEvents() {
   els.voteStartBtn.addEventListener("click", showVoteRoundTable);
   els.skipToVoteBtn.addEventListener("click", skipTimerToVoteButton);
   els.backToTimerBtn.addEventListener("click", backToTimerScreen);
-  els.exileBtn.addEventListener("click", exileSelectedPlayer);
+  els.pleaBtn?.addEventListener("click", startPleaForSelectedPlayer);
+  els.exileBtn.addEventListener("click", confirmSelectedPlayerExile);
   els.voteVoterSelect?.addEventListener("change", () => {
     state.voteVoterId = els.voteVoterSelect.value;
     renderAndStore();
@@ -1270,10 +1272,14 @@ function renderHeader() {
   document.querySelector(".table-panel")?.classList.toggle("revote-plea-timer-mode", state.showRevotePleaTimer);
   document.querySelector(".vote-table-actions")?.toggleAttribute("hidden", !state.showVoteTable);
   document.querySelector(".vote-control-panel")?.toggleAttribute("hidden", !state.showVoteTable);
+  const directPleaTarget = findPlayer(state.voteSelectedPlayerId);
+  if (els.pleaBtn) {
+    els.pleaBtn.disabled = !state.voteSelectedPlayerId;
+    els.pleaBtn.textContent = directPleaTarget ? `${directPleaTarget.name}を弁明へ` : "弁明";
+  }
   if (els.exileBtn) {
-    const directPleaTarget = findPlayer(state.voteSelectedPlayerId);
     els.exileBtn.disabled = !state.voteSelectedPlayerId;
-    els.exileBtn.textContent = directPleaTarget ? `${directPleaTarget.name}を弁明へ` : "直接弁明へ";
+    els.exileBtn.textContent = directPleaTarget ? `${directPleaTarget.name}を追放` : "追放";
   }
   renderPleaTimerView();
   renderRevotePleaTimerView();
@@ -1849,7 +1855,7 @@ function renumberVoteRecords() {
   state.voteRecords = state.voteRecords.map((record, index) => ({ ...record, order: index + 1 }));
 }
 
-function exileSelectedPlayer() {
+function startPleaForSelectedPlayer() {
   if (!state.voteSelectedPlayerId) return;
   startPleaForTarget(state.voteSelectedPlayerId);
 }
