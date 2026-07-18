@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.8.1";
+const APP_VERSION = "v1.8.2";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -781,6 +781,35 @@ function editVoteRecord(index) {
   renderAndStore();
 }
 
+function deleteVoteRecord(index) {
+  if (index < 0 || index >= state.voteRecords.length) return;
+  state.voteRecords.splice(index, 1);
+  renumberVoteRecords();
+  syncVoteCountsFromRecords();
+  if (state.editingVoteRecordIndex === index) {
+    state.editingVoteRecordIndex = -1;
+    state.voteVoterId = "";
+    state.voteTargetId = "";
+  } else if (state.editingVoteRecordIndex > index) {
+    state.editingVoteRecordIndex -= 1;
+  }
+  renderAndStore();
+}
+
+function moveVoteRecord(index, direction) {
+  const nextIndex = index + direction;
+  if (index < 0 || nextIndex < 0 || index >= state.voteRecords.length || nextIndex >= state.voteRecords.length) return;
+  const [record] = state.voteRecords.splice(index, 1);
+  state.voteRecords.splice(nextIndex, 0, record);
+  renumberVoteRecords();
+  if (state.editingVoteRecordIndex === index) {
+    state.editingVoteRecordIndex = nextIndex;
+  } else if (state.editingVoteRecordIndex === nextIndex) {
+    state.editingVoteRecordIndex = index;
+  }
+  renderAndStore();
+}
+
 function sendTopVoteToPlea() {
   const topIds = getTopVotedPlayerIds();
   if (!topIds.length) return;
@@ -1436,11 +1465,28 @@ function renderVoteRecordList() {
       const target = findPlayer(record.targetId);
       const order = record.order || index + 1;
       const active = index === getEditingVoteRecordIndex() ? " editing" : "";
-      return `<button class="vote-record-row${active}" type="button" data-vote-record-index="${index}"><span>${order}票目</span><strong>${escapeHtml(voter?.name || "不明")}</strong><em>→</em><strong>${escapeHtml(target?.name || "不明")}</strong></button>`;
+      return `
+        <div class="vote-record-row${active}">
+          <button class="vote-record-main" type="button" data-vote-record-index="${index}">
+            <span>${order}票目</span><strong>${escapeHtml(voter?.name || "不明")}</strong><em>→</em><strong>${escapeHtml(target?.name || "不明")}</strong>
+          </button>
+          <div class="vote-record-actions">
+            <button type="button" data-vote-record-move="${index}" data-direction="-1" aria-label="${order}票目を上へ" ${index === 0 ? "disabled" : ""}>上</button>
+            <button type="button" data-vote-record-move="${index}" data-direction="1" aria-label="${order}票目を下へ" ${index === state.voteRecords.length - 1 ? "disabled" : ""}>下</button>
+            <button type="button" data-vote-record-delete="${index}" aria-label="${order}票目を削除">削除</button>
+          </div>
+        </div>
+      `;
     })
     .join("");
   els.voteRecordList.querySelectorAll("[data-vote-record-index]").forEach((button) => {
     button.addEventListener("click", () => editVoteRecord(Number(button.dataset.voteRecordIndex)));
+  });
+  els.voteRecordList.querySelectorAll("[data-vote-record-move]").forEach((button) => {
+    button.addEventListener("click", () => moveVoteRecord(Number(button.dataset.voteRecordMove), Number(button.dataset.direction)));
+  });
+  els.voteRecordList.querySelectorAll("[data-vote-record-delete]").forEach((button) => {
+    button.addEventListener("click", () => deleteVoteRecord(Number(button.dataset.voteRecordDelete)));
   });
 }
 

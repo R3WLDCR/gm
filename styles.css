@@ -1517,21 +1517,65 @@ textarea:focus {
 }
 
 .vote-record-row {
-  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   width: 100%;
   color: var(--ink);
   font: inherit;
   text-align: left;
-  cursor: pointer;
 }
 
 .vote-record-row:hover,
-.vote-record-row:focus-visible,
 .vote-record-row.editing {
-  outline: 3px solid rgba(12, 122, 103, 0.18);
   border-color: rgba(12, 122, 103, 0.42);
   background: #edf5f2;
+}
+
+.vote-record-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vote-record-main:hover,
+.vote-record-main:focus-visible {
+  outline: 3px solid rgba(12, 122, 103, 0.18);
+  border-radius: 6px;
+}
+
+.vote-record-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.vote-record-actions button {
+  min-height: 32px;
+  padding: 0 9px;
+  border: 1px solid #eadfce;
+  border-radius: 6px;
+  background: #fffaf1;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.vote-record-actions button:hover,
+.vote-record-actions button:focus-visible {
+  border-color: rgba(12, 122, 103, 0.42);
+  color: var(--accent);
+}
+
+.vote-record-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
 }
 
 .vote-record-row span,
@@ -2438,6 +2482,14 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
 @media (max-width: 900px) {
   .revote-assist-panel {
     grid-template-columns: 1fr;
+  }
+
+  .vote-record-row {
+    grid-template-columns: 1fr;
+  }
+
+  .vote-record-actions {
+    justify-content: flex-end;
   }
 
   .vote-input-grid,
