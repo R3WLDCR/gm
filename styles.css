@@ -1653,10 +1653,6 @@ textarea:focus {
   display: none;
 }
 
-.revote-candidate-names {
-  color: #fff8dc;
-}
-
 .plea-timer-content {
   width: min(920px, 92vw);
   display: grid;
@@ -1671,18 +1667,6 @@ textarea:focus {
   font-weight: 800;
   letter-spacing: 0;
   color: rgba(255, 255, 255, 0.72);
-}
-
-.plea-target-name {
-  display: block;
-  width: 100%;
-  white-space: nowrap;
-  overflow: visible;
-  font-size: clamp(3.2rem, 10vw, 8rem);
-  font-weight: 900;
-  line-height: 1;
-  color: #fff8dc;
-  text-shadow: 0 12px 34px rgba(0, 0, 0, 0.42);
 }
 
 .plea-timer-display {
@@ -2358,14 +2342,6 @@ body.revote-plea-fullscreen-view .revote-plea-timer-view {
   border-radius: 0;
 }
 
-body.plea-fullscreen-view .plea-target-name {
-  font-size: clamp(4.6rem, 15vw, 12rem);
-}
-
-body.revote-plea-fullscreen-view .revote-candidate-names {
-  font-size: clamp(3.5rem, 10vw, 8.5rem);
-}
-
 body.plea-fullscreen-view .plea-timer-display {
   font-size: clamp(9rem, 30vw, 22rem);
 }
@@ -2854,14 +2830,6 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
 
   body.plea-fullscreen-view .plea-timer-content {
     gap: clamp(2px, 1svh, 10px);
-  }
-
-  body.plea-fullscreen-view .plea-target-name {
-    font-size: clamp(4rem, 13vw, 8.5rem);
-  }
-
-  body.revote-plea-fullscreen-view .revote-candidate-names {
-    font-size: clamp(3.2rem, 9vw, 6.8rem);
   }
 
   body.plea-fullscreen-view .plea-timer-display {

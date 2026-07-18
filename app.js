@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.8.3";
+const APP_VERSION = "v1.8.4";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -152,12 +152,10 @@ document.addEventListener("DOMContentLoaded", () => {
     "revoteAssignedText",
     "revoteNextBtn",
     "revotePleaTimerView",
-    "revotePleaCandidateNames",
     "revotePleaTimerDisplay",
     "revotePleaBackBtn",
     "revotePleaStartBtn",
     "pleaTimerView",
-    "pleaTargetName",
     "pleaTimerDisplay",
     "pleaBackBtn",
     "pleaExileBtn",
@@ -1214,7 +1212,7 @@ function getVictoryMessage(winner) {
 }
 
 function fitSingleLineNames() {
-  document.querySelectorAll(".player-row strong, .round-seat strong, .seat-name, .medium-result-card strong, .dialog-name, .plea-target-name").forEach((element) => {
+  document.querySelectorAll(".player-row strong, .round-seat strong, .seat-name, .medium-result-card strong, .dialog-name").forEach((element) => {
     element.style.fontSize = "";
     let currentSize = Number.parseFloat(getComputedStyle(element).fontSize);
     const maxWidth = element.clientWidth;
@@ -1528,10 +1526,6 @@ function renderPleaTimerView() {
   if (!els.pleaTimerView) return;
   els.pleaTimerView.hidden = !state.showPleaTimer;
   if (!state.showPleaTimer) return;
-  const player = findPlayer(state.pleaTargetPlayerId);
-  if (els.pleaTargetName) {
-    els.pleaTargetName.textContent = player?.name || "吊対象";
-  }
   if (els.pleaTimerDisplay) {
     els.pleaTimerDisplay.textContent = String(Math.max(0, state.pleaSeconds));
     els.pleaTimerDisplay.classList.toggle("plea-timer-ended", state.pleaSeconds === 0);
@@ -1546,13 +1540,6 @@ function renderRevotePleaTimerView() {
   if (!els.revotePleaTimerView) return;
   els.revotePleaTimerView.hidden = !state.showRevotePleaTimer;
   if (!state.showRevotePleaTimer) return;
-  const candidateNames = state.revotePleaCandidateIds
-    .map((id) => findPlayer(id)?.name)
-    .filter(Boolean)
-    .join("・");
-  if (els.revotePleaCandidateNames) {
-    els.revotePleaCandidateNames.textContent = candidateNames || "同票者";
-  }
   if (els.revotePleaTimerDisplay) {
     els.revotePleaTimerDisplay.textContent = String(Math.max(0, state.revotePleaSeconds));
     els.revotePleaTimerDisplay.classList.toggle("plea-timer-ended", state.revotePleaSeconds === 0);
