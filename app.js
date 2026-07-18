@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.7.0";
+const APP_VERSION = "v1.7.1";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -48,6 +48,7 @@ const state = {
   voteRecords: [],
   voteVoterId: "",
   voteTargetId: "",
+  editingVoteRecordIndex: -1,
   revoteCandidateIds: [],
   logs: [],
   roleDealQueue: [],
@@ -693,6 +694,7 @@ function resetVoteSession() {
   state.voteRecords = [];
   state.voteVoterId = "";
   state.voteTargetId = "";
+  state.editingVoteRecordIndex = -1;
   state.revoteCandidateIds = [];
 }
 
@@ -705,15 +707,30 @@ function recordVote() {
   const voter = findPlayer(state.voteVoterId);
   const target = findPlayer(state.voteTargetId);
   if (!voter || !target || !voter.alive || !target.alive) return;
-  if (state.voteRecords.some((record) => record.voterId === voter.id)) return;
+  const editIndex = getEditingVoteRecordIndex();
+  if (state.voteRecords.some((record, index) => record.voterId === voter.id && index !== editIndex)) return;
   const targetCandidates = getVoteTargetPlayers();
   if (!targetCandidates.some((player) => player.id === target.id)) return;
-  const order = state.voteRecords.length + 1;
-  state.voteRecords.push({ order, voterId: voter.id, targetId: target.id });
+  const order = editIndex >= 0 ? state.voteRecords[editIndex].order || editIndex + 1 : state.voteRecords.length + 1;
+  if (editIndex >= 0) {
+    state.voteRecords[editIndex] = { order, voterId: voter.id, targetId: target.id };
+  } else {
+    state.voteRecords.push({ order, voterId: voter.id, targetId: target.id });
+  }
   syncVoteCountsFromRecords();
-  addLog(`投票${order}: ${voter.name} → ${target.name}`);
+  addLog(`${editIndex >= 0 ? "投票修正" : "投票"}${order}: ${voter.name} → ${target.name}`);
   state.voteVoterId = "";
   state.voteTargetId = "";
+  state.editingVoteRecordIndex = -1;
+  renderAndStore();
+}
+
+function editVoteRecord(index) {
+  const record = state.voteRecords[index];
+  if (!record) return;
+  state.editingVoteRecordIndex = index;
+  state.voteVoterId = record.voterId;
+  state.voteTargetId = record.targetId;
   renderAndStore();
 }
 
@@ -741,8 +758,15 @@ function getVoteTargetPlayers() {
 }
 
 function getVoteVoterPlayers() {
-  const votedIds = new Set(state.voteRecords.map((record) => record.voterId));
+  const editIndex = getEditingVoteRecordIndex();
+  const votedIds = new Set(state.voteRecords.filter((_, index) => index !== editIndex).map((record) => record.voterId));
   return getLivingPlayers().filter((player) => !votedIds.has(player.id));
+}
+
+function getEditingVoteRecordIndex() {
+  return Number.isInteger(state.editingVoteRecordIndex) && state.editingVoteRecordIndex >= 0 && state.editingVoteRecordIndex < state.voteRecords.length
+    ? state.editingVoteRecordIndex
+    : -1;
 }
 
 function syncVoteCountsFromRecords() {
@@ -1167,6 +1191,7 @@ function renderVoteControls() {
   renderPlayerSelect(els.voteTargetSelect, targets, state.voteTargetId, "投票先を選択");
   if (els.recordVoteBtn) {
     els.recordVoteBtn.disabled = !state.voteVoterId || !state.voteTargetId;
+    els.recordVoteBtn.textContent = getEditingVoteRecordIndex() >= 0 ? "投票を修正" : "投票を記録";
   }
   if (els.sendTopVoteToPleaBtn) {
     els.sendTopVoteToPleaBtn.disabled = !state.voteRecords.length;
@@ -1220,9 +1245,13 @@ function renderVoteRecordList() {
       const voter = findPlayer(record.voterId);
       const target = findPlayer(record.targetId);
       const order = record.order || index + 1;
-      return `<div class="vote-record-row"><span>${order}票目</span><strong>${escapeHtml(voter?.name || "不明")}</strong><em>→</em><strong>${escapeHtml(target?.name || "不明")}</strong></div>`;
+      const active = index === getEditingVoteRecordIndex() ? " editing" : "";
+      return `<button class="vote-record-row${active}" type="button" data-vote-record-index="${index}"><span>${order}票目</span><strong>${escapeHtml(voter?.name || "不明")}</strong><em>→</em><strong>${escapeHtml(target?.name || "不明")}</strong></button>`;
     })
     .join("");
+  els.voteRecordList.querySelectorAll("[data-vote-record-index]").forEach((button) => {
+    button.addEventListener("click", () => editVoteRecord(Number(button.dataset.voteRecordIndex)));
+  });
 }
 
 function renderPleaTimerView() {
@@ -2628,6 +2657,7 @@ function getStatePayload() {
     voteRecords: state.voteRecords,
     voteVoterId: state.voteVoterId,
     voteTargetId: state.voteTargetId,
+    editingVoteRecordIndex: state.editingVoteRecordIndex,
     revoteCandidateIds: state.revoteCandidateIds,
     logs: state.logs,
     roleDealQueue: state.roleDealQueue,
@@ -2692,6 +2722,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.voteRecords = Array.isArray(saved.voteRecords) ? saved.voteRecords : [];
   state.voteVoterId = saved.voteVoterId || "";
   state.voteTargetId = saved.voteTargetId || "";
+  state.editingVoteRecordIndex = Number.isInteger(saved.editingVoteRecordIndex) ? saved.editingVoteRecordIndex : -1;
   state.revoteCandidateIds = Array.isArray(saved.revoteCandidateIds) ? saved.revoteCandidateIds : [];
   if (state.voteRecords.length) syncVoteCountsFromRecords();
   state.logs = saved.logs || [];

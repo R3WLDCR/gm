@@ -1473,6 +1473,19 @@ textarea:focus {
 .vote-record-row {
   grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 8px;
+  width: 100%;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vote-record-row:hover,
+.vote-record-row:focus-visible,
+.vote-record-row.editing {
+  outline: 3px solid rgba(12, 122, 103, 0.18);
+  border-color: rgba(12, 122, 103, 0.42);
+  background: #edf5f2;
 }
 
 .vote-record-row span,
