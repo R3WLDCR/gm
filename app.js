@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.8.2";
+const APP_VERSION = "v1.8.3";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -51,6 +51,7 @@ const state = {
   editingVoteRecordIndex: -1,
   revoteCandidateIds: [],
   revoteAssignIndex: 0,
+  pendingRevotePleaCandidateIds: [],
   showRevotePleaTimer: false,
   revotePleaCandidateIds: [],
   revotePleaSeconds: PLEA_TIMER_SECONDS,
@@ -142,6 +143,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "recordVoteBtn",
     "clearVotesBtn",
     "sendTopVoteToPleaBtn",
+    "startRevotePleaBtn",
     "voteSummary",
     "voteRecordList",
     "revoteNotice",
@@ -255,6 +257,7 @@ function bindEvents() {
   els.recordVoteBtn?.addEventListener("click", recordVote);
   els.clearVotesBtn?.addEventListener("click", resetVoteRecords);
   els.sendTopVoteToPleaBtn?.addEventListener("click", sendTopVoteToPlea);
+  els.startRevotePleaBtn?.addEventListener("click", startPendingRevotePlea);
   els.revoteNextBtn?.addEventListener("click", advanceRevoteAssignment);
   els.revotePleaBackBtn?.addEventListener("click", backFromRevotePleaTimer);
   els.revotePleaStartBtn?.addEventListener("click", startRevoteAfterPlea);
@@ -741,6 +744,7 @@ function resetVoteSession() {
   state.editingVoteRecordIndex = -1;
   state.revoteCandidateIds = [];
   state.revoteAssignIndex = 0;
+  state.pendingRevotePleaCandidateIds = [];
   resetRevotePleaTimerState();
 }
 
@@ -768,6 +772,7 @@ function recordVote() {
   state.voteVoterId = "";
   state.voteTargetId = "";
   state.editingVoteRecordIndex = -1;
+  updatePendingRevotePlea();
   startRevoteIfCompletedTie();
   renderAndStore();
 }
@@ -786,6 +791,7 @@ function deleteVoteRecord(index) {
   state.voteRecords.splice(index, 1);
   renumberVoteRecords();
   syncVoteCountsFromRecords();
+  updatePendingRevotePlea();
   if (state.editingVoteRecordIndex === index) {
     state.editingVoteRecordIndex = -1;
     state.voteVoterId = "";
@@ -814,7 +820,7 @@ function sendTopVoteToPlea() {
   const topIds = getTopVotedPlayerIds();
   if (!topIds.length) return;
   if (topIds.length > 1) {
-    startRevotePlea(topIds);
+    state.pendingRevotePleaCandidateIds = topIds;
     renderAndStore();
     return;
   }
@@ -826,8 +832,28 @@ function startRevoteIfCompletedTie() {
   if (state.voteRecords.length < getLivingPlayers().length) return;
   const topIds = getTopVotedPlayerIds();
   if (topIds.length > 1) {
-    startRevotePlea(topIds);
+    state.pendingRevotePleaCandidateIds = topIds;
+  } else {
+    state.pendingRevotePleaCandidateIds = [];
   }
+}
+
+function updatePendingRevotePlea() {
+  if (!state.pendingRevotePleaCandidateIds.length) return;
+  if (state.voteRecords.length < getLivingPlayers().length) {
+    state.pendingRevotePleaCandidateIds = [];
+    return;
+  }
+  const topIds = getTopVotedPlayerIds();
+  state.pendingRevotePleaCandidateIds = topIds.length > 1 ? topIds : [];
+}
+
+function startPendingRevotePlea() {
+  if (state.pendingRevotePleaCandidateIds.length <= 1) return;
+  const candidates = [...state.pendingRevotePleaCandidateIds];
+  state.pendingRevotePleaCandidateIds = [];
+  startRevotePlea(candidates);
+  renderAndStore();
 }
 
 function startRevotePlea(candidateIds) {
@@ -919,7 +945,9 @@ function finalizeRevoteAssignment() {
   const topIds = getTopVotedPlayerIds();
   if (!topIds.length) return;
   if (topIds.length > 1) {
-    startRevotePlea(topIds);
+    state.revoteCandidateIds = [];
+    state.revoteAssignIndex = 0;
+    state.pendingRevotePleaCandidateIds = topIds;
     renderAndStore();
     return;
   }
@@ -1391,7 +1419,13 @@ function renderVoteControls() {
     els.recordVoteBtn.textContent = getEditingVoteRecordIndex() >= 0 ? "投票を修正" : "投票を記録";
   }
   if (els.sendTopVoteToPleaBtn) {
-    els.sendTopVoteToPleaBtn.disabled = revoteMode || !state.voteRecords.length;
+    els.sendTopVoteToPleaBtn.disabled = revoteMode || Boolean(state.pendingRevotePleaCandidateIds.length) || !state.voteRecords.length;
+  }
+  if (els.startRevotePleaBtn) {
+    const candidates = state.pendingRevotePleaCandidateIds.map((id) => findPlayer(id)?.name).filter(Boolean);
+    els.startRevotePleaBtn.hidden = !candidates.length || revoteMode;
+    els.startRevotePleaBtn.disabled = !candidates.length || revoteMode;
+    els.startRevotePleaBtn.textContent = candidates.length ? `決戦弁明へ: ${candidates.join("・")}` : "決戦弁明へ";
   }
   if (els.revoteNotice) {
     els.revoteNotice.hidden = !revoteMode;
@@ -2947,6 +2981,7 @@ function getStatePayload() {
     editingVoteRecordIndex: state.editingVoteRecordIndex,
     revoteCandidateIds: state.revoteCandidateIds,
     revoteAssignIndex: state.revoteAssignIndex,
+    pendingRevotePleaCandidateIds: state.pendingRevotePleaCandidateIds,
     showRevotePleaTimer: state.showRevotePleaTimer,
     revotePleaCandidateIds: state.revotePleaCandidateIds,
     revotePleaSeconds: state.revotePleaSeconds,
@@ -3017,6 +3052,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.editingVoteRecordIndex = Number.isInteger(saved.editingVoteRecordIndex) ? saved.editingVoteRecordIndex : -1;
   state.revoteCandidateIds = Array.isArray(saved.revoteCandidateIds) ? saved.revoteCandidateIds : [];
   state.revoteAssignIndex = Number.isInteger(saved.revoteAssignIndex) ? saved.revoteAssignIndex : 0;
+  state.pendingRevotePleaCandidateIds = Array.isArray(saved.pendingRevotePleaCandidateIds) ? saved.pendingRevotePleaCandidateIds : [];
   state.showRevotePleaTimer = saved.showRevotePleaTimer === true;
   state.revotePleaCandidateIds = Array.isArray(saved.revotePleaCandidateIds) ? saved.revotePleaCandidateIds : [];
   state.revotePleaSeconds = Number.isFinite(Number(saved.revotePleaSeconds)) ? Number(saved.revotePleaSeconds) : PLEA_TIMER_SECONDS;

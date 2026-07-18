@@ -1592,6 +1592,10 @@ textarea:focus {
   gap: 8px;
 }
 
+.vote-panel-actions button {
+  white-space: normal;
+}
+
 .exile-button {
   flex: 1 1 auto;
   width: auto;
