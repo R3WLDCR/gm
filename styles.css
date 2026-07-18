@@ -1396,24 +1396,6 @@ textarea:focus {
   display: none;
 }
 
-.direct-plea-target {
-  flex: 1 1 150px;
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid rgba(12, 122, 103, 0.22);
-  border-radius: 7px;
-  background: rgba(237, 245, 242, 0.94);
-  color: var(--ink);
-  font-size: clamp(0.9rem, 2vw, 1.05rem);
-  font-weight: 900;
-  line-height: 1.2;
-  box-shadow: 0 12px 28px rgba(24, 34, 29, 0.12);
-}
-
-.direct-plea-target[hidden] {
-  display: none;
-}
-
 .vote-control-panel {
   display: grid;
   gap: 10px;

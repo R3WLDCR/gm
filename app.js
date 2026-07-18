@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.8.7";
+const APP_VERSION = "v1.8.8";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -137,7 +137,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "skipToVoteBtn",
     "backToTimerBtn",
     "exileBtn",
-    "directPleaTargetText",
     "voteRoundTable",
     "voteVoterSelect",
     "voteTargetSelect",
@@ -1275,11 +1274,6 @@ function renderHeader() {
     const directPleaTarget = findPlayer(state.voteSelectedPlayerId);
     els.exileBtn.disabled = !state.voteSelectedPlayerId;
     els.exileBtn.textContent = directPleaTarget ? `${directPleaTarget.name}を弁明へ` : "直接弁明へ";
-  }
-  if (els.directPleaTargetText) {
-    const directPleaTarget = findPlayer(state.voteSelectedPlayerId);
-    els.directPleaTargetText.hidden = !directPleaTarget;
-    els.directPleaTargetText.textContent = directPleaTarget ? `直接弁明の対象: ${directPleaTarget.name}` : "";
   }
   renderPleaTimerView();
   renderRevotePleaTimerView();
