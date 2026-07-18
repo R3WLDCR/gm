@@ -1139,6 +1139,20 @@ textarea:focus {
 .round-seat.vote-selected {
   outline: 5px solid rgba(185, 79, 90, 0.32);
   border-color: var(--rose);
+  background:
+    linear-gradient(rgba(185, 79, 90, 0.18), rgba(185, 79, 90, 0.18)),
+    #fff5f6;
+  box-shadow:
+    0 0 0 5px rgba(185, 79, 90, 0.12),
+    0 16px 34px rgba(185, 79, 90, 0.2);
+}
+
+.round-seat.vote-selected strong {
+  color: #7f1d2d;
+}
+
+.round-seat.vote-selected small {
+  color: #9f3d4c;
 }
 
 .round-seat.vote-assigned {
