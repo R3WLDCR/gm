@@ -1167,6 +1167,12 @@ textarea:focus {
   background: #fff7d6;
 }
 
+.round-seat.vote-self-disabled {
+  cursor: not-allowed;
+  opacity: 0.44;
+  filter: grayscale(0.25);
+}
+
 .round-seat.exiled {
   opacity: 0.68;
   border-color: var(--rose);

@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.8.6";
+const APP_VERSION = "v1.8.7";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -756,6 +756,7 @@ function recordVote() {
   const voter = findPlayer(state.voteVoterId);
   const target = findPlayer(state.voteTargetId);
   if (!voter || !target || !voter.alive || !target.alive) return;
+  if (voter.id === target.id) return;
   const editIndex = getEditingVoteRecordIndex();
   if (state.voteRecords.some((record, index) => record.voterId === voter.id && index !== editIndex)) return;
   const targetCandidates = getVoteTargetPlayers();
@@ -934,10 +935,13 @@ function finalizeRevoteAssignment() {
   if (!lastTargetId) return;
   getLivingPlayers().forEach((player) => {
     if (state.voteRecords.some((record) => record.voterId === player.id)) return;
+    const fallbackTargetId = getFirstRevoteTargetIdExcept(player.id);
+    const targetId = player.id === lastTargetId ? fallbackTargetId : lastTargetId;
+    if (!targetId) return;
     state.voteRecords.push({
       order: state.voteRecords.length + 1,
       voterId: player.id,
-      targetId: lastTargetId,
+      targetId,
     });
   });
   syncVoteCountsFromRecords();
@@ -957,9 +961,14 @@ function finalizeRevoteAssignment() {
 
 function getVoteTargetPlayers() {
   const living = getLivingPlayers();
-  if (!state.revoteCandidateIds.length) return living;
+  const voterId = state.voteVoterId;
+  if (!state.revoteCandidateIds.length) return living.filter((player) => player.id !== voterId);
   const candidateSet = new Set(state.revoteCandidateIds);
-  return living.filter((player) => candidateSet.has(player.id));
+  return living.filter((player) => candidateSet.has(player.id) && player.id !== voterId);
+}
+
+function getFirstRevoteTargetIdExcept(voterId) {
+  return state.revoteCandidateIds.find((id) => id !== voterId) || "";
 }
 
 function getVoteVoterPlayers() {
@@ -1768,9 +1777,10 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
     const status = getSeatStatus(player);
     const actionDisabled = actionMode && !canSelectActionTarget(getCurrentActionRoleId(), player);
     const voteAssignment = voteMode ? getVoteAssignmentForVoter(player.id) : null;
+    const voteSelfDisabled = voteMode && isRevoteAssignmentMode() && player.id === getCurrentRevoteTargetId();
     const seat = document.createElement("button");
     seat.type = "button";
-    seat.className = `round-seat ${player.alive ? "" : "dead"} ${actionDisabled ? "action-disabled" : ""} ${status ? `status-${status.type}` : ""} ${state.exiledPlayerIds.includes(player.id) ? "exiled" : ""} ${voteMode && state.voteSelectedPlayerId === player.id ? "vote-selected" : ""} ${voteAssignment ? "vote-assigned" : ""} ${voteAssignment?.targetId === getCurrentRevoteTargetId() ? "vote-assigned-current" : ""} ${!hideRoles && player.roleId ? "assigned" : ""} ${hideRoles ? "" : getRoleColorClass(player.roleId)} ${!hideRoles && shouldBlinkSeerTarget(player) ? "seer-blink" : ""} ${
+    seat.className = `round-seat ${player.alive ? "" : "dead"} ${actionDisabled ? "action-disabled" : ""} ${voteSelfDisabled ? "vote-self-disabled" : ""} ${status ? `status-${status.type}` : ""} ${state.exiledPlayerIds.includes(player.id) ? "exiled" : ""} ${voteMode && state.voteSelectedPlayerId === player.id ? "vote-selected" : ""} ${voteAssignment ? "vote-assigned" : ""} ${voteAssignment?.targetId === getCurrentRevoteTargetId() ? "vote-assigned-current" : ""} ${!hideRoles && player.roleId ? "assigned" : ""} ${hideRoles ? "" : getRoleColorClass(player.roleId)} ${!hideRoles && shouldBlinkSeerTarget(player) ? "seer-blink" : ""} ${
       state.roleDealSelectedPlayerIds.includes(player.id) ? "selected" : ""
     }`;
     seat.disabled = actionDisabled;
@@ -1823,6 +1833,7 @@ function toggleRevoteVoter(voterId) {
   const voter = findPlayer(voterId);
   const targetId = getCurrentRevoteTargetId();
   if (!voter || !voter.alive || !targetId) return;
+  if (voter.id === targetId) return;
   const existingIndex = state.voteRecords.findIndex((record) => record.voterId === voter.id);
   if (existingIndex >= 0 && state.voteRecords[existingIndex].targetId === targetId) {
     state.voteRecords.splice(existingIndex, 1);
