@@ -2172,6 +2172,16 @@ textarea:focus {
   gap: 6px;
 }
 
+.log-restore-notice {
+  padding: 10px 12px;
+  border: 1px solid rgba(199, 139, 43, 0.22);
+  border-radius: 7px;
+  background: #fff7e8;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
 .log-line {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) auto;

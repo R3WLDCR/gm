@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.13.1";
+const APP_VERSION = "v1.13.2";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -373,6 +373,7 @@ function startProgress() {
   state.guardedPlayerId = "";
   resetTimerValue(240);
   addLog("進行開始");
+  markLatestLogRestorable();
   renderAndStore();
 }
 
@@ -513,6 +514,7 @@ function startRoleDeal() {
   state.seerBlinkPlayerId = "";
   state.screen = "deal";
   addLog("配役を開始");
+  markLatestLogRestorable();
   renderAndStore();
 }
 
@@ -1134,9 +1136,8 @@ function restoreToLogPoint(logId) {
   const payload = state.logRestorePoints?.[logId];
   if (!payload) return;
   const log = state.logs.find((item) => item.id === logId);
-  if (!confirm(`${log?.text || "選択したログ"} の時点へ戻しますか？`)) return;
+  if (!confirm(`${log?.text || "選択したログ"} まで戻しますか？`)) return;
   applyRestoredPayload(payload);
-  addLog(`ログから復元: ${log?.text || "選択ログ"}`);
   renderAndStore();
 }
 
@@ -1302,6 +1303,7 @@ function resetToFirstNight() {
   resetActionSelection();
   resetTimerValue(240);
   addLog("初日へ戻した");
+  markLatestLogRestorable();
   renderAndStore();
 }
 
@@ -2764,6 +2766,13 @@ function renderVotes() {
 function renderLog() {
   els.logList.innerHTML = "";
   const groups = groupLogsByDay(state.logs.slice(0, 80));
+  const hasRestorableLog = state.logs.slice(0, 80).some((log) => state.logRestorePoints?.[log.id]);
+  if (state.logs.length && !hasRestorableLog) {
+    const notice = document.createElement("div");
+    notice.className = "log-restore-notice";
+    notice.textContent = "この表示中のログには復元ポイントがありません。新しく発生した進行ログから「ここへ戻る」が表示されます。";
+    els.logList.appendChild(notice);
+  }
   groups.forEach((group) => {
     const block = document.createElement("section");
     block.className = "log-day-block";
@@ -2784,9 +2793,9 @@ function renderLog() {
 
 function getLogLineHtml(log) {
   const tag = state.logRestorePoints?.[log.id] ? "button" : "div";
-  const restoreAttr = tag === "button" ? ` type="button" data-restore-log-id="${escapeHtml(log.id)}"` : "";
+  const restoreAttr = tag === "button" ? ` type="button" data-restore-log-id="${escapeHtml(log.id)}" aria-label="${escapeHtml(log.text)}まで戻る"` : "";
   const className = tag === "button" ? "log-line log-line-restorable" : "log-line";
-  const restoreBadge = tag === "button" ? '<small class="log-restore-badge">戻れる</small>' : "";
+  const restoreBadge = tag === "button" ? '<small class="log-restore-badge">ここへ戻る</small>' : "";
   return `<${tag} class="${className}"${restoreAttr}><time>${escapeHtml(log.time)}</time><span>${escapeHtml(log.text)}</span>${restoreBadge}</${tag}>`;
 }
 
