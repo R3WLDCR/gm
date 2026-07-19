@@ -17,7 +17,7 @@
       <header class="topbar">
         <div class="title-row">
           <p class="eyebrow">Werewolf Game Master</p>
-          <span id="appVersionBadge" class="version-badge">v1.12.0</span>
+          <span id="appVersionBadge" class="version-badge">v1.12.1</span>
         </div>
         <div class="top-actions">
           <details id="syncPanel" class="sync-panel">
@@ -174,7 +174,7 @@
 
           <div class="vote-table-actions" hidden>
             <button id="backToTimerBtn" class="secondary-button vote-back-button" type="button">戻る</button>
-            <button id="pleaBtn" class="secondary-button plea-button" type="button" disabled>弁明</button>
+            <button id="pleaBtn" class="secondary-button plea-button" type="button" disabled>遺言</button>
             <button id="exileBtn" class="primary-button exile-button" disabled>追放</button>
           </div>
           <div class="vote-control-panel" hidden>
@@ -210,15 +210,15 @@
             </div>
             <div class="vote-panel-actions">
               <button id="clearVotesBtn" class="secondary-button" type="button">投票をクリア</button>
-              <button id="startRevotePleaBtn" class="primary-button" type="button" hidden>決戦弁明へ</button>
-              <button id="sendTopVoteToPleaBtn" class="primary-button" type="button">最多票を弁明へ</button>
+              <button id="startRevotePleaBtn" class="primary-button" type="button" hidden>決戦遺言へ</button>
+              <button id="sendTopVoteToPleaBtn" class="primary-button" type="button">最多票を遺言へ</button>
             </div>
           </div>
           <div id="voteRoundTable" class="round-table vote-round-table" aria-live="polite"></div>
           <div id="pleaTimerView" class="plea-timer-view" hidden>
             <button id="pleaBackBtn" class="secondary-button plea-back-button" type="button">戻る</button>
             <div class="plea-timer-content">
-              <p class="plea-kicker">弁明</p>
+              <p class="plea-kicker">遺言</p>
               <span id="pleaTimerDisplay" class="plea-timer-display">30</span>
               <button id="pleaTimerToggleBtn" class="secondary-button plea-timer-toggle-button" type="button">開始</button>
             </div>
@@ -227,7 +227,7 @@
           <div id="revotePleaTimerView" class="plea-timer-view revote-plea-timer-view" hidden>
             <button id="revotePleaBackBtn" class="secondary-button plea-back-button" type="button">戻る</button>
             <div class="plea-timer-content revote-plea-content">
-              <p class="plea-kicker">決戦弁明</p>
+              <p class="plea-kicker">決戦遺言</p>
               <small id="revotePleaProgress" class="revote-plea-progress">1 / 1</small>
               <span id="revotePleaTimerDisplay" class="plea-timer-display">30</span>
               <button id="revotePleaTimerToggleBtn" class="secondary-button plea-timer-toggle-button" type="button">開始</button>

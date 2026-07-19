@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.12.0";
+const APP_VERSION = "v1.12.1";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -912,7 +912,7 @@ function startRevotePlea(candidateIds) {
     startPleaForTarget(candidates[0]);
     return;
   }
-  pushUndoSnapshot("決戦弁明へ");
+  pushUndoSnapshot("決戦遺言へ");
   state.revotePleaCandidateIds = candidates;
   state.revotePleaRoundIndex = 0;
   state.revotePleaSeconds = PLEA_TIMER_SECONDS;
@@ -1424,7 +1424,7 @@ function renderHeader() {
   document.querySelector(".vote-control-panel")?.toggleAttribute("hidden", !state.showVoteTable);
   if (els.pleaBtn) {
     els.pleaBtn.disabled = !state.voteSelectedPlayerId;
-    els.pleaBtn.textContent = "弁明";
+    els.pleaBtn.textContent = "遺言";
   }
   if (els.exileBtn) {
     els.exileBtn.disabled = !state.voteSelectedPlayerId;
@@ -1590,7 +1590,7 @@ function renderVoteControls() {
     const candidates = state.pendingRevotePleaCandidateIds.map((id) => findPlayer(id)?.name).filter(Boolean);
     els.startRevotePleaBtn.hidden = !candidates.length || revoteMode;
     els.startRevotePleaBtn.disabled = !candidates.length || revoteMode;
-    els.startRevotePleaBtn.textContent = "決戦弁明へ";
+    els.startRevotePleaBtn.textContent = "決戦遺言へ";
   }
   if (els.revoteNotice) {
     els.revoteNotice.hidden = !revoteMode;
@@ -2038,7 +2038,7 @@ function startPleaForSelectedPlayer() {
 function startPleaForTarget(playerId) {
   const player = findPlayer(playerId);
   if (!player || !player.alive || !isActivePlayer(player)) return;
-  pushUndoSnapshot("弁明へ");
+  pushUndoSnapshot("遺言へ");
   state.voteSelectedPlayerId = player.id;
   state.pleaTargetPlayerId = player.id;
   state.pleaSeconds = PLEA_TIMER_SECONDS;
