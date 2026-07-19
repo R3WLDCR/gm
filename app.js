@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.13.9";
+const APP_VERSION = "v1.14.0";
 const ACTION_GATE_MIN_SECONDS = 15;
 const ACTION_GATE_MAX_SECONDS = 30;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -151,6 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "recordVoteBtn",
     "clearVotesBtn",
     "startRevotePleaBtn",
+    "startRevotePleaTimerBtn",
     "voteSummary",
     "voteRecordList",
     "revoteNotice",
@@ -267,6 +268,7 @@ function bindEvents() {
   els.recordVoteBtn?.addEventListener("click", recordVote);
   els.clearVotesBtn?.addEventListener("click", resetVoteRecords);
   els.startRevotePleaBtn?.addEventListener("click", startPendingRevotePlea);
+  els.startRevotePleaTimerBtn?.addEventListener("click", startPendingRevotePleaTimer);
   els.revoteNextBtn?.addEventListener("click", advanceRevoteAssignment);
   els.revotePleaBackBtn?.addEventListener("click", backFromRevotePleaTimer);
   els.revotePleaTimerToggleBtn?.addEventListener("click", toggleRevotePleaTimer);
@@ -921,6 +923,27 @@ function startPendingRevotePlea() {
   renderAndStore();
 }
 
+function startPendingRevotePleaTimer() {
+  if (state.pendingRevotePleaCandidateIds.length <= 1) return;
+  const candidates = state.pendingRevotePleaCandidateIds.filter((id) => {
+    const player = findPlayer(id);
+    return player && player.alive && isActivePlayer(player);
+  });
+  if (candidates.length <= 1) return;
+  pushUndoSnapshot("決戦弁明へ");
+  state.pendingRevotePleaCandidateIds = [];
+  state.revotePleaCandidateIds = candidates;
+  state.revotePleaRoundIndex = 0;
+  state.revotePleaSeconds = PLEA_TIMER_SECONDS;
+  state.revotePleaRunning = false;
+  state.showRevotePleaTimer = true;
+  state.showVoteTable = false;
+  state.screen = "table";
+  state.phase = "vote";
+  stopRevotePleaTimer();
+  renderAndStore();
+}
+
 function startRevotePlea(candidateIds) {
   const candidates = candidateIds.filter((id) => {
     const player = findPlayer(id);
@@ -936,7 +959,9 @@ function startRevotePlea(candidateIds) {
 }
 
 function backFromRevotePleaTimer() {
+  const candidates = [...state.revotePleaCandidateIds];
   resetRevotePleaTimerState();
+  state.pendingRevotePleaCandidateIds = candidates;
   state.screen = "table";
   state.phase = "vote";
   state.showVoteTable = true;
@@ -947,6 +972,8 @@ function startRevoteAfterPlea() {
   if (!state.showRevotePleaTimer) return;
   pushUndoSnapshot("決選投票へ");
   const candidates = [...state.revotePleaCandidateIds];
+  addLog(formatVoteResultLog("投票結果", candidates));
+  markLatestLogRestorable();
   stopRevotePleaTimer();
   resetRevotePleaTimerState();
   startRevoteAssignment(candidates);
@@ -1643,6 +1670,12 @@ function renderVoteControls() {
     els.startRevotePleaBtn.hidden = !candidates.length || revoteMode;
     els.startRevotePleaBtn.disabled = !candidates.length || revoteMode;
     els.startRevotePleaBtn.textContent = "決選投票へ";
+  }
+  if (els.startRevotePleaTimerBtn) {
+    const candidates = state.pendingRevotePleaCandidateIds.map((id) => findPlayer(id)?.name).filter(Boolean);
+    els.startRevotePleaTimerBtn.hidden = !candidates.length || revoteMode;
+    els.startRevotePleaTimerBtn.disabled = !candidates.length || revoteMode;
+    els.startRevotePleaTimerBtn.textContent = "決戦弁明へ";
   }
   if (els.revoteNotice) {
     els.revoteNotice.hidden = !revoteMode;
