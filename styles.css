@@ -1101,6 +1101,20 @@ textarea:focus {
   background: #edf5f2;
 }
 
+.round-seat.revote-target-option {
+  border-color: rgba(185, 28, 28, 0.48);
+  background: #fff1f2;
+  box-shadow:
+    0 0 0 4px rgba(185, 28, 28, 0.08),
+    0 14px 30px rgba(24, 34, 29, 0.16);
+}
+
+.round-seat.revote-target-option:hover,
+.round-seat.revote-target-option:focus-visible {
+  outline-color: rgba(185, 28, 28, 0.24);
+  border-color: #b91c1c;
+}
+
 .round-seat.role-color-werewolf {
   border-color: #b91c1c;
   background: #fee2e2;

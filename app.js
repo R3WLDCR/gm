@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.10.4";
+const APP_VERSION = "v1.11.0";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -51,6 +51,7 @@ const state = {
   editingVoteRecordIndex: -1,
   revoteCandidateIds: [],
   revoteAssignIndex: 0,
+  revoteTargetSelectMode: false,
   pendingRevotePleaCandidateIds: [],
   showRevotePleaTimer: false,
   revotePleaCandidateIds: [],
@@ -775,6 +776,7 @@ function resetVoteSession() {
   state.editingVoteRecordIndex = -1;
   state.revoteCandidateIds = [];
   state.revoteAssignIndex = 0;
+  state.revoteTargetSelectMode = false;
   state.pendingRevotePleaCandidateIds = [];
   resetRevotePleaTimerState();
 }
@@ -942,12 +944,16 @@ function startRevoteAssignment(candidateIds) {
     const player = findPlayer(id);
     return player && player.alive && isActivePlayer(player);
   });
+  state.screen = "table";
+  state.phase = "vote";
   state.revoteAssignIndex = 0;
   state.voteRecords = [];
   state.votes = {};
   state.voteVoterId = "";
   state.voteTargetId = "";
   state.editingVoteRecordIndex = -1;
+  state.showVoteTable = true;
+  state.revoteTargetSelectMode = true;
   addLog("同票のため再投票");
 }
 
@@ -955,8 +961,12 @@ function isRevoteAssignmentMode() {
   return state.revoteCandidateIds.length > 1;
 }
 
+function isRevoteTargetSelectMode() {
+  return isRevoteAssignmentMode() && state.revoteTargetSelectMode;
+}
+
 function getCurrentRevoteTargetId() {
-  if (!isRevoteAssignmentMode()) return "";
+  if (!isRevoteAssignmentMode() || isRevoteTargetSelectMode()) return "";
   return state.revoteCandidateIds[Math.min(state.revoteAssignIndex, state.revoteCandidateIds.length - 2)] || "";
 }
 
@@ -967,8 +977,10 @@ function getLastRevoteTargetId() {
 
 function advanceRevoteAssignment() {
   if (!isRevoteAssignmentMode()) return;
+  if (isRevoteTargetSelectMode()) return;
   if (state.revoteAssignIndex < state.revoteCandidateIds.length - 2) {
     state.revoteAssignIndex += 1;
+    state.revoteTargetSelectMode = true;
     renderAndStore();
     return;
   }
@@ -995,13 +1007,29 @@ function finalizeRevoteAssignment() {
   if (topIds.length > 1) {
     state.revoteCandidateIds = [];
     state.revoteAssignIndex = 0;
+    state.revoteTargetSelectMode = false;
     state.pendingRevotePleaCandidateIds = topIds;
     renderAndStore();
     return;
   }
   state.revoteCandidateIds = [];
   state.revoteAssignIndex = 0;
+  state.revoteTargetSelectMode = false;
   startPleaForTarget(topIds[0]);
+}
+
+function selectRevoteTarget(targetId) {
+  if (!isRevoteTargetSelectMode()) return;
+  const target = findPlayer(targetId);
+  if (!target || !target.alive || !state.revoteCandidateIds.includes(target.id)) return;
+  const index = Math.min(state.revoteAssignIndex, state.revoteCandidateIds.length - 2);
+  const fixedTargets = state.revoteCandidateIds.slice(0, index);
+  const remainingTargets = state.revoteCandidateIds.slice(index).filter((id) => id !== target.id);
+  state.revoteCandidateIds = [...fixedTargets, target.id, ...remainingTargets];
+  state.revoteAssignIndex = index;
+  state.revoteTargetSelectMode = false;
+  state.voteSelectedPlayerId = "";
+  renderAndStore();
 }
 
 function getVoteTargetPlayers() {
@@ -1010,6 +1038,11 @@ function getVoteTargetPlayers() {
   if (!state.revoteCandidateIds.length) return living.filter((player) => player.id !== voterId);
   const candidateSet = new Set(state.revoteCandidateIds);
   return living.filter((player) => candidateSet.has(player.id) && player.id !== voterId);
+}
+
+function getRevoteCandidatePlayers() {
+  const candidateSet = new Set(state.revoteCandidateIds.slice(state.revoteAssignIndex));
+  return getLivingPlayers().filter((player) => candidateSet.has(player.id));
 }
 
 function getFirstRevoteTargetIdExcept(voterId) {
@@ -1458,7 +1491,8 @@ function renderVoteRoundTable() {
     els.voteRoundTable.innerHTML = "";
     return;
   }
-  renderRoundTableInto(els.voteRoundTable, { hideRoles: true, voteMode: true, players: getLivingPlayers() });
+  const players = isRevoteTargetSelectMode() ? getRevoteCandidatePlayers() : getLivingPlayers();
+  renderRoundTableInto(els.voteRoundTable, { hideRoles: true, voteMode: true, players });
 }
 
 function renderVoteControls() {
@@ -1487,7 +1521,9 @@ function renderVoteControls() {
   if (els.revoteNotice) {
     els.revoteNotice.hidden = !revoteMode;
     if (revoteMode) {
-      els.revoteNotice.textContent = `同票のため再投票: ${targets.map((player) => player.name).join("・")}`;
+      els.revoteNotice.textContent = isRevoteTargetSelectMode()
+        ? `決戦投票の対象を円卓で選択: ${getRevoteCandidatePlayers().map((player) => player.name).join("・")}`
+        : `同票のため再投票: ${targets.map((player) => player.name).join("・")}`;
     }
   }
   renderRevoteAssist();
@@ -1498,8 +1534,9 @@ function renderVoteControls() {
 function renderRevoteAssist() {
   if (!els.revoteAssistPanel) return;
   const revoteMode = isRevoteAssignmentMode();
-  els.revoteAssistPanel.hidden = !revoteMode;
-  if (!revoteMode) return;
+  const targetSelectMode = isRevoteTargetSelectMode();
+  els.revoteAssistPanel.hidden = !revoteMode || targetSelectMode;
+  if (!revoteMode || targetSelectMode) return;
   const currentTarget = findPlayer(getCurrentRevoteTargetId());
   const lastTarget = findPlayer(getLastRevoteTargetId());
   const assignedCount = state.voteRecords.filter((record) => record.targetId === currentTarget?.id).length;
@@ -1795,6 +1832,7 @@ function renderWerewolfResult() {
 }
 
 function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMode = false, dealMode = false, players = getActivePlayers() }) {
+  const revoteTargetSelectMode = voteMode && isRevoteTargetSelectMode();
   if (container === els.roundTable) {
     els.dealPlayerCount.textContent = `${players.length}人`;
     els.progressStartBtn.hidden = !dealMode || !isRoleDealComplete();
@@ -1836,10 +1874,10 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
     const status = getSeatStatus(player);
     const actionDisabled = actionMode && !canSelectActionTarget(getCurrentActionRoleId(), player);
     const voteAssignment = voteMode ? getVoteAssignmentForVoter(player.id) : null;
-    const voteSelfDisabled = voteMode && isRevoteAssignmentMode() && player.id === getCurrentRevoteTargetId();
+    const voteSelfDisabled = voteMode && !revoteTargetSelectMode && isRevoteAssignmentMode() && player.id === getCurrentRevoteTargetId();
     const seat = document.createElement("button");
     seat.type = "button";
-    seat.className = `round-seat ${player.alive ? "" : "dead"} ${actionDisabled ? "action-disabled" : ""} ${voteSelfDisabled ? "vote-self-disabled" : ""} ${status ? `status-${status.type}` : ""} ${state.exiledPlayerIds.includes(player.id) ? "exiled" : ""} ${voteMode && state.voteSelectedPlayerId === player.id ? "vote-selected" : ""} ${voteAssignment ? "vote-assigned" : ""} ${voteAssignment?.targetId === getCurrentRevoteTargetId() ? "vote-assigned-current" : ""} ${!hideRoles && player.roleId ? "assigned" : ""} ${hideRoles ? "" : getRoleColorClass(player.roleId)} ${!hideRoles && shouldBlinkSeerTarget(player) ? "seer-blink" : ""} ${
+    seat.className = `round-seat ${player.alive ? "" : "dead"} ${actionDisabled ? "action-disabled" : ""} ${voteSelfDisabled ? "vote-self-disabled" : ""} ${revoteTargetSelectMode ? "revote-target-option" : ""} ${status ? `status-${status.type}` : ""} ${state.exiledPlayerIds.includes(player.id) ? "exiled" : ""} ${voteMode && state.voteSelectedPlayerId === player.id ? "vote-selected" : ""} ${voteAssignment ? "vote-assigned" : ""} ${voteAssignment?.targetId === getCurrentRevoteTargetId() ? "vote-assigned-current" : ""} ${!hideRoles && player.roleId ? "assigned" : ""} ${hideRoles ? "" : getRoleColorClass(player.roleId)} ${!hideRoles && shouldBlinkSeerTarget(player) ? "seer-blink" : ""} ${
       state.roleDealSelectedPlayerIds.includes(player.id) ? "selected" : ""
     }`;
     seat.disabled = actionDisabled;
@@ -1849,7 +1887,7 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
     seat.style.setProperty("--seat-y", `${y}%`);
     seat.innerHTML = `
       <strong>${escapeHtml(player.name)}</strong>
-      <small>${role ? escapeHtml(role.name) : voteAssignment ? `→ ${escapeHtml(voteAssignment.targetName)}` : hideRoles ? "" : "未配役"}</small>
+      <small>${role ? escapeHtml(role.name) : revoteTargetSelectMode ? "決戦候補" : voteAssignment ? `→ ${escapeHtml(voteAssignment.targetName)}` : hideRoles ? "" : "未配役"}</small>
       ${status ? `<span class="seat-status-badge">${status.label}</span>` : ""}
     `;
     if (actionMode) {
@@ -1880,6 +1918,10 @@ function getSeatStatus(player) {
 }
 
 function selectVotePlayer(id) {
+  if (isRevoteTargetSelectMode()) {
+    selectRevoteTarget(id);
+    return;
+  }
   if (isRevoteAssignmentMode()) {
     toggleRevoteVoter(id);
     return;
@@ -3046,6 +3088,7 @@ function getStatePayload() {
     editingVoteRecordIndex: state.editingVoteRecordIndex,
     revoteCandidateIds: state.revoteCandidateIds,
     revoteAssignIndex: state.revoteAssignIndex,
+    revoteTargetSelectMode: state.revoteTargetSelectMode,
     pendingRevotePleaCandidateIds: state.pendingRevotePleaCandidateIds,
     showRevotePleaTimer: state.showRevotePleaTimer,
     revotePleaCandidateIds: state.revotePleaCandidateIds,
@@ -3118,6 +3161,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.editingVoteRecordIndex = Number.isInteger(saved.editingVoteRecordIndex) ? saved.editingVoteRecordIndex : -1;
   state.revoteCandidateIds = Array.isArray(saved.revoteCandidateIds) ? saved.revoteCandidateIds : [];
   state.revoteAssignIndex = Number.isInteger(saved.revoteAssignIndex) ? saved.revoteAssignIndex : 0;
+  state.revoteTargetSelectMode = saved.revoteTargetSelectMode === true;
   state.pendingRevotePleaCandidateIds = Array.isArray(saved.pendingRevotePleaCandidateIds) ? saved.pendingRevotePleaCandidateIds : [];
   state.showRevotePleaTimer = saved.showRevotePleaTimer === true;
   state.revotePleaCandidateIds = Array.isArray(saved.revotePleaCandidateIds) ? saved.revotePleaCandidateIds : [];
@@ -3136,8 +3180,10 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   }
   if (state.revoteCandidateIds.length > 1) {
     state.revoteAssignIndex = Math.max(0, Math.min(state.revoteAssignIndex, state.revoteCandidateIds.length - 2));
+    state.revoteTargetSelectMode = state.revoteTargetSelectMode === true;
   } else {
     state.revoteAssignIndex = 0;
+    state.revoteTargetSelectMode = false;
   }
   if (state.voteRecords.length) syncVoteCountsFromRecords();
   state.logs = saved.logs || [];
