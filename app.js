@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.12.1";
+const APP_VERSION = "v1.12.2";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -254,7 +254,7 @@ function bindEvents() {
   els.voteStartBtn.addEventListener("click", showVoteRoundTable);
   els.skipToVoteBtn.addEventListener("click", skipTimerToVoteButton);
   els.backToTimerBtn.addEventListener("click", backToTimerScreen);
-  els.pleaBtn?.addEventListener("click", startPleaForSelectedPlayer);
+  els.pleaBtn?.addEventListener("click", confirmSelectedPlayerExile);
   els.exileBtn.addEventListener("click", confirmSelectedPlayerExile);
   els.voteVoterSelect?.addEventListener("change", () => {
     state.voteVoterId = els.voteVoterSelect.value;
@@ -871,7 +871,8 @@ function sendTopVoteToPlea() {
     renderAndStore();
     return;
   }
-  startPleaForTarget(topIds[0]);
+  state.voteSelectedPlayerId = topIds[0];
+  confirmSelectedPlayerExile();
 }
 
 function startRevoteIfCompletedTie() {
@@ -899,7 +900,8 @@ function startPendingRevotePlea() {
   if (state.pendingRevotePleaCandidateIds.length <= 1) return;
   const candidates = [...state.pendingRevotePleaCandidateIds];
   state.pendingRevotePleaCandidateIds = [];
-  startRevotePlea(candidates);
+  pushUndoSnapshot("決選投票へ");
+  startRevoteAssignment(candidates);
   renderAndStore();
 }
 
@@ -909,21 +911,12 @@ function startRevotePlea(candidateIds) {
     return player && player.alive && isActivePlayer(player);
   });
   if (candidates.length <= 1) {
-    startPleaForTarget(candidates[0]);
+    state.voteSelectedPlayerId = candidates[0] || "";
+    confirmSelectedPlayerExile();
     return;
   }
-  pushUndoSnapshot("決戦遺言へ");
-  state.revotePleaCandidateIds = candidates;
-  state.revotePleaRoundIndex = 0;
-  state.revotePleaSeconds = PLEA_TIMER_SECONDS;
-  state.showRevotePleaTimer = true;
-  state.showVoteTable = false;
-  state.voteSelectedPlayerId = "";
-  state.timerRunning = false;
-  state.timerFocus = false;
-  stopTimer();
-  stopRevotePleaTimer();
-  state.revotePleaRunning = false;
+  pushUndoSnapshot("決選投票へ");
+  startRevoteAssignment(candidates);
 }
 
 function backFromRevotePleaTimer() {
@@ -1032,7 +1025,8 @@ function finalizeRevoteAssignment() {
   state.revoteCandidateIds = [];
   state.revoteAssignIndex = 0;
   state.revoteTargetSelectMode = false;
-  startPleaForTarget(topIds[0]);
+  state.voteSelectedPlayerId = topIds[0];
+  confirmSelectedPlayerExile();
 }
 
 function selectRevoteTarget(targetId) {
@@ -1590,7 +1584,7 @@ function renderVoteControls() {
     const candidates = state.pendingRevotePleaCandidateIds.map((id) => findPlayer(id)?.name).filter(Boolean);
     els.startRevotePleaBtn.hidden = !candidates.length || revoteMode;
     els.startRevotePleaBtn.disabled = !candidates.length || revoteMode;
-    els.startRevotePleaBtn.textContent = "決戦遺言へ";
+    els.startRevotePleaBtn.textContent = "決選投票へ";
   }
   if (els.revoteNotice) {
     els.revoteNotice.hidden = !revoteMode;
@@ -2032,7 +2026,7 @@ function renumberVoteRecords() {
 
 function startPleaForSelectedPlayer() {
   if (!state.voteSelectedPlayerId) return;
-  startPleaForTarget(state.voteSelectedPlayerId);
+  confirmSelectedPlayerExile();
 }
 
 function startPleaForTarget(playerId) {
