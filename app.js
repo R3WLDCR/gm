@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.13.3";
+const APP_VERSION = "v1.13.4";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -878,6 +878,8 @@ function sendTopVoteToPlea() {
     renderAndStore();
     return;
   }
+  addLog(formatVoteResultLog("投票結果", topIds));
+  markLatestLogRestorable();
   state.voteSelectedPlayerId = topIds[0];
   confirmSelectedPlayerExile();
 }
@@ -908,6 +910,8 @@ function startPendingRevotePlea() {
   const candidates = [...state.pendingRevotePleaCandidateIds];
   state.pendingRevotePleaCandidateIds = [];
   pushUndoSnapshot("決選投票へ");
+  addLog(formatVoteResultLog("投票結果", candidates));
+  markLatestLogRestorable();
   startRevoteAssignment(candidates);
   renderAndStore();
 }
@@ -1022,6 +1026,8 @@ function finalizeRevoteAssignment() {
   syncVoteCountsFromRecords();
   const topIds = getTopVotedPlayerIds();
   if (!topIds.length) return;
+  addLog(formatVoteResultLog("決選投票結果", topIds));
+  markLatestLogRestorable();
   if (topIds.length > 1) {
     state.revoteCandidateIds = [];
     state.revoteAssignIndex = 0;
@@ -1035,6 +1041,17 @@ function finalizeRevoteAssignment() {
   state.revoteTargetSelectMode = false;
   state.voteSelectedPlayerId = topIds[0];
   confirmSelectedPlayerExile();
+}
+
+function formatVoteResultLog(label, topIds = getTopVotedPlayerIds()) {
+  const rows = Object.entries(state.votes)
+    .map(([id, count]) => ({ player: findPlayer(id), count }))
+    .filter((row) => row.player)
+    .sort((a, b) => b.count - a.count || a.player.name.localeCompare(b.player.name, "ja"));
+  const summary = rows.map(({ player, count }) => `${player.name} ${count}票`).join("、") || "票なし";
+  const topNames = topIds.map((id) => findPlayer(id)?.name).filter(Boolean);
+  const suffix = topNames.length > 1 ? `（同票: ${topNames.join("・")}）` : topNames.length === 1 ? `（最多: ${topNames[0]}）` : "";
+  return `${label}: ${summary}${suffix}`;
 }
 
 function selectRevoteTarget(targetId) {
