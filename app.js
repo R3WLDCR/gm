@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.13.4";
+const APP_VERSION = "v1.13.5";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -256,7 +256,6 @@ function bindEvents() {
   els.voteStartBtn.addEventListener("click", showVoteRoundTable);
   els.skipToVoteBtn.addEventListener("click", skipTimerToVoteButton);
   els.backToTimerBtn.addEventListener("click", backToTimerScreen);
-  els.pleaBtn?.addEventListener("click", confirmSelectedPlayerExile);
   els.exileBtn.addEventListener("click", confirmSelectedPlayerExile);
   els.voteVoterSelect?.addEventListener("change", () => {
     state.voteVoterId = els.voteVoterSelect.value;
@@ -1476,10 +1475,6 @@ function renderHeader() {
   document.querySelector(".table-panel")?.classList.toggle("revote-plea-timer-mode", state.showRevotePleaTimer);
   document.querySelector(".vote-table-actions")?.toggleAttribute("hidden", !state.showVoteTable);
   document.querySelector(".vote-control-panel")?.toggleAttribute("hidden", !state.showVoteTable);
-  if (els.pleaBtn) {
-    els.pleaBtn.disabled = !state.voteSelectedPlayerId;
-    els.pleaBtn.textContent = "遺言";
-  }
   if (els.exileBtn) {
     els.exileBtn.disabled = !state.voteSelectedPlayerId;
     els.exileBtn.textContent = "追放";
