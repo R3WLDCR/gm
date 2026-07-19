@@ -1691,6 +1691,12 @@ textarea:focus {
   color: rgba(255, 255, 255, 0.72);
 }
 
+.revote-plea-progress {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: clamp(1.1rem, 2.6vw, 1.6rem);
+  font-weight: 900;
+}
+
 .plea-timer-display {
   display: block;
   font-family: "Bahnschrift", "Cascadia Mono", "Consolas", "DIN Alternate", monospace;
@@ -1709,7 +1715,8 @@ textarea:focus {
 }
 
 .plea-back-button,
-.plea-exile-button {
+.plea-exile-button,
+.plea-next-button {
   position: absolute;
   z-index: 2;
   min-height: clamp(48px, 7svh, 64px);
@@ -1722,11 +1729,20 @@ textarea:focus {
   min-width: clamp(86px, 16vw, 112px);
 }
 
-.plea-exile-button {
+.plea-exile-button,
+.plea-next-button {
   right: max(14px, env(safe-area-inset-right));
   bottom: max(14px, env(safe-area-inset-bottom));
   min-width: clamp(128px, 24vw, 190px);
   font-size: clamp(1.3rem, 3vw, 1.75rem);
+}
+
+.plea-timer-toggle-button {
+  min-height: clamp(44px, 6svh, 58px);
+  min-width: clamp(104px, 20vw, 150px);
+  border-color: rgba(250, 204, 21, 0.28);
+  background: rgba(255, 250, 241, 0.9);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
 }
 
 .vote-start-button {

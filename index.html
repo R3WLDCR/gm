@@ -17,7 +17,7 @@
       <header class="topbar">
         <div class="title-row">
           <p class="eyebrow">Werewolf Game Master</p>
-          <span id="appVersionBadge" class="version-badge">v1.9.1</span>
+          <span id="appVersionBadge" class="version-badge">v1.10.0</span>
         </div>
         <div class="top-actions">
           <details id="syncPanel" class="sync-panel">
@@ -219,6 +219,7 @@
             <div class="plea-timer-content">
               <p class="plea-kicker">弁明</p>
               <span id="pleaTimerDisplay" class="plea-timer-display">30</span>
+              <button id="pleaTimerToggleBtn" class="secondary-button plea-timer-toggle-button" type="button">停止</button>
             </div>
             <button id="pleaExileBtn" class="primary-button plea-exile-button" type="button" hidden>追放</button>
           </div>
@@ -226,8 +227,11 @@
             <button id="revotePleaBackBtn" class="secondary-button plea-back-button" type="button">戻る</button>
             <div class="plea-timer-content revote-plea-content">
               <p class="plea-kicker">決戦弁明</p>
+              <small id="revotePleaProgress" class="revote-plea-progress">1 / 1</small>
               <span id="revotePleaTimerDisplay" class="plea-timer-display">30</span>
+              <button id="revotePleaTimerToggleBtn" class="secondary-button plea-timer-toggle-button" type="button">停止</button>
             </div>
+            <button id="revotePleaNextBtn" class="secondary-button plea-next-button" type="button" hidden>次の30秒</button>
             <button id="revotePleaStartBtn" class="primary-button plea-exile-button" type="button" hidden>再投票へ</button>
           </div>
 
