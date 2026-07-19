@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.11.2";
+const APP_VERSION = "v1.11.3";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -1052,7 +1052,8 @@ function getFirstRevoteTargetIdExcept(voterId) {
 function getVoteVoterPlayers() {
   const editIndex = getEditingVoteRecordIndex();
   const votedIds = new Set(state.voteRecords.filter((_, index) => index !== editIndex).map((record) => record.voterId));
-  return getLivingPlayers().filter((player) => !votedIds.has(player.id));
+  const currentRevoteTargetId = isRevoteAssignmentMode() && !isRevoteTargetSelectMode() ? getCurrentRevoteTargetId() : "";
+  return getLivingPlayers().filter((player) => !votedIds.has(player.id) && player.id !== currentRevoteTargetId);
 }
 
 function getEditingVoteRecordIndex() {
@@ -1491,7 +1492,8 @@ function renderVoteRoundTable() {
     els.voteRoundTable.innerHTML = "";
     return;
   }
-  const players = isRevoteTargetSelectMode() ? getRevoteCandidatePlayers() : getLivingPlayers();
+  const currentRevoteTargetId = isRevoteAssignmentMode() && !isRevoteTargetSelectMode() ? getCurrentRevoteTargetId() : "";
+  const players = isRevoteTargetSelectMode() ? getRevoteCandidatePlayers() : getLivingPlayers().filter((player) => player.id !== currentRevoteTargetId);
   renderRoundTableInto(els.voteRoundTable, { hideRoles: true, voteMode: true, players });
 }
 
