@@ -19,11 +19,12 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.11.3";
+const APP_VERSION = "v1.12.0";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
 const PLEA_TIMER_SECONDS = 30;
+const DEBUG_HISTORY_LIMIT = 10;
 
 const state = {
   players: [],
@@ -80,6 +81,7 @@ const state = {
   gameWinner: "",
   victoryShownAt: 0,
   victoryDismissed: false,
+  undoHistory: [],
 };
 
 const phaseLabels = {
@@ -112,6 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "saveBtn",
     "resetBtn",
     "resetFirstNightBtn",
+    "undoStepBtn",
     "playerName",
     "addPlayerBtn",
     "playerList",
@@ -234,6 +237,7 @@ function bindEvents() {
   });
   els.resetBtn?.addEventListener("click", resetGame);
   els.resetFirstNightBtn?.addEventListener("click", resetToFirstNight);
+  els.undoStepBtn?.addEventListener("click", undoLastStep);
   document.querySelectorAll(".screen-tab").forEach((button) => {
     button.addEventListener("click", () => setScreen(button.dataset.screen));
   });
@@ -355,6 +359,7 @@ function startRoundTable() {
 }
 
 function startProgress() {
+  pushUndoSnapshot("進行開始");
   clearGameWinner();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
@@ -369,7 +374,8 @@ function startProgress() {
   renderAndStore();
 }
 
-function startNightActions() {
+function startNightActions({ recordUndo = true } = {}) {
+  if (recordUndo) pushUndoSnapshot("夜行動へ");
   clearGameWinner();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
@@ -395,6 +401,7 @@ function startNightActions() {
 }
 
 function showVoteRoundTable() {
+  pushUndoSnapshot("投票へ");
   resetPleaTimerState();
   resetVoteSession();
   state.screen = "table";
@@ -408,6 +415,7 @@ function showVoteRoundTable() {
 }
 
 function skipTimerToVoteButton() {
+  pushUndoSnapshot("投票ボタン表示へ");
   resetPleaTimerState();
   resetVoteSession();
   state.screen = "table";
@@ -488,6 +496,7 @@ function startRoleDeal() {
   const players = getActivePlayers();
   if (!players.length) return;
   if (state.participationCountedForDeal && !confirm("新しい卓として参加数をもう一度記録して配役を始めますか？")) return;
+  pushUndoSnapshot("配役開始");
   const counts = getStandardRoleCounts(players.length);
   recordParticipationsForDeal(players);
   state.roles.forEach((role) => {
@@ -523,6 +532,7 @@ function assignRoles() {
     renderAndStore();
     return;
   }
+  pushUndoSnapshot("配役完了");
   shuffle(deck);
   state.players.forEach((player) => {
     if (!isActivePlayer(player)) {
@@ -552,6 +562,7 @@ function setRoleCount(id, delta) {
 }
 
 function setPhase(phase) {
+  pushUndoSnapshot(`${phaseLabels[phase][0]}へ`);
   clearGameWinner();
   state.screen = "table";
   state.phase = phase;
@@ -577,6 +588,7 @@ function setPlayerSortMode(mode) {
 }
 
 function restartNightActions() {
+  pushUndoSnapshot("夜行動を再開");
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   assignRemainingVillagers();
@@ -795,6 +807,7 @@ function recordVote() {
   if (state.voteRecords.some((record, index) => record.voterId === voter.id && index !== editIndex)) return;
   const targetCandidates = getVoteTargetPlayers();
   if (!targetCandidates.some((player) => player.id === target.id)) return;
+  pushUndoSnapshot(editIndex >= 0 ? "投票修正" : "投票記録");
   const order = editIndex >= 0 ? state.voteRecords[editIndex].order || editIndex + 1 : state.voteRecords.length + 1;
   if (editIndex >= 0) {
     state.voteRecords[editIndex] = { order, voterId: voter.id, targetId: target.id };
@@ -899,6 +912,7 @@ function startRevotePlea(candidateIds) {
     startPleaForTarget(candidates[0]);
     return;
   }
+  pushUndoSnapshot("決戦弁明へ");
   state.revotePleaCandidateIds = candidates;
   state.revotePleaRoundIndex = 0;
   state.revotePleaSeconds = PLEA_TIMER_SECONDS;
@@ -922,6 +936,7 @@ function backFromRevotePleaTimer() {
 
 function startRevoteAfterPlea() {
   if (!state.showRevotePleaTimer) return;
+  pushUndoSnapshot("決選投票へ");
   const candidates = [...state.revotePleaCandidateIds];
   stopRevotePleaTimer();
   resetRevotePleaTimerState();
@@ -932,6 +947,7 @@ function startRevoteAfterPlea() {
 function startNextRevotePleaRound() {
   if (!state.showRevotePleaTimer) return;
   if (state.revotePleaRoundIndex >= state.revotePleaCandidateIds.length - 1) return;
+  pushUndoSnapshot("次の決戦者");
   state.revotePleaRoundIndex += 1;
   state.revotePleaSeconds = PLEA_TIMER_SECONDS;
   stopRevotePleaTimer();
@@ -978,6 +994,7 @@ function getLastRevoteTargetId() {
 function advanceRevoteAssignment() {
   if (!isRevoteAssignmentMode()) return;
   if (isRevoteTargetSelectMode()) return;
+  pushUndoSnapshot("決戦投票を進める");
   if (state.revoteAssignIndex < state.revoteCandidateIds.length - 2) {
     state.revoteAssignIndex += 1;
     state.revoteTargetSelectMode = true;
@@ -1079,6 +1096,54 @@ function syncVoteCountsFromRecords() {
   }, {});
 }
 
+function pushUndoSnapshot(label) {
+  state.undoHistory.unshift({
+    label,
+    savedAt: Date.now(),
+    payload: cloneStatePayload(getStatePayload({ includeUndoHistory: false })),
+  });
+  state.undoHistory = state.undoHistory.slice(0, DEBUG_HISTORY_LIMIT);
+}
+
+function cloneStatePayload(payload) {
+  return JSON.parse(JSON.stringify(payload));
+}
+
+function undoLastStep() {
+  if (!state.undoHistory.length) return;
+  if (!confirm("直前の進行操作に戻しますか？")) return;
+  const [snapshot, ...rest] = state.undoHistory;
+  stopAllLiveTimers();
+  applySavedState(snapshot.payload, { resetActionScreen: false });
+  state.undoHistory = rest;
+  stopAllLiveTimers();
+  state.timerRunning = false;
+  state.pleaRunning = false;
+  state.revotePleaRunning = false;
+  state.actionGateRoleId = "";
+  state.actionGateSeconds = 0;
+  state.actionGateBaseSeconds = 0;
+  state.actionBlockedRoleId = "";
+  state.actionBlockedSeconds = 0;
+  addLog(`1手戻した: ${snapshot.label}`);
+  renderAndStore();
+}
+
+function stopAllLiveTimers() {
+  stopTimer();
+  stopPleaTimer();
+  stopRevotePleaTimer();
+  stopActionGateCountdown();
+  stopBlockedRoleCountdown();
+  stopVictoryBackTimer();
+}
+
+function stopVictoryBackTimer() {
+  if (!victoryBackTimerId) return;
+  window.clearTimeout(victoryBackTimerId);
+  victoryBackTimerId = null;
+}
+
 function getTopVotedPlayerIds() {
   syncVoteCountsFromRecords();
   const entries = Object.entries(state.votes).filter(([id]) => {
@@ -1091,6 +1156,7 @@ function getTopVotedPlayerIds() {
 }
 
 function nextDay() {
+  pushUndoSnapshot("次の日へ");
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   resetVoteSession();
@@ -1160,12 +1226,14 @@ function resetGame() {
   state.playerSortMode = "manual";
   state.participationCountedForDeal = false;
   state.gameWinner = "";
+  state.undoHistory = [];
   resetActionSelection();
   renderAndStore();
 }
 
 function resetToFirstNight() {
   if (!confirm("進行を初日夜に戻しますか？")) return;
+  pushUndoSnapshot("初日へ戻す");
   stopTimer();
   resetPleaTimerState();
   resetVoteSession();
@@ -1325,6 +1393,10 @@ function renderScreen() {
 
 function renderHeader() {
   if (els.appVersionBadge) els.appVersionBadge.textContent = APP_VERSION;
+  if (els.undoStepBtn) {
+    els.undoStepBtn.disabled = !state.undoHistory.length;
+    els.undoStepBtn.title = state.undoHistory.length ? `戻す: ${state.undoHistory[0].label}` : "戻せる進行操作はありません";
+  }
   const activePlayerCount = getActivePlayers().length;
   els.balanceBadge.textContent = `${activePlayerCount} / ${state.players.length}`;
   els.balanceBadge.style.background = activePlayerCount ? "#edf5f2" : "#fae8ea";
@@ -1966,6 +2038,7 @@ function startPleaForSelectedPlayer() {
 function startPleaForTarget(playerId) {
   const player = findPlayer(playerId);
   if (!player || !player.alive || !isActivePlayer(player)) return;
+  pushUndoSnapshot("弁明へ");
   state.voteSelectedPlayerId = player.id;
   state.pleaTargetPlayerId = player.id;
   state.pleaSeconds = PLEA_TIMER_SECONDS;
@@ -1993,12 +2066,16 @@ function confirmPleaExile() {
   if (!state.showPleaTimer || state.pleaSeconds > 0) return;
   const targetId = state.pleaTargetPlayerId;
   resetPleaTimerState();
+  state.screen = "table";
+  state.phase = "vote";
+  state.showVoteTable = true;
   state.voteSelectedPlayerId = targetId;
   confirmSelectedPlayerExile();
 }
 
 function confirmSelectedPlayerExile() {
   if (!state.voteSelectedPlayerId) return;
+  pushUndoSnapshot("追放");
   if (!state.exiledPlayerIds.includes(state.voteSelectedPlayerId)) {
     state.exiledPlayerIds.push(state.voteSelectedPlayerId);
   }
@@ -2011,7 +2088,7 @@ function confirmSelectedPlayerExile() {
     setGameWinner(result.winner);
     addLog(`ゲーム終了: ${result.winner}の勝利`);
   } else {
-    startNightActions();
+    startNightActions({ recordUndo: false });
     return;
   }
   renderAndStore();
@@ -2177,6 +2254,7 @@ function handleActionTarget(player) {
     renderAndStore();
     return;
   } else if (roleId === "medium") {
+    pushUndoSnapshot("霊媒確定");
     addLog(formatActionLog("霊媒", "medium", player, getDivinationResult(player)));
   } else if (roleId === "werewolf") {
     state.actionSelectedTargetId = player.id;
@@ -2199,6 +2277,7 @@ function handleKnightOk() {
     renderAndStore();
     return;
   }
+  pushUndoSnapshot("護衛確定");
   state.guardedPlayerId = player.id;
   state.lastGuardedPlayerId = player.id;
   addLog(formatActionLog("護衛", "knight", player));
@@ -2226,6 +2305,7 @@ function handleWerewolfOk() {
     renderAndStore();
     return;
   }
+  pushUndoSnapshot("襲撃確定");
   resolveNightAttack(player);
 }
 
@@ -2277,6 +2357,7 @@ function handleSeerOk() {
     return;
   }
   if (!isActionGateReady("seer")) return;
+  pushUndoSnapshot("占い確定");
   addLog(formatActionLog("占い", "seer", player, getDivinationResult(player)));
   state.actionRoleIndex += 1;
   resetActionSelection();
@@ -3097,8 +3178,8 @@ function store() {
   if (!applyingCloudState) markLocalDirty();
 }
 
-function getStatePayload() {
-  return {
+function getStatePayload({ includeUndoHistory = true } = {}) {
+  const payload = {
     players: state.players,
     roles: state.roles,
     screen: state.screen,
@@ -3153,6 +3234,10 @@ function getStatePayload() {
     victoryShownAt: state.victoryShownAt,
     victoryDismissed: state.victoryDismissed,
   };
+  if (includeUndoHistory) {
+    payload.undoHistory = state.undoHistory.slice(0, DEBUG_HISTORY_LIMIT);
+  }
+  return payload;
 }
 
 function restore() {
@@ -3243,6 +3328,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.gameWinner = saved.gameWinner || "";
   state.victoryShownAt = Number.isFinite(Number(saved.victoryShownAt)) ? Number(saved.victoryShownAt) : 0;
   state.victoryDismissed = saved.victoryDismissed === true;
+  state.undoHistory = Array.isArray(saved.undoHistory) ? saved.undoHistory.slice(0, DEBUG_HISTORY_LIMIT) : [];
   if (resetActionScreen && state.screen === "action") {
     state.actionRoleIndex = 0;
     state.actionComplete = false;
