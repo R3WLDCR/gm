@@ -1712,6 +1712,59 @@ textarea:focus {
   display: none;
 }
 
+.attack-result-view {
+  position: relative;
+  min-height: 680px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(239, 68, 68, 0.16), transparent 34%),
+    linear-gradient(180deg, #1b1116 0%, #2a1720 55%, #080507 100%);
+  color: #fff7ed;
+}
+
+.attack-result-view[hidden] {
+  display: none;
+}
+
+.attack-result-content {
+  width: min(980px, 92vw);
+  display: grid;
+  justify-items: center;
+  gap: clamp(12px, 2.6svh, 30px);
+  text-align: center;
+}
+
+.attack-result-content p,
+.attack-result-content span {
+  margin: 0;
+  color: rgba(255, 247, 237, 0.72);
+  font-size: clamp(1rem, 2.4vw, 1.55rem);
+  font-weight: 900;
+}
+
+.attack-result-content strong {
+  max-width: 92vw;
+  font-size: clamp(4.2rem, 13vw, 10rem);
+  font-weight: 900;
+  line-height: 1;
+  overflow-wrap: anywhere;
+  text-shadow: 0 22px 58px rgba(0, 0, 0, 0.52);
+}
+
+.attack-result-content strong.no-victim {
+  color: #dbeafe;
+}
+
+.attack-result-ok-button {
+  min-width: clamp(140px, 20vw, 220px);
+  min-height: clamp(54px, 8svh, 72px);
+  border-radius: 8px;
+  font-size: clamp(1.25rem, 3vw, 2rem);
+}
+
 .night-transition-content {
   width: min(920px, 92vw);
   display: grid;
@@ -2452,6 +2505,10 @@ body.night-transition-fullscreen-view {
   overflow: hidden;
 }
 
+body.attack-result-fullscreen-view {
+  overflow: hidden;
+}
+
 body.timer-fullscreen-view .app-shell {
   width: 100%;
   min-height: 100svh;
@@ -2471,6 +2528,12 @@ body.revote-plea-fullscreen-view .app-shell {
 }
 
 body.night-transition-fullscreen-view .app-shell {
+  width: 100%;
+  min-height: 100svh;
+  padding: 0;
+}
+
+body.attack-result-fullscreen-view .app-shell {
   width: 100%;
   min-height: 100svh;
   padding: 0;
@@ -2514,6 +2577,21 @@ body.night-transition-fullscreen-view .revote-plea-timer-view {
   display: none;
 }
 
+body.attack-result-fullscreen-view .topbar,
+body.attack-result-fullscreen-view .screen-tabs,
+body.attack-result-fullscreen-view .victory-banner,
+body.attack-result-fullscreen-view .table-heading,
+body.attack-result-fullscreen-view .phase-visual,
+body.attack-result-fullscreen-view .timer-strip,
+body.attack-result-fullscreen-view .vote-table-actions,
+body.attack-result-fullscreen-view .vote-control-panel,
+body.attack-result-fullscreen-view .vote-round-table,
+body.attack-result-fullscreen-view .plea-timer-view,
+body.attack-result-fullscreen-view .revote-plea-timer-view,
+body.attack-result-fullscreen-view .night-transition-view {
+  display: none;
+}
+
 body.timer-fullscreen-view .workspace,
 body.timer-fullscreen-view .table-panel.active {
   min-height: 100svh;
@@ -2531,6 +2609,11 @@ body.revote-plea-fullscreen-view .table-panel.active {
 
 body.night-transition-fullscreen-view .workspace,
 body.night-transition-fullscreen-view .table-panel.active {
+  min-height: 100svh;
+}
+
+body.attack-result-fullscreen-view .workspace,
+body.attack-result-fullscreen-view .table-panel.active {
   min-height: 100svh;
 }
 
@@ -2578,6 +2661,17 @@ body.night-transition-fullscreen-view .table-panel.active {
   overflow: hidden;
 }
 
+body.attack-result-fullscreen-view .table-panel.active {
+  display: grid;
+  place-items: stretch;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  overflow: hidden;
+}
+
 body.plea-fullscreen-view .plea-timer-view {
   width: 100%;
   min-height: 100svh;
@@ -2591,6 +2685,12 @@ body.revote-plea-fullscreen-view .revote-plea-timer-view {
 }
 
 body.night-transition-fullscreen-view .night-transition-view {
+  width: 100%;
+  min-height: 100svh;
+  border-radius: 0;
+}
+
+body.attack-result-fullscreen-view .attack-result-view {
   width: 100%;
   min-height: 100svh;
   border-radius: 0;

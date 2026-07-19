@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.15.1";
+const APP_VERSION = "v1.16.0";
 const ACTION_GATE_MIN_SECONDS = 15;
 const ACTION_GATE_MAX_SECONDS = 30;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -62,6 +62,10 @@ const state = {
   revotePleaRunning: false,
   showNightTransition: false,
   nightTransitionSeconds: NIGHT_TRANSITION_SECONDS,
+  showAttackResult: false,
+  attackResultTargetId: "",
+  attackResultSucceeded: false,
+  attackResultWinner: "",
   logs: [],
   roleDealQueue: [],
   roleDealIndex: 0,
@@ -173,6 +177,11 @@ document.addEventListener("DOMContentLoaded", () => {
     "nightTransitionView",
     "nightTransitionSeconds",
     "nightTransitionOkBtn",
+    "attackResultView",
+    "attackResultLead",
+    "attackResultName",
+    "attackResultMessage",
+    "attackResultOkBtn",
     "pleaTimerView",
     "pleaTimerDisplay",
     "pleaTimerToggleBtn",
@@ -283,6 +292,7 @@ function bindEvents() {
   els.revotePleaNextBtn?.addEventListener("click", startNextRevotePleaRound);
   els.revotePleaStartBtn?.addEventListener("click", startRevoteAfterPlea);
   els.nightTransitionOkBtn?.addEventListener("click", completeNightTransition);
+  els.attackResultOkBtn?.addEventListener("click", completeAttackResult);
   els.pleaBackBtn?.addEventListener("click", backFromPleaTimer);
   els.pleaTimerToggleBtn?.addEventListener("click", togglePleaTimer);
   els.pleaExileBtn?.addEventListener("click", confirmPleaExile);
@@ -348,6 +358,7 @@ function toggleParticipation(id) {
 function startRoundTable() {
   clearGameWinner();
   resetNightTransitionState();
+  resetAttackResultState();
   resetPleaTimerState();
   resetVoteSession();
   state.screen = "deal";
@@ -373,6 +384,7 @@ function startProgress() {
   pushUndoSnapshot("進行開始");
   clearGameWinner();
   resetNightTransitionState();
+  resetAttackResultState();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   state.screen = "table";
@@ -391,6 +403,7 @@ function startNightActions({ recordUndo = true } = {}) {
   if (recordUndo) pushUndoSnapshot("夜行動へ");
   clearGameWinner();
   resetNightTransitionState();
+  resetAttackResultState();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   resetPleaTimerState();
@@ -417,6 +430,7 @@ function startNightActions({ recordUndo = true } = {}) {
 function showVoteRoundTable() {
   pushUndoSnapshot("投票へ");
   resetNightTransitionState();
+  resetAttackResultState();
   resetPleaTimerState();
   resetVoteSession();
   state.screen = "table";
@@ -792,6 +806,13 @@ function resetNightTransitionState() {
   state.nightTransitionSeconds = NIGHT_TRANSITION_SECONDS;
 }
 
+function resetAttackResultState() {
+  state.showAttackResult = false;
+  state.attackResultTargetId = "";
+  state.attackResultSucceeded = false;
+  state.attackResultWinner = "";
+}
+
 function resetTimer() {
   const wasRunning = state.timerRunning;
   state.timerSeconds = state.timerBase;
@@ -809,6 +830,7 @@ function resetTimer() {
 
 function resetTimerValue(seconds) {
   resetNightTransitionState();
+  resetAttackResultState();
   resetPleaTimerState();
   resetVoteSession();
   state.timerBase = seconds;
@@ -1262,6 +1284,7 @@ function applyRestoredPayload(payload) {
   state.revotePleaRunning = false;
   state.showNightTransition = false;
   state.nightTransitionSeconds = NIGHT_TRANSITION_SECONDS;
+  resetAttackResultState();
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
   state.actionGateBaseSeconds = 0;
@@ -1429,6 +1452,7 @@ function render() {
   renderRoundTable();
   renderVoteRoundTable();
   renderNightTransitionView();
+  renderAttackResultView();
   renderActionRoundTable();
   renderVoteControls();
   renderSelectors();
@@ -1445,6 +1469,7 @@ function renderParticipantViewMode() {
   document.body.classList.toggle("plea-fullscreen-view", isPleaFullscreenView());
   document.body.classList.toggle("revote-plea-fullscreen-view", isRevotePleaFullscreenView());
   document.body.classList.toggle("night-transition-fullscreen-view", isNightTransitionFullscreenView());
+  document.body.classList.toggle("attack-result-fullscreen-view", isAttackResultFullscreenView());
   const victoryFullscreen = isVictoryFullscreenView();
   document.body.classList.toggle("victory-fullscreen-view", victoryFullscreen);
   document.body.classList.toggle("werewolf-victory-view", victoryFullscreen && state.gameWinner === "人狼陣営");
@@ -1476,6 +1501,10 @@ function isRevotePleaFullscreenView() {
 
 function isNightTransitionFullscreenView() {
   return state.screen === "table" && state.showNightTransition;
+}
+
+function isAttackResultFullscreenView() {
+  return state.screen === "table" && state.showAttackResult;
 }
 
 function renderVictoryBanner() {
@@ -1864,6 +1893,24 @@ function renderNightTransitionView() {
   if (els.nightTransitionOkBtn) {
     els.nightTransitionOkBtn.hidden = state.nightTransitionSeconds > 0;
     els.nightTransitionOkBtn.disabled = state.nightTransitionSeconds > 0;
+  }
+}
+
+function renderAttackResultView() {
+  if (!els.attackResultView) return;
+  els.attackResultView.hidden = !state.showAttackResult;
+  if (!state.showAttackResult) return;
+  const player = findPlayer(state.attackResultTargetId);
+  const name = state.attackResultSucceeded ? player?.name || "不明" : "犠牲者なし";
+  if (els.attackResultLead) {
+    els.attackResultLead.textContent = "昨夜の襲撃";
+  }
+  if (els.attackResultName) {
+    els.attackResultName.textContent = name;
+    els.attackResultName.classList.toggle("no-victim", !state.attackResultSucceeded);
+  }
+  if (els.attackResultMessage) {
+    els.attackResultMessage.textContent = state.attackResultSucceeded ? "朝、姿が見えません" : "誰も欠けることなく朝を迎えました";
   }
 }
 
@@ -2493,6 +2540,7 @@ function handleWerewolfOk() {
 
 function resolveNightAttack(player) {
   const actorNames = getActionActorNames("werewolf");
+  const attackSucceeded = state.guardedPlayerId !== player.id;
   if (state.guardedPlayerId === player.id) {
     addLog(`襲撃失敗: ${actorNames} → ${player.name}`);
   } else {
@@ -2507,26 +2555,62 @@ function resolveNightAttack(player) {
   state.actionRoleIndex += 1;
   resetActionSelection();
   advanceActionRole();
-  finishNightActions();
+  finishNightActions({ attackResult: { targetId: player.id, succeeded: attackSucceeded } });
 }
 
-function finishNightActions() {
+function finishNightActions({ attackResult = null } = {}) {
   const result = getGameResult();
+  if (attackResult) {
+    showAttackResultScreen(attackResult, result);
+    return;
+  }
   if (result.ended) {
     setGameWinner(result.winner);
     addLog(`ゲーム終了: ${result.winner}の勝利`);
     markLatestLogRestorable();
   } else {
-    state.screen = "table";
-    state.phase = "day";
-    state.day += 1;
-    state.showVoteTable = false;
-    state.voteSelectedPlayerId = "";
-    resetTimerValue(300);
-    addLog(`${state.day}日目の昼へ`);
-    markLatestLogRestorable();
+    enterDayAfterNight();
   }
   renderAndStore();
+}
+
+function showAttackResultScreen(attackResult, gameResult) {
+  state.showAttackResult = true;
+  state.attackResultTargetId = attackResult.targetId || "";
+  state.attackResultSucceeded = attackResult.succeeded === true;
+  state.attackResultWinner = gameResult.ended ? gameResult.winner : "";
+  state.screen = "table";
+  state.phase = "night";
+  state.showVoteTable = false;
+  state.voteSelectedPlayerId = "";
+  stopAllLiveTimers();
+  renderAndStore();
+}
+
+function completeAttackResult() {
+  if (!state.showAttackResult) return;
+  const winner = state.attackResultWinner;
+  resetAttackResultState();
+  if (winner) {
+    setGameWinner(winner);
+    addLog(`ゲーム終了: ${winner}の勝利`);
+    markLatestLogRestorable();
+    renderAndStore();
+    return;
+  }
+  enterDayAfterNight();
+  renderAndStore();
+}
+
+function enterDayAfterNight() {
+  state.screen = "table";
+  state.phase = "day";
+  state.day += 1;
+  state.showVoteTable = false;
+  state.voteSelectedPlayerId = "";
+  resetTimerValue(300);
+  addLog(`${state.day}日目の昼へ`);
+  markLatestLogRestorable();
 }
 
 function handleSeerOk() {
@@ -3419,6 +3503,10 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     revotePleaRunning: state.revotePleaRunning,
     showNightTransition: state.showNightTransition,
     nightTransitionSeconds: state.nightTransitionSeconds,
+    showAttackResult: state.showAttackResult,
+    attackResultTargetId: state.attackResultTargetId,
+    attackResultSucceeded: state.attackResultSucceeded,
+    attackResultWinner: state.attackResultWinner,
     logs: state.logs,
     roleDealQueue: state.roleDealQueue,
     roleDealIndex: state.roleDealIndex,
@@ -3517,6 +3605,15 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     state.phase = "vote";
     state.showVoteTable = false;
     state.nightTransitionSeconds = Math.max(0, Math.min(NIGHT_TRANSITION_SECONDS, state.nightTransitionSeconds));
+  }
+  state.showAttackResult = saved.showAttackResult === true;
+  state.attackResultTargetId = saved.attackResultTargetId || "";
+  state.attackResultSucceeded = saved.attackResultSucceeded === true;
+  state.attackResultWinner = saved.attackResultWinner || "";
+  if (state.showAttackResult) {
+    state.screen = "table";
+    state.phase = "night";
+    state.showVoteTable = false;
   }
   if (state.revoteCandidateIds.length > 1) {
     state.revoteAssignIndex = Math.max(0, Math.min(state.revoteAssignIndex, state.revoteCandidateIds.length - 2));
