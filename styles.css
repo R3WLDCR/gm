@@ -1695,6 +1695,60 @@ textarea:focus {
   display: none;
 }
 
+.night-transition-view {
+  position: relative;
+  min-height: 680px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(219, 234, 254, 0.16), transparent 34%),
+    linear-gradient(180deg, #101826 0%, #172033 56%, #070b12 100%);
+  color: #f8fafc;
+}
+
+.night-transition-view[hidden] {
+  display: none;
+}
+
+.night-transition-content {
+  width: min(920px, 92vw);
+  display: grid;
+  justify-items: center;
+  gap: clamp(12px, 2.6svh, 28px);
+  text-align: center;
+}
+
+.night-transition-content p {
+  margin: 0;
+  color: rgba(248, 250, 252, 0.66);
+  font-size: clamp(1rem, 2.2vw, 1.45rem);
+  font-weight: 900;
+}
+
+.night-transition-content strong {
+  font-size: clamp(4rem, 12vw, 9.5rem);
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 20px 54px rgba(0, 0, 0, 0.48);
+}
+
+.night-transition-content span {
+  width: clamp(76px, 12vw, 132px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(248, 250, 252, 0.28);
+  border-radius: 50%;
+  color: #fde68a;
+  font-family: "Bahnschrift", "Cascadia Mono", "Consolas", "DIN Alternate", monospace;
+  font-size: clamp(2.6rem, 7vw, 5rem);
+  font-weight: 750;
+  line-height: 1;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.26);
+}
+
 .plea-timer-content {
   width: min(920px, 92vw);
   display: grid;
@@ -2387,6 +2441,10 @@ body.revote-plea-fullscreen-view {
   overflow: hidden;
 }
 
+body.night-transition-fullscreen-view {
+  overflow: hidden;
+}
+
 body.timer-fullscreen-view .app-shell {
   width: 100%;
   min-height: 100svh;
@@ -2400,6 +2458,12 @@ body.plea-fullscreen-view .app-shell {
 }
 
 body.revote-plea-fullscreen-view .app-shell {
+  width: 100%;
+  min-height: 100svh;
+  padding: 0;
+}
+
+body.night-transition-fullscreen-view .app-shell {
   width: 100%;
   min-height: 100svh;
   padding: 0;
@@ -2429,6 +2493,20 @@ body.revote-plea-fullscreen-view .phase-visual {
   display: none;
 }
 
+body.night-transition-fullscreen-view .topbar,
+body.night-transition-fullscreen-view .screen-tabs,
+body.night-transition-fullscreen-view .victory-banner,
+body.night-transition-fullscreen-view .table-heading,
+body.night-transition-fullscreen-view .phase-visual,
+body.night-transition-fullscreen-view .timer-strip,
+body.night-transition-fullscreen-view .vote-table-actions,
+body.night-transition-fullscreen-view .vote-control-panel,
+body.night-transition-fullscreen-view .vote-round-table,
+body.night-transition-fullscreen-view .plea-timer-view,
+body.night-transition-fullscreen-view .revote-plea-timer-view {
+  display: none;
+}
+
 body.timer-fullscreen-view .workspace,
 body.timer-fullscreen-view .table-panel.active {
   min-height: 100svh;
@@ -2441,6 +2519,11 @@ body.plea-fullscreen-view .table-panel.active {
 
 body.revote-plea-fullscreen-view .workspace,
 body.revote-plea-fullscreen-view .table-panel.active {
+  min-height: 100svh;
+}
+
+body.night-transition-fullscreen-view .workspace,
+body.night-transition-fullscreen-view .table-panel.active {
   min-height: 100svh;
 }
 
@@ -2477,6 +2560,17 @@ body.revote-plea-fullscreen-view .table-panel.active {
   overflow: hidden;
 }
 
+body.night-transition-fullscreen-view .table-panel.active {
+  display: grid;
+  place-items: stretch;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  overflow: hidden;
+}
+
 body.plea-fullscreen-view .plea-timer-view {
   width: 100%;
   min-height: 100svh;
@@ -2484,6 +2578,12 @@ body.plea-fullscreen-view .plea-timer-view {
 }
 
 body.revote-plea-fullscreen-view .revote-plea-timer-view {
+  width: 100%;
+  min-height: 100svh;
+  border-radius: 0;
+}
+
+body.night-transition-fullscreen-view .night-transition-view {
   width: 100%;
   min-height: 100svh;
   border-radius: 0;

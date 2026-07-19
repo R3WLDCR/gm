@@ -19,11 +19,12 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.14.0";
+const APP_VERSION = "v1.15.0";
 const ACTION_GATE_MIN_SECONDS = 15;
 const ACTION_GATE_MAX_SECONDS = 30;
 const VICTORY_BACK_DELAY_MS = 10000;
 const PLEA_TIMER_SECONDS = 30;
+const NIGHT_TRANSITION_SECONDS = 5;
 const DEBUG_HISTORY_LIMIT = 10;
 
 const state = {
@@ -59,6 +60,8 @@ const state = {
   revotePleaRoundIndex: 0,
   revotePleaSeconds: PLEA_TIMER_SECONDS,
   revotePleaRunning: false,
+  showNightTransition: false,
+  nightTransitionSeconds: NIGHT_TRANSITION_SECONDS,
   logs: [],
   roleDealQueue: [],
   roleDealIndex: 0,
@@ -97,6 +100,7 @@ const els = {};
 let timerId = null;
 let pleaTimerId = null;
 let revotePleaTimerId = null;
+let nightTransitionTimerId = null;
 let actionGateTimerId = null;
 let actionBlockedTimerId = null;
 let victoryBackTimerId = null;
@@ -166,6 +170,8 @@ document.addEventListener("DOMContentLoaded", () => {
     "revotePleaNextBtn",
     "revotePleaBackBtn",
     "revotePleaStartBtn",
+    "nightTransitionView",
+    "nightTransitionSeconds",
     "pleaTimerView",
     "pleaTimerDisplay",
     "pleaTimerToggleBtn",
@@ -214,6 +220,7 @@ document.addEventListener("DOMContentLoaded", () => {
   restore();
   bindEvents();
   render();
+  resumeNightTransitionTimer();
   initializeSync();
 });
 
@@ -338,6 +345,7 @@ function toggleParticipation(id) {
 
 function startRoundTable() {
   clearGameWinner();
+  resetNightTransitionState();
   resetPleaTimerState();
   resetVoteSession();
   state.screen = "deal";
@@ -362,6 +370,7 @@ function startRoundTable() {
 function startProgress() {
   pushUndoSnapshot("進行開始");
   clearGameWinner();
+  resetNightTransitionState();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   state.screen = "table";
@@ -379,6 +388,7 @@ function startProgress() {
 function startNightActions({ recordUndo = true } = {}) {
   if (recordUndo) pushUndoSnapshot("夜行動へ");
   clearGameWinner();
+  resetNightTransitionState();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   resetPleaTimerState();
@@ -404,6 +414,7 @@ function startNightActions({ recordUndo = true } = {}) {
 
 function showVoteRoundTable() {
   pushUndoSnapshot("投票へ");
+  resetNightTransitionState();
   resetPleaTimerState();
   resetVoteSession();
   state.screen = "table";
@@ -732,6 +743,54 @@ function resetRevotePleaTimerState() {
   state.revotePleaRunning = false;
 }
 
+function startNightTransition() {
+  stopAllLiveTimers();
+  state.showNightTransition = true;
+  state.nightTransitionSeconds = NIGHT_TRANSITION_SECONDS;
+  state.screen = "table";
+  state.phase = "vote";
+  state.showVoteTable = false;
+  state.voteSelectedPlayerId = "";
+  renderAndStore();
+  startNightTransitionTimer();
+}
+
+function resumeNightTransitionTimer() {
+  if (!state.showNightTransition) return;
+  startNightTransitionTimer();
+}
+
+function startNightTransitionTimer() {
+  if (!state.showNightTransition) return;
+  stopNightTransitionTimer();
+  nightTransitionTimerId = window.setInterval(() => {
+    state.nightTransitionSeconds = Math.max(0, state.nightTransitionSeconds - 1);
+    if (state.nightTransitionSeconds === 0) {
+      completeNightTransition();
+      return;
+    }
+    renderAndStore();
+  }, 1000);
+}
+
+function completeNightTransition() {
+  stopNightTransitionTimer();
+  state.showNightTransition = false;
+  state.nightTransitionSeconds = NIGHT_TRANSITION_SECONDS;
+  startNightActions({ recordUndo: false });
+}
+
+function stopNightTransitionTimer() {
+  if (nightTransitionTimerId) window.clearInterval(nightTransitionTimerId);
+  nightTransitionTimerId = null;
+}
+
+function resetNightTransitionState() {
+  stopNightTransitionTimer();
+  state.showNightTransition = false;
+  state.nightTransitionSeconds = NIGHT_TRANSITION_SECONDS;
+}
+
 function resetTimer() {
   const wasRunning = state.timerRunning;
   state.timerSeconds = state.timerBase;
@@ -748,6 +807,7 @@ function resetTimer() {
 }
 
 function resetTimerValue(seconds) {
+  resetNightTransitionState();
   resetPleaTimerState();
   resetVoteSession();
   state.timerBase = seconds;
@@ -1199,6 +1259,8 @@ function applyRestoredPayload(payload) {
   state.timerRunning = false;
   state.pleaRunning = false;
   state.revotePleaRunning = false;
+  state.showNightTransition = false;
+  state.nightTransitionSeconds = NIGHT_TRANSITION_SECONDS;
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
   state.actionGateBaseSeconds = 0;
@@ -1217,6 +1279,7 @@ function stopAllLiveTimers() {
   stopTimer();
   stopPleaTimer();
   stopRevotePleaTimer();
+  stopNightTransitionTimer();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   stopVictoryBackTimer();
@@ -1364,6 +1427,7 @@ function render() {
   renderRoles();
   renderRoundTable();
   renderVoteRoundTable();
+  renderNightTransitionView();
   renderActionRoundTable();
   renderVoteControls();
   renderSelectors();
@@ -1379,6 +1443,7 @@ function renderParticipantViewMode() {
   document.body.classList.toggle("timer-fullscreen-view", isTimerFullscreenView());
   document.body.classList.toggle("plea-fullscreen-view", isPleaFullscreenView());
   document.body.classList.toggle("revote-plea-fullscreen-view", isRevotePleaFullscreenView());
+  document.body.classList.toggle("night-transition-fullscreen-view", isNightTransitionFullscreenView());
   const victoryFullscreen = isVictoryFullscreenView();
   document.body.classList.toggle("victory-fullscreen-view", victoryFullscreen);
   document.body.classList.toggle("werewolf-victory-view", victoryFullscreen && state.gameWinner === "人狼陣営");
@@ -1406,6 +1471,10 @@ function isPleaFullscreenView() {
 
 function isRevotePleaFullscreenView() {
   return state.screen === "table" && state.showRevotePleaTimer;
+}
+
+function isNightTransitionFullscreenView() {
+  return state.screen === "table" && state.showNightTransition;
 }
 
 function renderVictoryBanner() {
@@ -1783,6 +1852,14 @@ function renderVoteRecordList() {
   els.voteRecordList.querySelectorAll("[data-vote-record-delete]").forEach((button) => {
     button.addEventListener("click", () => deleteVoteRecord(Number(button.dataset.voteRecordDelete)));
   });
+}
+
+function renderNightTransitionView() {
+  if (!els.nightTransitionView) return;
+  els.nightTransitionView.hidden = !state.showNightTransition;
+  if (els.nightTransitionSeconds) {
+    els.nightTransitionSeconds.textContent = String(Math.max(0, state.nightTransitionSeconds));
+  }
 }
 
 function renderPleaTimerView() {
@@ -2185,7 +2262,7 @@ function confirmSelectedPlayerExile() {
     addLog(`ゲーム終了: ${result.winner}の勝利`);
     markLatestLogRestorable();
   } else {
-    startNightActions({ recordUndo: false });
+    startNightTransition();
     return;
   }
   renderAndStore();
@@ -3143,9 +3220,7 @@ async function downloadPendingCloudState() {
 async function applyCloudRecord(record) {
   if (!record?.payload) return;
   applyingCloudState = true;
-  stopTimer();
-  stopActionGateCountdown();
-  stopBlockedRoleCountdown();
+  stopAllLiveTimers();
   applySavedState(record.payload, { resetActionScreen: true });
   localStorage.setItem(STORAGE_KEY, JSON.stringify(getStatePayload()));
   applyingCloudState = false;
@@ -3158,6 +3233,7 @@ async function applyCloudRecord(record) {
   syncMeta.lastSyncedAt = new Date().toISOString();
   saveSyncMeta();
   render();
+  resumeNightTransitionTimer();
 }
 
 function showCloudConflict(record) {
@@ -3336,6 +3412,8 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     revotePleaRoundIndex: state.revotePleaRoundIndex,
     revotePleaSeconds: state.revotePleaSeconds,
     revotePleaRunning: state.revotePleaRunning,
+    showNightTransition: state.showNightTransition,
+    nightTransitionSeconds: state.nightTransitionSeconds,
     logs: state.logs,
     roleDealQueue: state.roleDealQueue,
     roleDealIndex: state.roleDealIndex,
@@ -3426,6 +3504,14 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     state.screen = "table";
     state.phase = "vote";
     state.showVoteTable = false;
+  }
+  state.showNightTransition = saved.showNightTransition === true;
+  state.nightTransitionSeconds = Number.isFinite(Number(saved.nightTransitionSeconds)) ? Number(saved.nightTransitionSeconds) : NIGHT_TRANSITION_SECONDS;
+  if (state.showNightTransition) {
+    state.screen = "table";
+    state.phase = "vote";
+    state.showVoteTable = false;
+    state.nightTransitionSeconds = Math.max(1, Math.min(NIGHT_TRANSITION_SECONDS, state.nightTransitionSeconds));
   }
   if (state.revoteCandidateIds.length > 1) {
     state.revoteAssignIndex = Math.max(0, Math.min(state.revoteAssignIndex, state.revoteCandidateIds.length - 2));
