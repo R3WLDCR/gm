@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.10.0";
+const APP_VERSION = "v1.10.1";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -1479,7 +1479,7 @@ function renderVoteControls() {
     const candidates = state.pendingRevotePleaCandidateIds.map((id) => findPlayer(id)?.name).filter(Boolean);
     els.startRevotePleaBtn.hidden = !candidates.length || revoteMode;
     els.startRevotePleaBtn.disabled = !candidates.length || revoteMode;
-    els.startRevotePleaBtn.textContent = candidates.length ? `決戦弁明へ: ${candidates.join("・")}` : "決戦弁明へ";
+    els.startRevotePleaBtn.textContent = "決戦弁明へ";
   }
   if (els.revoteNotice) {
     els.revoteNotice.hidden = !revoteMode;
