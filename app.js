@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.9.0";
+const APP_VERSION = "v1.9.1";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -1272,14 +1272,13 @@ function renderHeader() {
   document.querySelector(".table-panel")?.classList.toggle("revote-plea-timer-mode", state.showRevotePleaTimer);
   document.querySelector(".vote-table-actions")?.toggleAttribute("hidden", !state.showVoteTable);
   document.querySelector(".vote-control-panel")?.toggleAttribute("hidden", !state.showVoteTable);
-  const directPleaTarget = findPlayer(state.voteSelectedPlayerId);
   if (els.pleaBtn) {
     els.pleaBtn.disabled = !state.voteSelectedPlayerId;
-    els.pleaBtn.textContent = directPleaTarget ? `${directPleaTarget.name}を弁明へ` : "弁明";
+    els.pleaBtn.textContent = "弁明";
   }
   if (els.exileBtn) {
     els.exileBtn.disabled = !state.voteSelectedPlayerId;
-    els.exileBtn.textContent = directPleaTarget ? `${directPleaTarget.name}を追放` : "追放";
+    els.exileBtn.textContent = "追放";
   }
   renderPleaTimerView();
   renderRevotePleaTimerView();
