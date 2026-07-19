@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.10.2";
+const APP_VERSION = "v1.10.3";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -919,15 +919,16 @@ function backFromRevotePleaTimer() {
 }
 
 function startRevoteAfterPlea() {
-  if (!state.showRevotePleaTimer || state.revotePleaSeconds > 0) return;
+  if (!state.showRevotePleaTimer) return;
   const candidates = [...state.revotePleaCandidateIds];
+  stopRevotePleaTimer();
   resetRevotePleaTimerState();
   startRevoteAssignment(candidates);
   renderAndStore();
 }
 
 function startNextRevotePleaRound() {
-  if (!state.showRevotePleaTimer || state.revotePleaSeconds > 0) return;
+  if (!state.showRevotePleaTimer) return;
   if (state.revotePleaRoundIndex >= state.revotePleaCandidateIds.length - 1) return;
   state.revotePleaRoundIndex += 1;
   state.revotePleaSeconds = PLEA_TIMER_SECONDS;
@@ -1615,13 +1616,12 @@ function renderRevotePleaTimerView() {
   }
   if (els.revotePleaNextBtn) {
     const hasNextRound = state.revotePleaRoundIndex < state.revotePleaCandidateIds.length - 1;
-    els.revotePleaNextBtn.hidden = state.revotePleaSeconds > 0 || !hasNextRound;
-    els.revotePleaNextBtn.disabled = state.revotePleaSeconds > 0 || !hasNextRound;
+    els.revotePleaNextBtn.hidden = !hasNextRound;
+    els.revotePleaNextBtn.disabled = !hasNextRound;
   }
   if (els.revotePleaStartBtn) {
-    const finalRoundDone = state.revotePleaSeconds === 0 && state.revotePleaRoundIndex >= state.revotePleaCandidateIds.length - 1;
-    els.revotePleaStartBtn.hidden = !finalRoundDone;
-    els.revotePleaStartBtn.disabled = !finalRoundDone;
+    els.revotePleaStartBtn.hidden = false;
+    els.revotePleaStartBtn.disabled = false;
   }
 }
 

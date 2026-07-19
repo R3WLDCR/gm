@@ -1745,6 +1745,10 @@ textarea:focus {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
 }
 
+.revote-plea-timer-view .plea-next-button {
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + clamp(58px, 9svh, 76px));
+}
+
 .vote-start-button {
   min-width: 96px;
   min-height: 48px;
