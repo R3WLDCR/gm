@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.16.0";
+const APP_VERSION = "v1.16.1";
 const ACTION_GATE_MIN_SECONDS = 15;
 const ACTION_GATE_MAX_SECONDS = 30;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -2507,7 +2507,6 @@ function handleKnightOk() {
   }
   pushUndoSnapshot("護衛確定");
   state.guardedPlayerId = player.id;
-  state.lastGuardedPlayerId = player.id;
   const logId = addLog(formatActionLog("護衛", "knight", player));
   state.actionRoleIndex += 1;
   resetActionSelection();
@@ -2575,6 +2574,7 @@ function finishNightActions({ attackResult = null } = {}) {
 }
 
 function showAttackResultScreen(attackResult, gameResult) {
+  state.lastGuardedPlayerId = state.guardedPlayerId || state.lastGuardedPlayerId;
   state.showAttackResult = true;
   state.attackResultTargetId = attackResult.targetId || "";
   state.attackResultSucceeded = attackResult.succeeded === true;
@@ -2603,6 +2603,7 @@ function completeAttackResult() {
 }
 
 function enterDayAfterNight() {
+  state.lastGuardedPlayerId = state.guardedPlayerId || state.lastGuardedPlayerId;
   state.screen = "table";
   state.phase = "day";
   state.day += 1;
@@ -3650,6 +3651,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.victoryDismissed = saved.victoryDismissed === true;
   state.undoHistory = Array.isArray(saved.undoHistory) ? saved.undoHistory.slice(0, DEBUG_HISTORY_LIMIT) : [];
   if (resetActionScreen && state.screen === "action") {
+    const savedNightStartGuardedPlayerId = saved.nightStartGuardedPlayerId || "";
     state.actionRoleIndex = 0;
     state.actionComplete = false;
     state.actionGateRoleId = "";
@@ -3658,7 +3660,8 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     state.actionBlockedRoleId = "";
     state.actionBlockedSeconds = 0;
     state.guardedPlayerId = "";
-    state.nightStartGuardedPlayerId = state.lastGuardedPlayerId;
+    state.nightStartGuardedPlayerId = savedNightStartGuardedPlayerId || state.lastGuardedPlayerId;
+    state.lastGuardedPlayerId = state.nightStartGuardedPlayerId;
     resetActionSelection();
   }
 }
