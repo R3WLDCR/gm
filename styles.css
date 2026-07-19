@@ -2177,8 +2177,13 @@ textarea:focus {
   grid-template-columns: 44px minmax(0, 1fr);
   gap: 8px;
   align-items: start;
+  width: 100%;
   padding-top: 6px;
   border-top: 1px solid rgba(220, 228, 223, 0.78);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
 
 .log-line:first-child {
@@ -2190,6 +2195,18 @@ textarea:focus {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 800;
+}
+
+.log-line-restorable {
+  cursor: pointer;
+}
+
+.log-line-restorable:hover,
+.log-line-restorable:focus-visible {
+  color: var(--accent-strong);
+  outline: 3px solid rgba(12, 122, 103, 0.16);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 .role-dialog {

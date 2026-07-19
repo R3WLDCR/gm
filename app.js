@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.12.3";
+const APP_VERSION = "v1.13.0";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -82,6 +82,8 @@ const state = {
   victoryShownAt: 0,
   victoryDismissed: false,
   undoHistory: [],
+  logRestorePoints: {},
+  nextLogId: 1,
 };
 
 const phaseLabels = {
@@ -551,6 +553,7 @@ function assignRoles() {
   clearGameWinner();
   resetTimerValue(240);
   addLog("配役完了。1日目の夜へ");
+  markLatestLogRestorable();
   renderAndStore();
 }
 
@@ -571,6 +574,7 @@ function setPhase(phase) {
   if (phase === "vote") resetTimerValue(180);
   if (phase !== "vote") state.votes = {};
   addLog(`${phaseLabels[phase][0]}へ移行`);
+  markLatestLogRestorable();
   renderAndStore();
 }
 
@@ -821,6 +825,7 @@ function recordVote() {
   state.editingVoteRecordIndex = -1;
   updatePendingRevotePlea();
   startRevoteIfCompletedTie();
+  markLatestLogRestorable();
   renderAndStore();
 }
 
@@ -964,6 +969,7 @@ function startRevoteAssignment(candidateIds) {
   state.showVoteTable = true;
   state.revoteTargetSelectMode = true;
   addLog("同票のため再投票");
+  markLatestLogRestorable();
 }
 
 function isRevoteAssignmentMode() {
@@ -1094,7 +1100,7 @@ function pushUndoSnapshot(label) {
   state.undoHistory.unshift({
     label,
     savedAt: Date.now(),
-    payload: cloneStatePayload(getStatePayload({ includeUndoHistory: false })),
+    payload: cloneStatePayload(getStatePayload({ includeUndoHistory: false, includeLogRestorePoints: false })),
   });
   state.undoHistory = state.undoHistory.slice(0, DEBUG_HISTORY_LIMIT);
 }
@@ -1107,9 +1113,39 @@ function undoLastStep() {
   if (!state.undoHistory.length) return;
   if (!confirm("直前の進行操作に戻しますか？")) return;
   const [snapshot, ...rest] = state.undoHistory;
-  stopAllLiveTimers();
-  applySavedState(snapshot.payload, { resetActionScreen: false });
+  applyRestoredPayload(snapshot.payload);
   state.undoHistory = rest;
+  addLog(`1手戻した: ${snapshot.label}`);
+  renderAndStore();
+}
+
+function markLatestLogRestorable() {
+  const log = state.logs[0];
+  markLogRestorable(log?.id);
+}
+
+function markLogRestorable(logId) {
+  if (!logId) return;
+  state.logRestorePoints[logId] = cloneStatePayload(getStatePayload({ includeUndoHistory: false, includeLogRestorePoints: false }));
+  pruneLogRestorePoints();
+}
+
+function restoreToLogPoint(logId) {
+  const payload = state.logRestorePoints?.[logId];
+  if (!payload) return;
+  const log = state.logs.find((item) => item.id === logId);
+  if (!confirm(`${log?.text || "選択したログ"} の時点へ戻しますか？`)) return;
+  applyRestoredPayload(payload);
+  addLog(`ログから復元: ${log?.text || "選択ログ"}`);
+  renderAndStore();
+}
+
+function applyRestoredPayload(payload) {
+  const restorePoints = state.logRestorePoints;
+  stopAllLiveTimers();
+  applySavedState(payload, { resetActionScreen: false });
+  state.logRestorePoints = restorePoints;
+  pruneLogRestorePoints();
   stopAllLiveTimers();
   state.timerRunning = false;
   state.pleaRunning = false;
@@ -1119,8 +1155,13 @@ function undoLastStep() {
   state.actionGateBaseSeconds = 0;
   state.actionBlockedRoleId = "";
   state.actionBlockedSeconds = 0;
-  addLog(`1手戻した: ${snapshot.label}`);
-  renderAndStore();
+}
+
+function pruneLogRestorePoints() {
+  const visibleIds = new Set(state.logs.slice(0, 80).map((log) => log.id).filter(Boolean));
+  Object.keys(state.logRestorePoints).forEach((id) => {
+    if (!visibleIds.has(id)) delete state.logRestorePoints[id];
+  });
 }
 
 function stopAllLiveTimers() {
@@ -1168,6 +1209,7 @@ function nextDay() {
   resetActionSelection();
   resetTimerValue(240);
   addLog(`${state.day}日目の夜へ`);
+  markLatestLogRestorable();
   renderAndStore();
 }
 
@@ -2078,11 +2120,13 @@ function confirmSelectedPlayerExile() {
   const player = findPlayer(state.voteSelectedPlayerId);
   if (player) player.alive = false;
   addLog(player ? `${player.name} を追放` : "追放");
+  markLatestLogRestorable();
   state.voteSelectedPlayerId = "";
   const result = getGameResult();
   if (result.ended) {
     setGameWinner(result.winner);
     addLog(`ゲーム終了: ${result.winner}の勝利`);
+    markLatestLogRestorable();
   } else {
     startNightActions({ recordUndo: false });
     return;
@@ -2238,6 +2282,7 @@ function handleActionTarget(player) {
   if (!roleId || !player) return;
   if (roleId === "medium" && !isActionGateReady(roleId)) return;
   if (!canSelectActionTarget(roleId, player)) return;
+  let completedLogId = "";
 
   if (roleId === "seer") {
     state.actionSelectedTargetId = player.id;
@@ -2251,7 +2296,7 @@ function handleActionTarget(player) {
     return;
   } else if (roleId === "medium") {
     pushUndoSnapshot("霊媒確定");
-    addLog(formatActionLog("霊媒", "medium", player, getDivinationResult(player)));
+    completedLogId = addLog(formatActionLog("霊媒", "medium", player, getDivinationResult(player)));
   } else if (roleId === "werewolf") {
     state.actionSelectedTargetId = player.id;
     state.actionResultVisible = false;
@@ -2262,6 +2307,7 @@ function handleActionTarget(player) {
   state.actionRoleIndex += 1;
   resetActionSelection();
   advanceActionRole();
+  if (completedLogId) markLogRestorable(completedLogId);
   renderAndStore();
 }
 
@@ -2276,10 +2322,11 @@ function handleKnightOk() {
   pushUndoSnapshot("護衛確定");
   state.guardedPlayerId = player.id;
   state.lastGuardedPlayerId = player.id;
-  addLog(formatActionLog("護衛", "knight", player));
+  const logId = addLog(formatActionLog("護衛", "knight", player));
   state.actionRoleIndex += 1;
   resetActionSelection();
   advanceActionRole();
+  markLogRestorable(logId);
   renderAndStore();
 }
 
@@ -2316,6 +2363,7 @@ function resolveNightAttack(player) {
     }
     addLog(`襲撃成功: ${actorNames} → ${player.name}`);
   }
+  markLatestLogRestorable();
 
   state.actionRoleIndex += 1;
   resetActionSelection();
@@ -2328,6 +2376,7 @@ function finishNightActions() {
   if (result.ended) {
     setGameWinner(result.winner);
     addLog(`ゲーム終了: ${result.winner}の勝利`);
+    markLatestLogRestorable();
   } else {
     state.screen = "table";
     state.phase = "day";
@@ -2336,6 +2385,7 @@ function finishNightActions() {
     state.voteSelectedPlayerId = "";
     resetTimerValue(300);
     addLog(`${state.day}日目の昼へ`);
+    markLatestLogRestorable();
   }
   renderAndStore();
 }
@@ -2354,10 +2404,11 @@ function handleSeerOk() {
   }
   if (!isActionGateReady("seer")) return;
   pushUndoSnapshot("占い確定");
-  addLog(formatActionLog("占い", "seer", player, getDivinationResult(player)));
+  const logId = addLog(formatActionLog("占い", "seer", player, getDivinationResult(player)));
   state.actionRoleIndex += 1;
   resetActionSelection();
   advanceActionRole();
+  markLogRestorable(logId);
   renderAndStore();
 }
 
@@ -2720,12 +2771,22 @@ function renderLog() {
       <h3>${escapeHtml(group.label)}</h3>
       <div class="log-day-entries">
         ${group.logs
-          .map((log) => `<div class="log-line"><time>${escapeHtml(log.time)}</time><span>${escapeHtml(log.text)}</span></div>`)
+          .map((log) => getLogLineHtml(log))
           .join("")}
       </div>
     `;
     els.logList.appendChild(block);
   });
+  els.logList.querySelectorAll("[data-restore-log-id]").forEach((button) => {
+    button.addEventListener("click", () => restoreToLogPoint(button.dataset.restoreLogId));
+  });
+}
+
+function getLogLineHtml(log) {
+  const tag = state.logRestorePoints?.[log.id] ? "button" : "div";
+  const restoreAttr = tag === "button" ? ` type="button" data-restore-log-id="${escapeHtml(log.id)}"` : "";
+  const className = tag === "button" ? "log-line log-line-restorable" : "log-line";
+  return `<${tag} class="${className}"${restoreAttr}><time>${escapeHtml(log.time)}</time><span>${escapeHtml(log.text)}</span></${tag}>`;
 }
 
 function groupLogsByDay(logs) {
@@ -2763,10 +2824,13 @@ function revealRole(player) {
 }
 
 function addLog(text) {
+  const id = `log-${state.nextLogId++}`;
   state.logs.unshift({
+    id,
     time: new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }),
     text,
   });
+  return id;
 }
 
 function removeLatestLog(text) {
@@ -3174,7 +3238,7 @@ function store() {
   if (!applyingCloudState) markLocalDirty();
 }
 
-function getStatePayload({ includeUndoHistory = true } = {}) {
+function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = true } = {}) {
   const payload = {
     players: state.players,
     roles: state.roles,
@@ -3232,6 +3296,10 @@ function getStatePayload({ includeUndoHistory = true } = {}) {
   };
   if (includeUndoHistory) {
     payload.undoHistory = state.undoHistory.slice(0, DEBUG_HISTORY_LIMIT);
+  }
+  if (includeLogRestorePoints) {
+    payload.logRestorePoints = state.logRestorePoints;
+    payload.nextLogId = state.nextLogId;
   }
   return payload;
 }
@@ -3302,7 +3370,10 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     state.revoteTargetSelectMode = false;
   }
   if (state.voteRecords.length) syncVoteCountsFromRecords();
-  state.logs = saved.logs || [];
+  state.logs = normalizeLogs(saved.logs || []);
+  state.nextLogId = Number.isInteger(saved.nextLogId) ? Math.max(saved.nextLogId, getNextLogIdFromLogs(state.logs)) : getNextLogIdFromLogs(state.logs);
+  state.logRestorePoints = saved.logRestorePoints && typeof saved.logRestorePoints === "object" ? saved.logRestorePoints : {};
+  pruneLogRestorePoints();
   state.roleDealQueue = saved.roleDealQueue || [];
   state.roleDealIndex = saved.roleDealIndex || 0;
   state.roleDealSelectedPlayerIds = saved.roleDealSelectedPlayerIds || (saved.roleDealSelectedPlayerId ? [saved.roleDealSelectedPlayerId] : []);
@@ -3347,6 +3418,22 @@ function normalizePlayers(players) {
     totalParticipations: Number.isFinite(Number(player.totalParticipations)) ? Number(player.totalParticipations) : 0,
     dailyParticipations: normalizeParticipationMap(player.dailyParticipations),
   }));
+}
+
+function normalizeLogs(logs) {
+  let fallbackId = 1;
+  return logs.map((log) => ({
+    ...log,
+    id: log.id || `legacy-log-${fallbackId++}`,
+  }));
+}
+
+function getNextLogIdFromLogs(logs) {
+  const maxId = logs.reduce((max, log) => {
+    const match = String(log.id || "").match(/^log-(\d+)$/);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0);
+  return maxId + 1;
 }
 
 function normalizeParticipationMap(value) {
