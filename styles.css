@@ -1749,6 +1749,13 @@ textarea:focus {
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.26);
 }
 
+.night-transition-ok-button {
+  min-width: clamp(140px, 20vw, 220px);
+  min-height: clamp(54px, 8svh, 72px);
+  border-radius: 8px;
+  font-size: clamp(1.25rem, 3vw, 2rem);
+}
+
 .plea-timer-content {
   width: min(920px, 92vw);
   display: grid;

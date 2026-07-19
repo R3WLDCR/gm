@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.15.0";
+const APP_VERSION = "v1.15.1";
 const ACTION_GATE_MIN_SECONDS = 15;
 const ACTION_GATE_MAX_SECONDS = 30;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -172,6 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "revotePleaStartBtn",
     "nightTransitionView",
     "nightTransitionSeconds",
+    "nightTransitionOkBtn",
     "pleaTimerView",
     "pleaTimerDisplay",
     "pleaTimerToggleBtn",
@@ -281,6 +282,7 @@ function bindEvents() {
   els.revotePleaTimerToggleBtn?.addEventListener("click", toggleRevotePleaTimer);
   els.revotePleaNextBtn?.addEventListener("click", startNextRevotePleaRound);
   els.revotePleaStartBtn?.addEventListener("click", startRevoteAfterPlea);
+  els.nightTransitionOkBtn?.addEventListener("click", completeNightTransition);
   els.pleaBackBtn?.addEventListener("click", backFromPleaTimer);
   els.pleaTimerToggleBtn?.addEventListener("click", togglePleaTimer);
   els.pleaExileBtn?.addEventListener("click", confirmPleaExile);
@@ -766,8 +768,7 @@ function startNightTransitionTimer() {
   nightTransitionTimerId = window.setInterval(() => {
     state.nightTransitionSeconds = Math.max(0, state.nightTransitionSeconds - 1);
     if (state.nightTransitionSeconds === 0) {
-      completeNightTransition();
-      return;
+      stopNightTransitionTimer();
     }
     renderAndStore();
   }, 1000);
@@ -1859,6 +1860,10 @@ function renderNightTransitionView() {
   els.nightTransitionView.hidden = !state.showNightTransition;
   if (els.nightTransitionSeconds) {
     els.nightTransitionSeconds.textContent = String(Math.max(0, state.nightTransitionSeconds));
+  }
+  if (els.nightTransitionOkBtn) {
+    els.nightTransitionOkBtn.hidden = state.nightTransitionSeconds > 0;
+    els.nightTransitionOkBtn.disabled = state.nightTransitionSeconds > 0;
   }
 }
 
@@ -3511,7 +3516,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     state.screen = "table";
     state.phase = "vote";
     state.showVoteTable = false;
-    state.nightTransitionSeconds = Math.max(1, Math.min(NIGHT_TRANSITION_SECONDS, state.nightTransitionSeconds));
+    state.nightTransitionSeconds = Math.max(0, Math.min(NIGHT_TRANSITION_SECONDS, state.nightTransitionSeconds));
   }
   if (state.revoteCandidateIds.length > 1) {
     state.revoteAssignIndex = Math.max(0, Math.min(state.revoteAssignIndex, state.revoteCandidateIds.length - 2));
