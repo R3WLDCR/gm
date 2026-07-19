@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.13.6";
+const APP_VERSION = "v1.13.7";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -1879,7 +1879,7 @@ function renderMediumResult() {
     <div class="medium-result-card medium-only-result-card has-result">
       <strong>${escapeHtml(player.name)}</strong>
       <em class="${getResultColorClass(result)}">${result}</em>
-      <button class="secondary-button medium-undo-button" type="button" ${state.undoHistory.length ? "" : "disabled"}>1手戻す</button>
+      <button class="secondary-button medium-undo-button" type="button" ${state.undoHistory.length ? "" : "disabled"}>戻る</button>
       <button class="primary-button medium-ok-button" type="button" ${gateReady ? "" : "disabled"}>${gateReady ? "OK" : state.actionGateSeconds}</button>
     </div>
   `;
