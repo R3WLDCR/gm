@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.13.0";
+const APP_VERSION = "v1.13.1";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -2786,7 +2786,8 @@ function getLogLineHtml(log) {
   const tag = state.logRestorePoints?.[log.id] ? "button" : "div";
   const restoreAttr = tag === "button" ? ` type="button" data-restore-log-id="${escapeHtml(log.id)}"` : "";
   const className = tag === "button" ? "log-line log-line-restorable" : "log-line";
-  return `<${tag} class="${className}"${restoreAttr}><time>${escapeHtml(log.time)}</time><span>${escapeHtml(log.text)}</span></${tag}>`;
+  const restoreBadge = tag === "button" ? '<small class="log-restore-badge">戻れる</small>' : "";
+  return `<${tag} class="${className}"${restoreAttr}><time>${escapeHtml(log.time)}</time><span>${escapeHtml(log.text)}</span>${restoreBadge}</${tag}>`;
 }
 
 function groupLogsByDay(logs) {
@@ -2804,7 +2805,7 @@ function groupLogsByDay(logs) {
       currentGroup.logs.push(log);
     });
   if (currentGroup.logs.length) groups.push(currentGroup);
-  return groups.reverse();
+  return groups.reverse().map((group) => ({ ...group, logs: group.logs.reverse() }));
 }
 
 function getLogDayLabel(text) {
