@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.13.8";
+const APP_VERSION = "v1.13.9";
 const ACTION_GATE_MIN_SECONDS = 15;
 const ACTION_GATE_MAX_SECONDS = 30;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -1720,7 +1720,9 @@ function renderVoteRecordList() {
     return;
   }
   els.voteRecordList.innerHTML = state.voteRecords
-    .map((record, index) => {
+    .map((record, index) => ({ record, index }))
+    .reverse()
+    .map(({ record, index }) => {
       const voter = findPlayer(record.voterId);
       const target = findPlayer(record.targetId);
       const order = record.order || index + 1;
@@ -1731,8 +1733,8 @@ function renderVoteRecordList() {
             <span>${order}票目</span><strong>${escapeHtml(voter?.name || "不明")}</strong><em>→</em><strong>${escapeHtml(target?.name || "不明")}</strong>
           </button>
           <div class="vote-record-actions">
-            <button type="button" data-vote-record-move="${index}" data-direction="-1" aria-label="${order}票目を上へ" ${index === 0 ? "disabled" : ""}>上</button>
-            <button type="button" data-vote-record-move="${index}" data-direction="1" aria-label="${order}票目を下へ" ${index === state.voteRecords.length - 1 ? "disabled" : ""}>下</button>
+            <button type="button" data-vote-record-move="${index}" data-direction="1" aria-label="${order}票目を上へ" ${index === state.voteRecords.length - 1 ? "disabled" : ""}>上</button>
+            <button type="button" data-vote-record-move="${index}" data-direction="-1" aria-label="${order}票目を下へ" ${index === 0 ? "disabled" : ""}>下</button>
             <button type="button" data-vote-record-delete="${index}" aria-label="${order}票目を削除">削除</button>
           </div>
         </div>
