@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.16.2";
+const APP_VERSION = "v1.16.3";
 const ACTION_GATE_MIN_SECONDS = 15;
 const ACTION_GATE_MAX_SECONDS = 30;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -180,7 +180,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "attackResultView",
     "attackResultLead",
     "attackResultName",
-    "attackResultMessage",
     "attackResultOkBtn",
     "pleaTimerView",
     "pleaTimerDisplay",
@@ -1908,9 +1907,6 @@ function renderAttackResultView() {
   if (els.attackResultName) {
     els.attackResultName.textContent = name;
     els.attackResultName.classList.toggle("no-victim", !state.attackResultSucceeded);
-  }
-  if (els.attackResultMessage) {
-    els.attackResultMessage.textContent = state.attackResultSucceeded ? "朝、姿が見えません" : "誰も欠けることなく朝を迎えました";
   }
 }
 
