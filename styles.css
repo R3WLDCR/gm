@@ -2321,6 +2321,22 @@ body.participant-action-view .medium-result-card > .medium-ok-button {
   z-index: 20;
 }
 
+body.participant-action-view .medium-undo-button {
+  position: fixed;
+  left: max(14px, env(safe-area-inset-left));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  width: min(180px, 30vw);
+  min-height: clamp(44px, 7svh, 62px);
+  z-index: 20;
+  font-size: clamp(1.05rem, 2.4vw, 1.45rem);
+  box-shadow: 0 12px 28px rgba(24, 34, 29, 0.14);
+}
+
+body.participant-action-view .medium-undo-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
 body.timer-fullscreen-view {
   overflow: hidden;
 }
