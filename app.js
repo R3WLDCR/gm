@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.13.5";
+const APP_VERSION = "v1.13.6";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -150,7 +150,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "voteTargetSelect",
     "recordVoteBtn",
     "clearVotesBtn",
-    "sendTopVoteToPleaBtn",
     "startRevotePleaBtn",
     "voteSummary",
     "voteRecordList",
@@ -256,7 +255,7 @@ function bindEvents() {
   els.voteStartBtn.addEventListener("click", showVoteRoundTable);
   els.skipToVoteBtn.addEventListener("click", skipTimerToVoteButton);
   els.backToTimerBtn.addEventListener("click", backToTimerScreen);
-  els.exileBtn.addEventListener("click", confirmSelectedPlayerExile);
+  els.exileBtn.addEventListener("click", handleExileButton);
   els.voteVoterSelect?.addEventListener("change", () => {
     state.voteVoterId = els.voteVoterSelect.value;
     renderAndStore();
@@ -267,7 +266,6 @@ function bindEvents() {
   });
   els.recordVoteBtn?.addEventListener("click", recordVote);
   els.clearVotesBtn?.addEventListener("click", resetVoteRecords);
-  els.sendTopVoteToPleaBtn?.addEventListener("click", sendTopVoteToPlea);
   els.startRevotePleaBtn?.addEventListener("click", startPendingRevotePlea);
   els.revoteNextBtn?.addEventListener("click", advanceRevoteAssignment);
   els.revotePleaBackBtn?.addEventListener("click", backFromRevotePleaTimer);
@@ -869,7 +867,15 @@ function moveVoteRecord(index, direction) {
   renderAndStore();
 }
 
-function sendTopVoteToPlea() {
+function handleExileButton() {
+  if (state.voteSelectedPlayerId) {
+    confirmSelectedPlayerExile();
+    return;
+  }
+  exileTopVotedPlayer();
+}
+
+function exileTopVotedPlayer() {
   const topIds = getTopVotedPlayerIds();
   if (!topIds.length) return;
   if (topIds.length > 1) {
@@ -1476,7 +1482,7 @@ function renderHeader() {
   document.querySelector(".vote-table-actions")?.toggleAttribute("hidden", !state.showVoteTable);
   document.querySelector(".vote-control-panel")?.toggleAttribute("hidden", !state.showVoteTable);
   if (els.exileBtn) {
-    els.exileBtn.disabled = !state.voteSelectedPlayerId;
+    els.exileBtn.disabled = !canUseExileButton();
     els.exileBtn.textContent = "追放";
   }
   renderPleaTimerView();
@@ -1632,9 +1638,6 @@ function renderVoteControls() {
     els.recordVoteBtn.disabled = !state.voteVoterId || !state.voteTargetId;
     els.recordVoteBtn.textContent = getEditingVoteRecordIndex() >= 0 ? "投票を修正" : "投票を記録";
   }
-  if (els.sendTopVoteToPleaBtn) {
-    els.sendTopVoteToPleaBtn.disabled = revoteMode || Boolean(state.pendingRevotePleaCandidateIds.length) || !state.voteRecords.length;
-  }
   if (els.startRevotePleaBtn) {
     const candidates = state.pendingRevotePleaCandidateIds.map((id) => findPlayer(id)?.name).filter(Boolean);
     els.startRevotePleaBtn.hidden = !candidates.length || revoteMode;
@@ -1652,6 +1655,12 @@ function renderVoteControls() {
   renderRevoteAssist();
   renderVoteSummary();
   renderVoteRecordList();
+}
+
+function canUseExileButton() {
+  if (state.voteSelectedPlayerId) return true;
+  if (!state.voteRecords.length || state.pendingRevotePleaCandidateIds.length || isRevoteAssignmentMode()) return false;
+  return getTopVotedPlayerIds().length === 1;
 }
 
 function renderRevoteAssist() {
