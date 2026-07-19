@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.11.0";
+const APP_VERSION = "v1.11.1";
 const ACTION_GATE_MIN_SECONDS = 7;
 const ACTION_GATE_MAX_SECONDS = 12;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -2619,7 +2619,7 @@ function renderVotes() {
     .sort((a, b) => b.count - a.count);
 
   if (!rows.length) {
-    els.voteBoard.innerHTML = '<div class="log-item">票なし</div>';
+    els.voteBoard.innerHTML = '<div class="vote-empty">票なし</div>';
     return;
   }
 
@@ -2633,12 +2633,45 @@ function renderVotes() {
 
 function renderLog() {
   els.logList.innerHTML = "";
-  state.logs.slice(0, 18).forEach((log) => {
-    const item = document.createElement("div");
-    item.className = "log-item";
-    item.innerHTML = `<time>${log.time}</time><span>${escapeHtml(log.text)}</span>`;
-    els.logList.appendChild(item);
+  const groups = groupLogsByDay(state.logs.slice(0, 80));
+  groups.forEach((group) => {
+    const block = document.createElement("section");
+    block.className = "log-day-block";
+    block.innerHTML = `
+      <h3>${escapeHtml(group.label)}</h3>
+      <div class="log-day-entries">
+        ${group.logs
+          .map((log) => `<div class="log-line"><time>${escapeHtml(log.time)}</time><span>${escapeHtml(log.text)}</span></div>`)
+          .join("")}
+      </div>
+    `;
+    els.logList.appendChild(block);
   });
+}
+
+function groupLogsByDay(logs) {
+  const groups = [];
+  let currentGroup = { label: "準備", logs: [] };
+  logs
+    .slice()
+    .reverse()
+    .forEach((log) => {
+      const label = getLogDayLabel(log.text);
+      if (label && label !== currentGroup.label) {
+        if (currentGroup.logs.length) groups.push(currentGroup);
+        currentGroup = { label, logs: [] };
+      }
+      currentGroup.logs.push(log);
+    });
+  if (currentGroup.logs.length) groups.push(currentGroup);
+  return groups.reverse();
+}
+
+function getLogDayLabel(text) {
+  const dayMatch = text.match(/(\d+)日目/);
+  if (dayMatch) return `${dayMatch[1]}日目`;
+  if (text.includes("初日")) return "1日目";
+  return "";
 }
 
 function revealRole(player) {

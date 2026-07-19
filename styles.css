@@ -801,7 +801,6 @@ textarea:focus {
 
 .player-row,
 .role-row,
-.log-item,
 .vote-row {
   display: grid;
   align-items: center;
@@ -2143,13 +2142,44 @@ textarea:focus {
   }
 }
 
-.log-item {
+.log-day-block {
+  display: grid;
+  gap: 8px;
   padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper);
   color: #303a34;
   font-size: 1rem;
 }
 
-.log-item time {
+.log-day-block h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.log-day-entries {
+  display: grid;
+  gap: 6px;
+}
+
+.log-line {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  padding-top: 6px;
+  border-top: 1px solid rgba(220, 228, 223, 0.78);
+}
+
+.log-line:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.log-line time {
   color: var(--muted);
   font-size: 0.76rem;
   font-weight: 800;
