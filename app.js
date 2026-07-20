@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.17.2";
+const APP_VERSION = "v1.17.3";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -1996,6 +1996,7 @@ function renderNightTransitionView() {
   }
   if (els.nightTransitionSeconds) {
     els.nightTransitionSeconds.textContent = String(Math.max(0, state.nightTransitionSeconds));
+    els.nightTransitionSeconds.hidden = true;
   }
   if (els.nightTransitionOkBtn) {
     els.nightTransitionOkBtn.hidden = state.nightTransitionSeconds > 0;
