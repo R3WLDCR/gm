@@ -19,7 +19,9 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.16.4";
+const APP_VERSION = "v1.16.5";
+const MEDIUM_GATE_MIN_SECONDS = 10;
+const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
 const ACTION_GATE_MAX_SECONDS = 30;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -2411,7 +2413,7 @@ function startActionGateCountdown(roleId) {
   if (state.actionGateRoleId === `${roleId}:done`) return;
   stopActionGateCountdown();
   state.actionGateRoleId = roleId;
-  state.actionGateBaseSeconds = getRandomActionGateSeconds();
+  state.actionGateBaseSeconds = getRandomActionGateSeconds(roleId);
   state.actionGateSeconds = state.actionGateBaseSeconds;
   actionGateTimerId = window.setInterval(() => {
     state.actionGateSeconds = Math.max(0, state.actionGateSeconds - 1);
@@ -2422,8 +2424,10 @@ function startActionGateCountdown(roleId) {
   }, 1000);
 }
 
-function getRandomActionGateSeconds() {
-  return Math.floor(Math.random() * (ACTION_GATE_MAX_SECONDS - ACTION_GATE_MIN_SECONDS + 1)) + ACTION_GATE_MIN_SECONDS;
+function getRandomActionGateSeconds(roleId = "") {
+  const min = roleId === "medium" ? MEDIUM_GATE_MIN_SECONDS : ACTION_GATE_MIN_SECONDS;
+  const max = roleId === "medium" ? MEDIUM_GATE_MAX_SECONDS : ACTION_GATE_MAX_SECONDS;
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function stopActionGateCountdown() {
@@ -2442,7 +2446,7 @@ function startBlockedRoleCountdown(roleId) {
   if (state.actionBlockedRoleId === roleId && actionBlockedTimerId) return;
   stopBlockedRoleCountdown();
   state.actionBlockedRoleId = roleId;
-  state.actionBlockedSeconds = getRandomActionGateSeconds();
+  state.actionBlockedSeconds = getRandomActionGateSeconds(roleId);
   renderAndStore();
   actionBlockedTimerId = window.setInterval(() => {
     state.actionBlockedSeconds = Math.max(0, state.actionBlockedSeconds - 1);
