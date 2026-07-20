@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.16.3";
+const APP_VERSION = "v1.16.4";
 const ACTION_GATE_MIN_SECONDS = 15;
 const ACTION_GATE_MAX_SECONDS = 30;
 const VICTORY_BACK_DELAY_MS = 10000;
@@ -1752,10 +1752,14 @@ function renderVoteRoundTable() {
 function renderVoteControls() {
   if (!state.showVoteTable) return;
   const revoteMode = isRevoteAssignmentMode();
-  const voters = getVoteVoterPlayers();
-  const targets = getVoteTargetPlayers();
+  let voters = getVoteVoterPlayers();
   if (!voters.some((player) => player.id === state.voteVoterId)) state.voteVoterId = "";
+  if (!revoteMode && !state.voteVoterId && voters.length) state.voteVoterId = voters[0].id;
+  let targets = getVoteTargetPlayers();
   if (!targets.some((player) => player.id === state.voteTargetId)) state.voteTargetId = "";
+  if (!revoteMode && !state.voteTargetId && state.voteVoterId && targets.length) state.voteTargetId = targets[0].id;
+  voters = getVoteVoterPlayers();
+  targets = getVoteTargetPlayers();
   document.querySelector(".vote-input-grid")?.toggleAttribute("hidden", revoteMode);
   renderPlayerSelect(els.voteVoterSelect, voters, state.voteVoterId, "投票者を選択");
   renderPlayerSelect(els.voteTargetSelect, targets, state.voteTargetId, "投票先を選択");
