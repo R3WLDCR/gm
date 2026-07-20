@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.17.1";
+const APP_VERSION = "v1.17.2";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -28,6 +28,10 @@ const VICTORY_BACK_DELAY_MS = 10000;
 const PLEA_TIMER_SECONDS = 30;
 const NIGHT_TRANSITION_MIN_SECONDS = 3;
 const NIGHT_TRANSITION_MAX_SECONDS = 8;
+const ATTACK_RESULT_REVEAL_SECONDS = 3;
+const ATTACK_RESULT_STAGE_DAWN = "dawn";
+const ATTACK_RESULT_STAGE_RESULT = "result";
+const ATTACK_RESULT_STAGE_READY = "ready";
 const DEBUG_HISTORY_LIMIT = 10;
 
 const state = {
@@ -71,6 +75,8 @@ const state = {
   attackResultTargetId: "",
   attackResultSucceeded: false,
   attackResultWinner: "",
+  attackResultStage: ATTACK_RESULT_STAGE_DAWN,
+  attackResultRevealSeconds: ATTACK_RESULT_REVEAL_SECONDS,
   logs: [],
   roleDealQueue: [],
   roleDealIndex: 0,
@@ -111,6 +117,7 @@ let timerId = null;
 let pleaTimerId = null;
 let revotePleaTimerId = null;
 let nightTransitionTimerId = null;
+let attackResultRevealTimerId = null;
 let actionGateTimerId = null;
 let actionBlockedTimerId = null;
 let victoryBackTimerId = null;
@@ -189,6 +196,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "attackResultView",
     "attackResultLead",
     "attackResultName",
+    "attackResultMessage",
     "attackResultOkBtn",
     "pleaTimerView",
     "pleaTimerDisplay",
@@ -239,6 +247,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindEvents();
   render();
   resumeNightTransitionTimer();
+  resumeAttackResultRevealTimer();
   initializeSync();
 });
 
@@ -853,10 +862,41 @@ function clampNumber(value, min, max) {
 }
 
 function resetAttackResultState() {
+  stopAttackResultRevealTimer();
   state.showAttackResult = false;
   state.attackResultTargetId = "";
   state.attackResultSucceeded = false;
   state.attackResultWinner = "";
+  state.attackResultStage = ATTACK_RESULT_STAGE_DAWN;
+  state.attackResultRevealSeconds = ATTACK_RESULT_REVEAL_SECONDS;
+}
+
+function resumeAttackResultRevealTimer() {
+  if (!state.showAttackResult || state.attackResultStage === ATTACK_RESULT_STAGE_READY) return;
+  startAttackResultRevealTimer();
+}
+
+function startAttackResultRevealTimer() {
+  if (!state.showAttackResult || state.attackResultStage === ATTACK_RESULT_STAGE_READY) return;
+  stopAttackResultRevealTimer();
+  attackResultRevealTimerId = window.setInterval(() => {
+    state.attackResultRevealSeconds = Math.max(0, state.attackResultRevealSeconds - 1);
+    if (state.attackResultRevealSeconds === 0) {
+      if (state.attackResultStage === ATTACK_RESULT_STAGE_DAWN) {
+        state.attackResultStage = ATTACK_RESULT_STAGE_RESULT;
+        state.attackResultRevealSeconds = ATTACK_RESULT_REVEAL_SECONDS;
+      } else {
+        state.attackResultStage = ATTACK_RESULT_STAGE_READY;
+        stopAttackResultRevealTimer();
+      }
+    }
+    renderAndStore();
+  }, 1000);
+}
+
+function stopAttackResultRevealTimer() {
+  if (attackResultRevealTimerId) window.clearInterval(attackResultRevealTimerId);
+  attackResultRevealTimerId = null;
 }
 
 function resetTimer() {
@@ -1352,6 +1392,7 @@ function stopAllLiveTimers() {
   stopPleaTimer();
   stopRevotePleaTimer();
   stopNightTransitionTimer();
+  stopAttackResultRevealTimer();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   stopVictoryBackTimer();
@@ -1966,14 +2007,25 @@ function renderAttackResultView() {
   if (!els.attackResultView) return;
   els.attackResultView.hidden = !state.showAttackResult;
   if (!state.showAttackResult) return;
+  const resultVisible = state.attackResultStage !== ATTACK_RESULT_STAGE_DAWN;
+  const okVisible = state.attackResultStage === ATTACK_RESULT_STAGE_READY;
   const player = findPlayer(state.attackResultTargetId);
   const name = state.attackResultSucceeded ? player?.name || "不明" : "犠牲者なし";
   if (els.attackResultLead) {
-    els.attackResultLead.textContent = "昨夜の襲撃";
+    els.attackResultLead.textContent = "朝が訪れた";
   }
   if (els.attackResultName) {
     els.attackResultName.textContent = name;
+    els.attackResultName.hidden = !resultVisible;
     els.attackResultName.classList.toggle("no-victim", !state.attackResultSucceeded);
+  }
+  if (els.attackResultMessage) {
+    els.attackResultMessage.textContent = state.attackResultSucceeded ? "襲撃された人" : "犠牲者なし";
+    els.attackResultMessage.hidden = !resultVisible;
+  }
+  if (els.attackResultOkBtn) {
+    els.attackResultOkBtn.hidden = !okVisible;
+    els.attackResultOkBtn.disabled = !okVisible;
   }
 }
 
@@ -2652,16 +2704,19 @@ function showAttackResultScreen(attackResult, gameResult) {
   state.attackResultTargetId = attackResult.targetId || "";
   state.attackResultSucceeded = attackResult.succeeded === true;
   state.attackResultWinner = gameResult.ended ? gameResult.winner : "";
+  state.attackResultStage = ATTACK_RESULT_STAGE_DAWN;
+  state.attackResultRevealSeconds = ATTACK_RESULT_REVEAL_SECONDS;
   state.screen = "table";
   state.phase = "night";
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
   stopAllLiveTimers();
+  startAttackResultRevealTimer();
   renderAndStore();
 }
 
 function completeAttackResult() {
-  if (!state.showAttackResult) return;
+  if (!state.showAttackResult || state.attackResultStage !== ATTACK_RESULT_STAGE_READY) return;
   const winner = state.attackResultWinner;
   resetAttackResultState();
   if (winner) {
@@ -3585,6 +3640,8 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     attackResultTargetId: state.attackResultTargetId,
     attackResultSucceeded: state.attackResultSucceeded,
     attackResultWinner: state.attackResultWinner,
+    attackResultStage: state.attackResultStage,
+    attackResultRevealSeconds: state.attackResultRevealSeconds,
     logs: state.logs,
     roleDealQueue: state.roleDealQueue,
     roleDealIndex: state.roleDealIndex,
@@ -3691,10 +3748,19 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.attackResultTargetId = saved.attackResultTargetId || "";
   state.attackResultSucceeded = saved.attackResultSucceeded === true;
   state.attackResultWinner = saved.attackResultWinner || "";
+  state.attackResultStage = [ATTACK_RESULT_STAGE_DAWN, ATTACK_RESULT_STAGE_RESULT, ATTACK_RESULT_STAGE_READY].includes(saved.attackResultStage)
+    ? saved.attackResultStage
+    : ATTACK_RESULT_STAGE_READY;
+  state.attackResultRevealSeconds = Number.isFinite(Number(saved.attackResultRevealSeconds))
+    ? Math.max(0, Math.min(ATTACK_RESULT_REVEAL_SECONDS, Number(saved.attackResultRevealSeconds)))
+    : ATTACK_RESULT_REVEAL_SECONDS;
   if (state.showAttackResult) {
     state.screen = "table";
     state.phase = "night";
     state.showVoteTable = false;
+  } else {
+    state.attackResultStage = ATTACK_RESULT_STAGE_DAWN;
+    state.attackResultRevealSeconds = ATTACK_RESULT_REVEAL_SECONDS;
   }
   if (state.revoteCandidateIds.length > 1) {
     state.revoteAssignIndex = Math.max(0, Math.min(state.revoteAssignIndex, state.revoteCandidateIds.length - 2));
