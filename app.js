@@ -19,14 +19,15 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.16.8";
+const APP_VERSION = "v1.17.0";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
 const ACTION_GATE_MAX_SECONDS = 30;
 const VICTORY_BACK_DELAY_MS = 10000;
 const PLEA_TIMER_SECONDS = 30;
-const NIGHT_TRANSITION_SECONDS = 5;
+const NIGHT_TRANSITION_MIN_SECONDS = 3;
+const NIGHT_TRANSITION_MAX_SECONDS = 8;
 const DEBUG_HISTORY_LIMIT = 10;
 
 const state = {
@@ -63,7 +64,9 @@ const state = {
   revotePleaSeconds: PLEA_TIMER_SECONDS,
   revotePleaRunning: false,
   showNightTransition: false,
-  nightTransitionSeconds: NIGHT_TRANSITION_SECONDS,
+  nightTransitionSeconds: NIGHT_TRANSITION_MIN_SECONDS,
+  nightTransitionOutcome: "night",
+  nightTransitionWinner: "",
   showAttackResult: false,
   attackResultTargetId: "",
   attackResultSucceeded: false,
@@ -178,6 +181,8 @@ document.addEventListener("DOMContentLoaded", () => {
     "revotePleaBackBtn",
     "revotePleaStartBtn",
     "nightTransitionView",
+    "nightTransitionLead",
+    "nightTransitionTitle",
     "nightTransitionSeconds",
     "nightTransitionOkBtn",
     "attackResultView",
@@ -761,10 +766,12 @@ function resetRevotePleaTimerState() {
   state.revotePleaRunning = false;
 }
 
-function startNightTransition() {
+function startNightTransition(result) {
   stopAllLiveTimers();
   state.showNightTransition = true;
-  state.nightTransitionSeconds = NIGHT_TRANSITION_SECONDS;
+  state.nightTransitionSeconds = getNightTransitionDelaySeconds(result);
+  state.nightTransitionOutcome = result.ended ? "victory" : "night";
+  state.nightTransitionWinner = result.ended ? result.winner : "";
   state.screen = "table";
   state.phase = "vote";
   state.showVoteTable = false;
@@ -791,9 +798,21 @@ function startNightTransitionTimer() {
 }
 
 function completeNightTransition() {
+  if (state.nightTransitionSeconds > 0) return;
   stopNightTransitionTimer();
+  const outcome = state.nightTransitionOutcome;
+  const winner = state.nightTransitionWinner;
   state.showNightTransition = false;
-  state.nightTransitionSeconds = NIGHT_TRANSITION_SECONDS;
+  state.nightTransitionSeconds = NIGHT_TRANSITION_MIN_SECONDS;
+  state.nightTransitionOutcome = "night";
+  state.nightTransitionWinner = "";
+  if (outcome === "victory" && winner) {
+    setGameWinner(winner);
+    addLog(`ゲーム終了: ${winner}の勝利`);
+    markLatestLogRestorable();
+    renderAndStore();
+    return;
+  }
   startNightActions({ recordUndo: false });
 }
 
@@ -805,7 +824,29 @@ function stopNightTransitionTimer() {
 function resetNightTransitionState() {
   stopNightTransitionTimer();
   state.showNightTransition = false;
-  state.nightTransitionSeconds = NIGHT_TRANSITION_SECONDS;
+  state.nightTransitionSeconds = NIGHT_TRANSITION_MIN_SECONDS;
+  state.nightTransitionOutcome = "night";
+  state.nightTransitionWinner = "";
+}
+
+function getNightTransitionDelaySeconds(result) {
+  const activeCount = Math.max(1, getActivePlayers().length);
+  const livingCount = getLivingPlayers().length;
+  const dayPressure = clampNumber((state.day - 1) / 4, 0, 1);
+  const deathPressure = clampNumber((activeCount - livingCount) / Math.max(1, activeCount - 2), 0, 1);
+  const pressure = result.ended ? Math.max(0.75, dayPressure, deathPressure) : dayPressure * 0.55 + deathPressure * 0.45;
+  const center = NIGHT_TRANSITION_MIN_SECONDS + Math.round(pressure * (NIGHT_TRANSITION_MAX_SECONDS - NIGHT_TRANSITION_MIN_SECONDS));
+  const min = Math.max(NIGHT_TRANSITION_MIN_SECONDS, center - 1);
+  const max = Math.min(NIGHT_TRANSITION_MAX_SECONDS, center + 1);
+  return getRandomInt(min, max);
+}
+
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function clampNumber(value, min, max) {
+  return Math.max(min, Math.min(max, value));
 }
 
 function resetAttackResultState() {
@@ -1285,7 +1326,9 @@ function applyRestoredPayload(payload) {
   state.pleaRunning = false;
   state.revotePleaRunning = false;
   state.showNightTransition = false;
-  state.nightTransitionSeconds = NIGHT_TRANSITION_SECONDS;
+  state.nightTransitionSeconds = NIGHT_TRANSITION_MIN_SECONDS;
+  state.nightTransitionOutcome = "night";
+  state.nightTransitionWinner = "";
   resetAttackResultState();
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
@@ -1897,6 +1940,14 @@ function renderVoteRecordList() {
 function renderNightTransitionView() {
   if (!els.nightTransitionView) return;
   els.nightTransitionView.hidden = !state.showNightTransition;
+  els.nightTransitionView.classList.toggle("night-transition-waiting", state.nightTransitionSeconds > 0);
+  els.nightTransitionView.classList.toggle("night-transition-victory", state.nightTransitionOutcome === "victory");
+  if (els.nightTransitionLead) {
+    els.nightTransitionLead.textContent = state.nightTransitionSeconds > 0 ? "" : "判定";
+  }
+  if (els.nightTransitionTitle) {
+    els.nightTransitionTitle.textContent = state.nightTransitionOutcome === "victory" ? "ゲーム終了" : "夜が訪れる";
+  }
   if (els.nightTransitionSeconds) {
     els.nightTransitionSeconds.textContent = String(Math.max(0, state.nightTransitionSeconds));
   }
@@ -2320,14 +2371,12 @@ function confirmSelectedPlayerExile() {
   state.voteSelectedPlayerId = "";
   const result = getGameResult();
   if (result.ended) {
-    setGameWinner(result.winner);
-    addLog(`ゲーム終了: ${result.winner}の勝利`);
-    markLatestLogRestorable();
+    startNightTransition(result);
+    return;
   } else {
-    startNightTransition();
+    startNightTransition(result);
     return;
   }
-  renderAndStore();
 }
 
 function getCurrentActionRoleId() {
@@ -3516,6 +3565,8 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     revotePleaRunning: state.revotePleaRunning,
     showNightTransition: state.showNightTransition,
     nightTransitionSeconds: state.nightTransitionSeconds,
+    nightTransitionOutcome: state.nightTransitionOutcome,
+    nightTransitionWinner: state.nightTransitionWinner,
     showAttackResult: state.showAttackResult,
     attackResultTargetId: state.attackResultTargetId,
     attackResultSucceeded: state.attackResultSucceeded,
@@ -3612,12 +3663,14 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     state.showVoteTable = false;
   }
   state.showNightTransition = saved.showNightTransition === true;
-  state.nightTransitionSeconds = Number.isFinite(Number(saved.nightTransitionSeconds)) ? Number(saved.nightTransitionSeconds) : NIGHT_TRANSITION_SECONDS;
+  state.nightTransitionSeconds = Number.isFinite(Number(saved.nightTransitionSeconds)) ? Number(saved.nightTransitionSeconds) : NIGHT_TRANSITION_MIN_SECONDS;
+  state.nightTransitionOutcome = saved.nightTransitionOutcome === "victory" ? "victory" : "night";
+  state.nightTransitionWinner = saved.nightTransitionWinner || "";
   if (state.showNightTransition) {
     state.screen = "table";
     state.phase = "vote";
     state.showVoteTable = false;
-    state.nightTransitionSeconds = Math.max(0, Math.min(NIGHT_TRANSITION_SECONDS, state.nightTransitionSeconds));
+    state.nightTransitionSeconds = Math.max(0, Math.min(NIGHT_TRANSITION_MAX_SECONDS, state.nightTransitionSeconds));
   }
   state.showAttackResult = saved.showAttackResult === true;
   state.attackResultTargetId = saved.attackResultTargetId || "";

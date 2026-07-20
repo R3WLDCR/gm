@@ -1753,6 +1753,16 @@ textarea:focus {
   color: #f8fafc;
 }
 
+.night-transition-view.night-transition-waiting {
+  background: #020203;
+}
+
+.night-transition-view.night-transition-victory {
+  background:
+    radial-gradient(circle at 50% 44%, rgba(185, 79, 90, 0.18), transparent 34%),
+    linear-gradient(180deg, #16080c 0%, #220f16 58%, #050203 100%);
+}
+
 .night-transition-view[hidden] {
   display: none;
 }
@@ -1816,6 +1826,11 @@ textarea:focus {
   justify-items: center;
   gap: clamp(12px, 2.6svh, 28px);
   text-align: center;
+  transition: opacity 700ms ease;
+}
+
+.night-transition-waiting .night-transition-content {
+  opacity: 0;
 }
 
 .night-transition-content p {
