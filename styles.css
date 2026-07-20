@@ -1799,11 +1799,29 @@ textarea:focus {
   color: #1f2937;
 }
 
+.attack-result-view::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(15, 23, 42, 0.92), transparent 34%),
+    linear-gradient(180deg, #020617 0%, #0f172a 58%, #020617 100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.attack-result-view.attack-result-dawn::before {
+  animation: attackResultDawnBrighten 3s ease-out forwards;
+}
+
 .attack-result-view[hidden] {
   display: none;
 }
 
 .attack-result-content {
+  position: relative;
+  z-index: 1;
   width: min(980px, 92vw);
   display: grid;
   justify-items: center;
@@ -1819,6 +1837,13 @@ textarea:focus {
   font-weight: 900;
 }
 
+.attack-result-view.attack-result-dawn .attack-result-content p {
+  opacity: 0;
+  filter: blur(8px);
+  transform: translateY(16px);
+  animation: attackResultDawnText 2.2s ease-out 0.75s forwards;
+}
+
 .attack-result-content strong {
   max-width: 92vw;
   font-size: clamp(4.2rem, 13vw, 10rem);
@@ -1828,6 +1853,28 @@ textarea:focus {
   text-shadow:
     0 2px 0 rgba(255, 255, 255, 0.64),
     0 20px 46px rgba(148, 163, 184, 0.32);
+}
+
+@keyframes attackResultDawnBrighten {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes attackResultDawnText {
+  0% {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(16px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
 }
 
 .attack-result-content strong.no-victim {

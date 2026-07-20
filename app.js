@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.17.12";
+const APP_VERSION = "v1.17.13";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -2019,6 +2019,9 @@ function renderAttackResultView() {
   if (!els.attackResultView) return;
   els.attackResultView.hidden = !state.showAttackResult;
   if (!state.showAttackResult) return;
+  els.attackResultView.classList.toggle("attack-result-dawn", state.attackResultStage === ATTACK_RESULT_STAGE_DAWN);
+  els.attackResultView.classList.toggle("attack-result-prompt", state.attackResultStage === ATTACK_RESULT_STAGE_RESULT);
+  els.attackResultView.classList.toggle("attack-result-ready", state.attackResultStage === ATTACK_RESULT_STAGE_READY);
   const promptVisible = state.attackResultStage === ATTACK_RESULT_STAGE_RESULT;
   const nameVisible = state.attackResultStage === ATTACK_RESULT_STAGE_READY;
   const okVisible = state.attackResultStage === ATTACK_RESULT_STAGE_READY;
