@@ -1847,11 +1847,19 @@ textarea:focus {
   justify-items: center;
   gap: clamp(12px, 2.6svh, 28px);
   text-align: center;
-  transition: opacity 700ms ease;
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+  transition:
+    opacity 2400ms ease,
+    filter 2400ms ease,
+    transform 2400ms ease;
 }
 
 .night-transition-waiting .night-transition-content {
   opacity: 0;
+  filter: blur(10px);
+  transform: translateY(18px);
 }
 
 .night-transition-content p {
