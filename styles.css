@@ -1175,23 +1175,42 @@ textarea:focus {
   color: #9f3d4c;
 }
 
-.round-seat.vote-top-candidate {
-  outline: 5px solid rgba(217, 163, 23, 0.3);
+.round-seat.vote-top-current {
+  outline: 4px solid rgba(217, 163, 23, 0.24);
   border-color: #d9a317;
   background:
-    linear-gradient(rgba(250, 204, 21, 0.22), rgba(250, 204, 21, 0.22)),
+    linear-gradient(rgba(250, 204, 21, 0.16), rgba(250, 204, 21, 0.16)),
     #fff8df;
   box-shadow:
-    0 0 0 5px rgba(250, 204, 21, 0.14),
-    0 16px 34px rgba(217, 163, 23, 0.18);
+    0 0 0 4px rgba(250, 204, 21, 0.1),
+    0 14px 30px rgba(217, 163, 23, 0.14);
 }
 
-.round-seat.vote-top-candidate strong {
+.round-seat.vote-top-current strong {
   color: #7a4b00;
 }
 
-.round-seat.vote-top-candidate small {
+.round-seat.vote-top-current small {
   color: #8a5f10;
+}
+
+.round-seat.vote-top-final {
+  outline: 6px solid rgba(185, 79, 90, 0.34);
+  border-color: var(--rose);
+  background:
+    linear-gradient(rgba(185, 79, 90, 0.2), rgba(185, 79, 90, 0.2)),
+    #fff1f2;
+  box-shadow:
+    0 0 0 6px rgba(185, 79, 90, 0.12),
+    0 18px 38px rgba(185, 79, 90, 0.22);
+}
+
+.round-seat.vote-top-final strong {
+  color: #7f1d2d;
+}
+
+.round-seat.vote-top-final small {
+  color: #9f3d4c;
 }
 
 .round-seat.vote-assigned {
