@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.17.13";
+const APP_VERSION = "v1.17.14";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -1998,11 +1998,13 @@ function renderNightTransitionView() {
   els.nightTransitionView.hidden = !state.showNightTransition;
   els.nightTransitionView.classList.toggle("night-transition-waiting", state.nightTransitionSeconds > 0);
   els.nightTransitionView.classList.toggle("night-transition-victory", state.nightTransitionOutcome === "victory");
+  els.nightTransitionView.classList.toggle("night-transition-werewolf-victory", state.nightTransitionOutcome === "victory" && state.nightTransitionWinner === "人狼陣営");
+  els.nightTransitionView.classList.toggle("night-transition-village-victory", state.nightTransitionOutcome === "victory" && state.nightTransitionWinner === "村人陣営");
   if (els.nightTransitionLead) {
     els.nightTransitionLead.textContent = state.nightTransitionSeconds > 0 ? "" : "判定";
   }
   if (els.nightTransitionTitle) {
-    els.nightTransitionTitle.textContent = state.nightTransitionOutcome === "victory" ? "ゲーム終了" : "夜が訪れる";
+    els.nightTransitionTitle.textContent = state.nightTransitionOutcome === "victory" ? `${state.nightTransitionWinner || "勝利陣営"}の勝利` : "夜が訪れる";
   }
   if (els.nightTransitionSeconds) {
     els.nightTransitionSeconds.textContent = "";
