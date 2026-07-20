@@ -1793,9 +1793,10 @@ textarea:focus {
   overflow: hidden;
   border-radius: 8px;
   background:
-    radial-gradient(circle at 50% 42%, rgba(239, 68, 68, 0.16), transparent 34%),
-    linear-gradient(180deg, #1b1116 0%, #2a1720 55%, #080507 100%);
-  color: #fff7ed;
+    radial-gradient(circle at 50% 38%, rgba(253, 224, 71, 0.34), transparent 28%),
+    radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.58), transparent 24%),
+    linear-gradient(180deg, #dbeafe 0%, #fde68a 52%, #fef3c7 100%);
+  color: #1f2937;
 }
 
 .attack-result-view[hidden] {
@@ -1813,7 +1814,7 @@ textarea:focus {
 .attack-result-content p,
 .attack-result-content span {
   margin: 0;
-  color: rgba(255, 247, 237, 0.72);
+  color: rgba(71, 85, 105, 0.82);
   font-size: clamp(1rem, 2.4vw, 1.55rem);
   font-weight: 900;
 }
@@ -1824,11 +1825,13 @@ textarea:focus {
   font-weight: 900;
   line-height: 1;
   overflow-wrap: anywhere;
-  text-shadow: 0 22px 58px rgba(0, 0, 0, 0.52);
+  text-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.64),
+    0 20px 46px rgba(148, 163, 184, 0.32);
 }
 
 .attack-result-content strong.no-victim {
-  color: #dbeafe;
+  color: #2563eb;
 }
 
 .attack-result-ok-button {
