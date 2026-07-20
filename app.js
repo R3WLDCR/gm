@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.17.11";
+const APP_VERSION = "v1.17.12";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -2344,7 +2344,7 @@ function isRoundTableDealMode() {
 function getSeatStatus(player, actionRoleId = "") {
   if (state.exiledPlayerIds.includes(player.id)) return { type: "exiled", label: "追放" };
   if (state.attackedPlayerIds.includes(player.id)) return { type: "attacked", label: "襲撃" };
-  if (!player.alive) return { type: "dead", label: "死亡" };
+  if (!player.alive) return { type: "dead", label: "処刑" };
   if (actionRoleId === "seer" && state.seerCheckResults[player.id]) {
     return {
       type: state.seerCheckResults[player.id] === "人狼" ? "seer-werewolf" : "seer-villager",
