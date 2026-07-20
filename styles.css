@@ -1175,6 +1175,25 @@ textarea:focus {
   color: #9f3d4c;
 }
 
+.round-seat.vote-top-candidate {
+  outline: 5px solid rgba(217, 163, 23, 0.3);
+  border-color: #d9a317;
+  background:
+    linear-gradient(rgba(250, 204, 21, 0.22), rgba(250, 204, 21, 0.22)),
+    #fff8df;
+  box-shadow:
+    0 0 0 5px rgba(250, 204, 21, 0.14),
+    0 16px 34px rgba(217, 163, 23, 0.18);
+}
+
+.round-seat.vote-top-candidate strong {
+  color: #7a4b00;
+}
+
+.round-seat.vote-top-candidate small {
+  color: #8a5f10;
+}
+
 .round-seat.vote-assigned {
   outline: 4px solid rgba(12, 122, 103, 0.2);
   border-color: rgba(12, 122, 103, 0.55);

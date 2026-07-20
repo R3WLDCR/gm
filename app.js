@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.16.5";
+const APP_VERSION = "v1.16.6";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -2133,6 +2133,8 @@ function renderWerewolfResult() {
 
 function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMode = false, dealMode = false, players = getActivePlayers() }) {
   const revoteTargetSelectMode = voteMode && isRevoteTargetSelectMode();
+  const topVotedIds = voteMode && !isRevoteAssignmentMode() && !state.pendingRevotePleaCandidateIds.length ? getTopVotedPlayerIds() : [];
+  const topVotedPlayerId = topVotedIds.length === 1 ? topVotedIds[0] : "";
   if (container === els.roundTable) {
     els.dealPlayerCount.textContent = `${players.length}人`;
     els.progressStartBtn.hidden = !dealMode || !isRoleDealComplete();
@@ -2177,7 +2179,7 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
     const voteSelfDisabled = voteMode && !revoteTargetSelectMode && isRevoteAssignmentMode() && player.id === getCurrentRevoteTargetId();
     const seat = document.createElement("button");
     seat.type = "button";
-    seat.className = `round-seat ${player.alive ? "" : "dead"} ${actionDisabled ? "action-disabled" : ""} ${voteSelfDisabled ? "vote-self-disabled" : ""} ${revoteTargetSelectMode ? "revote-target-option" : ""} ${status ? `status-${status.type}` : ""} ${state.exiledPlayerIds.includes(player.id) ? "exiled" : ""} ${voteMode && state.voteSelectedPlayerId === player.id ? "vote-selected" : ""} ${voteAssignment ? "vote-assigned" : ""} ${voteAssignment?.targetId === getCurrentRevoteTargetId() ? "vote-assigned-current" : ""} ${!hideRoles && player.roleId ? "assigned" : ""} ${hideRoles ? "" : getRoleColorClass(player.roleId)} ${!hideRoles && shouldBlinkSeerTarget(player) ? "seer-blink" : ""} ${
+    seat.className = `round-seat ${player.alive ? "" : "dead"} ${actionDisabled ? "action-disabled" : ""} ${voteSelfDisabled ? "vote-self-disabled" : ""} ${revoteTargetSelectMode ? "revote-target-option" : ""} ${status ? `status-${status.type}` : ""} ${state.exiledPlayerIds.includes(player.id) ? "exiled" : ""} ${voteMode && topVotedPlayerId === player.id ? "vote-top-candidate" : ""} ${voteMode && state.voteSelectedPlayerId === player.id ? "vote-selected" : ""} ${voteAssignment ? "vote-assigned" : ""} ${voteAssignment?.targetId === getCurrentRevoteTargetId() ? "vote-assigned-current" : ""} ${!hideRoles && player.roleId ? "assigned" : ""} ${hideRoles ? "" : getRoleColorClass(player.roleId)} ${!hideRoles && shouldBlinkSeerTarget(player) ? "seer-blink" : ""} ${
       state.roleDealSelectedPlayerIds.includes(player.id) ? "selected" : ""
     }`;
     seat.disabled = actionDisabled;
