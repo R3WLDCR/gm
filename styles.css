@@ -1502,6 +1502,13 @@ textarea:focus {
   align-items: end;
 }
 
+.vote-remaining-text {
+  grid-column: 1 / -1;
+  color: #7a4b00;
+  font-size: 0.94rem;
+  font-weight: 900;
+}
+
 .vote-input-grid label {
   display: grid;
   gap: 5px;
