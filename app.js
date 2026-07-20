@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.18.2";
+const APP_VERSION = "v1.18.3";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -3194,26 +3194,43 @@ function getLogLineHtml(log) {
 function groupLogsByDay(logs) {
   const groups = [];
   let currentGroup = { label: "準備", logs: [] };
+  let pendingLabel = "";
   logs
     .slice()
     .reverse()
     .forEach((log) => {
-      const label = getLogDayLabel(log.text);
+      const explicitLabel = getExplicitLogDayLabel(log.text);
+      const label = explicitLabel || pendingLabel;
       if (label && label !== currentGroup.label) {
         if (currentGroup.logs.length) groups.push(currentGroup);
         currentGroup = { label, logs: [] };
       }
       currentGroup.logs.push(log);
+      if (isExileLogText(log.text)) {
+        pendingLabel = getNextLogDayLabel(currentGroup.label);
+      } else if (explicitLabel) {
+        pendingLabel = "";
+      }
     });
   if (currentGroup.logs.length) groups.push(currentGroup);
   return groups.reverse().map((group) => ({ ...group, logs: group.logs.reverse() }));
 }
 
-function getLogDayLabel(text) {
+function getExplicitLogDayLabel(text) {
   const dayMatch = text.match(/(\d+)日目/);
   if (dayMatch) return `${dayMatch[1]}日目`;
   if (text.includes("初日")) return "1日目";
   return "";
+}
+
+function getNextLogDayLabel(label) {
+  const match = String(label).match(/(\d+)日目/);
+  if (!match) return "";
+  return `${Number(match[1]) + 1}日目`;
+}
+
+function isExileLogText(text) {
+  return text === "追放" || / を追放$/.test(text);
 }
 
 function revealRole(player) {
@@ -3354,13 +3371,20 @@ function formatCurrentGameLogForCopy() {
   }
 
   let currentSection = "";
+  let pendingSection = "";
   entries.forEach((log) => {
-    const section = getLogSection(log.text, currentSection);
+    const explicitSection = getExplicitLogSection(log.text, currentSection);
+    const section = explicitSection || pendingSection || currentSection;
     if (section && section !== currentSection) {
       lines.push("", `■ ${section}`);
       currentSection = section;
     }
     lines.push(log.text);
+    if (isExileLogText(log.text)) {
+      pendingSection = getNextNightLogSection(currentSection);
+    } else if (explicitSection) {
+      pendingSection = "";
+    }
   });
 
   return lines.join("\n").trim();
@@ -3374,7 +3398,7 @@ function getWinnerFromLogs(entries) {
   return state.gameWinner || "";
 }
 
-function getLogSection(text, currentSection) {
+function getExplicitLogSection(text, currentSection) {
   let match = text.match(/^配役完了。(\d+)日目の夜へ$/) || text.match(/^(\d+)日目の夜へ$/);
   if (match) return `${match[1]}日目 夜`;
 
@@ -3382,7 +3406,13 @@ function getLogSection(text, currentSection) {
   if (match) return `${match[1]}日目 昼`;
 
   if (text === "進行開始") return currentSection || "1日目 夜";
-  return currentSection;
+  return "";
+}
+
+function getNextNightLogSection(section) {
+  const match = String(section).match(/(\d+)日目/);
+  if (!match) return "";
+  return `${Number(match[1]) + 1}日目 夜`;
 }
 
 async function handleLogout() {
