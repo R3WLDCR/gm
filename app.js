@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.17.17";
+const APP_VERSION = "v1.18.0";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -803,9 +803,17 @@ function resumeNightTransitionTimer() {
 function startNightTransitionTimer() {
   if (!state.showNightTransition) return;
   stopNightTransitionTimer();
+  if (state.nightTransitionSeconds === 0 && state.nightTransitionOutcome === "victory" && state.nightTransitionWinner) {
+    finishVictoryNightTransition(state.nightTransitionWinner);
+    return;
+  }
   nightTransitionTimerId = window.setInterval(() => {
     if (state.nightTransitionSeconds > 0) {
       state.nightTransitionSeconds = Math.max(0, state.nightTransitionSeconds - 1);
+      if (state.nightTransitionSeconds === 0 && state.nightTransitionOutcome === "victory" && state.nightTransitionWinner) {
+        finishVictoryNightTransition(state.nightTransitionWinner);
+        return;
+      }
     } else {
       state.nightTransitionOkSeconds = Math.max(0, state.nightTransitionOkSeconds - 1);
     }
@@ -814,6 +822,20 @@ function startNightTransitionTimer() {
     }
     renderAndStore();
   }, 1000);
+}
+
+function finishVictoryNightTransition(winner) {
+  if (!winner) return;
+  stopNightTransitionTimer();
+  state.showNightTransition = false;
+  state.nightTransitionSeconds = NIGHT_TRANSITION_MIN_SECONDS;
+  state.nightTransitionOkSeconds = NIGHT_TRANSITION_OK_DELAY_SECONDS;
+  state.nightTransitionOutcome = "night";
+  state.nightTransitionWinner = "";
+  setGameWinner(winner);
+  addLog(`ゲーム終了: ${winner}の勝利`);
+  markLatestLogRestorable();
+  renderAndStore();
 }
 
 function completeNightTransition() {
@@ -827,10 +849,7 @@ function completeNightTransition() {
   state.nightTransitionOutcome = "night";
   state.nightTransitionWinner = "";
   if (outcome === "victory" && winner) {
-    setGameWinner(winner);
-    addLog(`ゲーム終了: ${winner}の勝利`);
-    markLatestLogRestorable();
-    renderAndStore();
+    finishVictoryNightTransition(winner);
     return;
   }
   startNightActions({ recordUndo: false });

@@ -357,6 +357,20 @@ body.victory-fullscreen-view .victory-image {
 body.werewolf-victory-view .victory-banner.victory-werewolf .victory-image-werewolf,
 body.village-victory-view .victory-banner.victory-village .victory-image-village {
   display: block;
+  animation: victoryImageFadeIn 2800ms ease-out forwards;
+}
+
+@keyframes victoryImageFadeIn {
+  0% {
+    opacity: 0;
+    filter: brightness(0.2) blur(10px);
+    transform: scale(1.035);
+  }
+  100% {
+    opacity: 1;
+    filter: brightness(1) blur(0);
+    transform: scale(1);
+  }
 }
 
 .victory-phone {
