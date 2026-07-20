@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.17.0";
+const APP_VERSION = "v1.17.1";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -76,6 +76,7 @@ const state = {
   roleDealIndex: 0,
   roleDealSelectedPlayerIds: [],
   seerBlinkPlayerId: "",
+  seerCheckResults: {},
   actionRoleIndex: ACTION_ROLE_ORDER.length,
   actionComplete: false,
   actionSelectedTargetId: "",
@@ -376,6 +377,7 @@ function startRoundTable() {
   state.roleDealIndex = 0;
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
+  state.seerCheckResults = {};
   state.actionComplete = false;
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
@@ -400,6 +402,7 @@ function startProgress() {
   state.actionRoleIndex = ACTION_ROLE_ORDER.length;
   state.actionComplete = false;
   state.guardedPlayerId = "";
+  state.seerCheckResults = {};
   resetTimerValue(240);
   addLog("進行開始");
   markLatestLogRestorable();
@@ -1429,6 +1432,7 @@ function resetGame() {
   state.roleDealIndex = 0;
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
+  state.seerCheckResults = {};
   state.actionRoleIndex = ACTION_ROLE_ORDER.length;
   state.actionComplete = false;
   state.actionGateRoleId = "";
@@ -1477,6 +1481,7 @@ function resetToFirstNight() {
   state.nightStartGuardedPlayerId = "";
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
+  state.seerCheckResults = {};
   getActivePlayers().forEach((player) => {
     player.alive = true;
   });
@@ -2230,7 +2235,8 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
     const x = 50 + Math.cos(angle) * radiusX;
     const y = 50 + Math.sin(angle) * radiusY;
     const role = hideRoles ? null : getRole(player.roleId);
-    const status = getSeatStatus(player);
+    const actionRoleId = actionMode ? getCurrentActionRoleId() : "";
+    const status = getSeatStatus(player, actionRoleId);
     const actionDisabled = actionMode && !canSelectActionTarget(getCurrentActionRoleId(), player);
     const voteAssignment = voteMode ? getVoteAssignmentForVoter(player.id) : null;
     const voteSelfDisabled = voteMode && !revoteTargetSelectMode && isRevoteAssignmentMode() && player.id === getCurrentRevoteTargetId();
@@ -2269,10 +2275,16 @@ function isRoundTableDealMode() {
   return state.phase === "setup" || (state.phase === "night" && state.day <= 1 && !state.actionComplete);
 }
 
-function getSeatStatus(player) {
+function getSeatStatus(player, actionRoleId = "") {
   if (state.exiledPlayerIds.includes(player.id)) return { type: "exiled", label: "追放" };
   if (state.attackedPlayerIds.includes(player.id)) return { type: "attacked", label: "襲撃" };
   if (!player.alive) return { type: "dead", label: "死亡" };
+  if (actionRoleId === "seer" && state.seerCheckResults[player.id]) {
+    return {
+      type: state.seerCheckResults[player.id] === "人狼" ? "seer-werewolf" : "seer-villager",
+      label: state.seerCheckResults[player.id],
+    };
+  }
   return null;
 }
 
@@ -2689,7 +2701,9 @@ function handleSeerOk() {
   }
   if (!isActionGateReady("seer")) return;
   pushUndoSnapshot("占い確定");
-  const logId = addLog(formatActionLog("占い", "seer", player, getDivinationResult(player)));
+  const result = getDivinationResult(player);
+  state.seerCheckResults[player.id] = result;
+  const logId = addLog(formatActionLog("占い", "seer", player, result));
   state.actionRoleIndex += 1;
   resetActionSelection();
   advanceActionRole();
@@ -3576,6 +3590,7 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     roleDealIndex: state.roleDealIndex,
     roleDealSelectedPlayerIds: state.roleDealSelectedPlayerIds,
     seerBlinkPlayerId: state.seerBlinkPlayerId,
+    seerCheckResults: state.seerCheckResults,
     actionRoleIndex: state.actionRoleIndex,
     actionComplete: state.actionComplete,
     actionSelectedTargetId: state.actionSelectedTargetId,
@@ -3697,6 +3712,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.roleDealIndex = saved.roleDealIndex || 0;
   state.roleDealSelectedPlayerIds = saved.roleDealSelectedPlayerIds || (saved.roleDealSelectedPlayerId ? [saved.roleDealSelectedPlayerId] : []);
   state.seerBlinkPlayerId = saved.seerBlinkPlayerId || "";
+  state.seerCheckResults = saved.seerCheckResults && typeof saved.seerCheckResults === "object" ? saved.seerCheckResults : {};
   state.actionRoleIndex = Number.isInteger(saved.actionRoleIndex) ? saved.actionRoleIndex : ACTION_ROLE_ORDER.length;
   state.actionComplete = saved.actionComplete === true;
   state.actionSelectedTargetId = saved.actionSelectedTargetId || "";

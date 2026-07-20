@@ -1282,6 +1282,24 @@ textarea:focus {
   background: #6b746f;
 }
 
+.round-seat.status-seer-villager {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.round-seat.status-seer-villager .seat-status-badge {
+  background: #2563eb;
+}
+
+.round-seat.status-seer-werewolf {
+  border-color: var(--rose);
+  background: #fff1f2;
+}
+
+.round-seat.status-seer-werewolf .seat-status-badge {
+  background: var(--rose);
+}
+
 .round-seat.seer-blink {
   animation: seerBlink 0.85s ease-in-out infinite;
   border-color: var(--gold);
