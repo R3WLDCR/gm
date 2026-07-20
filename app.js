@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.17.16";
+const APP_VERSION = "v1.17.17";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -2004,7 +2004,7 @@ function renderNightTransitionView() {
     els.nightTransitionLead.textContent = state.nightTransitionSeconds > 0 ? "" : "判定";
   }
   if (els.nightTransitionTitle) {
-    els.nightTransitionTitle.textContent = state.nightTransitionOutcome === "victory" ? `${state.nightTransitionWinner || "勝利陣営"}の勝利` : "夜が訪れる";
+    els.nightTransitionTitle.textContent = state.nightTransitionOutcome === "victory" ? getVictoryTitle(state.nightTransitionWinner) : "夜が訪れる";
   }
   if (els.nightTransitionSeconds) {
     els.nightTransitionSeconds.textContent = "";
