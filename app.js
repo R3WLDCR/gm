@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.18.0";
+const APP_VERSION = "v1.18.1";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -1628,12 +1628,12 @@ function isAttackResultFullscreenView() {
 }
 
 function renderVictoryBanner() {
-  const ended = Boolean(state.gameWinner);
-  els.victoryBanner?.toggleAttribute("hidden", !ended);
-  els.victoryBanner?.classList.toggle("victory-werewolf", state.gameWinner === "人狼陣営");
-  els.victoryBanner?.classList.toggle("victory-village", state.gameWinner === "村人陣営");
+  const visible = Boolean(state.gameWinner && !state.victoryDismissed);
+  els.victoryBanner?.toggleAttribute("hidden", !visible);
+  els.victoryBanner?.classList.toggle("victory-werewolf", visible && state.gameWinner === "人狼陣営");
+  els.victoryBanner?.classList.toggle("victory-village", visible && state.gameWinner === "村人陣営");
   if (els.victoryLeadText) {
-    els.victoryLeadText.textContent = ended ? "ゲーム終了" : "";
+    els.victoryLeadText.textContent = visible ? "ゲーム終了" : "";
   }
   if (els.victoryVisualMark) {
     els.victoryVisualMark.textContent = state.gameWinner === "人狼陣営" ? "✦" : "✧";
@@ -1645,10 +1645,10 @@ function renderVictoryBanner() {
     els.victoryMessageText.textContent = getVictoryMessage(state.gameWinner);
   }
   if (els.victoryBackBtn) {
-    const canBack = ended && Date.now() - (state.victoryShownAt || 0) >= VICTORY_BACK_DELAY_MS;
+    const canBack = visible && Date.now() - (state.victoryShownAt || 0) >= VICTORY_BACK_DELAY_MS;
     els.victoryBackBtn.hidden = !canBack || state.victoryDismissed;
   }
-  scheduleVictoryBackButton(ended);
+  scheduleVictoryBackButton(visible);
 }
 
 function scheduleVictoryBackButton(ended) {
