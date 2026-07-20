@@ -8,7 +8,7 @@
 ];
 
 const STANDARD_ROLE_ORDER = ["werewolf", "seer", "medium", "knight", "madman"];
-const ACTION_ROLE_ORDER = ["medium", "seer", "knight", "werewolf"];
+const ACTION_ROLE_ORDER = ["medium", "knight", "seer", "werewolf"];
 const ACTION_ROLE_LABELS = {
   medium: "霊媒師",
   seer: "預言者",
@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.17.4";
+const APP_VERSION = "v1.17.5";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
