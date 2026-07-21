@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.19.0";
+const APP_VERSION = "v1.19.1";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -2327,12 +2327,13 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
     const role = hideRoles ? null : getRole(player.roleId);
     const actionRoleId = actionMode ? getCurrentActionRoleId() : "";
     const status = getSeatStatus(player, actionRoleId);
+    const seerRandomWhite = !hideRoles && isSeerRandomWhiteTarget(player);
     const actionDisabled = actionMode && !canSelectActionTarget(getCurrentActionRoleId(), player);
     const voteAssignment = voteMode ? getVoteAssignmentForVoter(player.id) : null;
     const voteSelfDisabled = voteMode && !revoteTargetSelectMode && isRevoteAssignmentMode() && player.id === getCurrentRevoteTargetId();
     const seat = document.createElement("button");
     seat.type = "button";
-    seat.className = `round-seat ${player.alive ? "" : "dead"} ${actionDisabled ? "action-disabled" : ""} ${voteSelfDisabled ? "vote-self-disabled" : ""} ${revoteTargetSelectMode ? "revote-target-option" : ""} ${status ? `status-${status.type}` : ""} ${state.exiledPlayerIds.includes(player.id) ? "exiled" : ""} ${voteMode && topVotedPlayerId === player.id ? (topVoteFinalized ? "vote-top-final" : "vote-top-current") : ""} ${voteMode && state.voteSelectedPlayerId === player.id ? "vote-selected" : ""} ${voteAssignment ? "vote-assigned" : ""} ${voteAssignment?.targetId === getCurrentRevoteTargetId() ? "vote-assigned-current" : ""} ${!hideRoles && player.roleId ? "assigned" : ""} ${hideRoles ? "" : getRoleColorClass(player.roleId)} ${!hideRoles && shouldBlinkSeerTarget(player) ? "seer-blink" : ""} ${
+    seat.className = `round-seat ${player.alive ? "" : "dead"} ${actionDisabled ? "action-disabled" : ""} ${voteSelfDisabled ? "vote-self-disabled" : ""} ${revoteTargetSelectMode ? "revote-target-option" : ""} ${status ? `status-${status.type}` : ""} ${state.exiledPlayerIds.includes(player.id) ? "exiled" : ""} ${voteMode && topVotedPlayerId === player.id ? (topVoteFinalized ? "vote-top-final" : "vote-top-current") : ""} ${voteMode && state.voteSelectedPlayerId === player.id ? "vote-selected" : ""} ${voteAssignment ? "vote-assigned" : ""} ${voteAssignment?.targetId === getCurrentRevoteTargetId() ? "vote-assigned-current" : ""} ${!hideRoles && player.roleId ? "assigned" : ""} ${hideRoles ? "" : getRoleColorClass(player.roleId)} ${seerRandomWhite ? "seer-blink" : ""} ${
       state.roleDealSelectedPlayerIds.includes(player.id) ? "selected" : ""
     }`;
     seat.disabled = actionDisabled;
@@ -2344,6 +2345,7 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
       <strong>${escapeHtml(player.name)}</strong>
       <small>${role ? escapeHtml(role.name) : revoteTargetSelectMode ? "決戦候補" : voteAssignment ? `→ ${escapeHtml(voteAssignment.targetName)}` : hideRoles ? "" : "未配役"}</small>
       ${status ? `<span class="seat-status-badge">${status.label}</span>` : ""}
+      ${seerRandomWhite ? '<span class="seat-status-badge seer-white-badge">ランダム白</span>' : ""}
     `;
     if (actionMode) {
       seat.addEventListener("click", () => handleActionTarget(player));
@@ -2917,6 +2919,7 @@ function getRoleDealCenterHtml() {
   const role = getRole(roleId);
   const selectedPlayers = state.roleDealSelectedPlayerIds.map(findPlayer).filter(Boolean);
   const canBack = state.roleDealIndex > 0;
+  const seerWhitePlayer = roleId === "seer" && selectedPlayers.length ? findPlayer(getSeerBlinkPlayerId()) : null;
   const selectedText = selectedPlayers.length
     ? `${selectedPlayers.map((player) => escapeHtml(player.name)).join("、")} に割り当て`
     : "参加者を選択";
@@ -2924,6 +2927,7 @@ function getRoleDealCenterHtml() {
     <span>次の役職</span>
     <strong>${escapeHtml(role ? role.name : "未配役")}</strong>
     <small>${selectedText}</small>
+    ${seerWhitePlayer ? `<small class="role-deal-hint">ランダム白: ${escapeHtml(seerWhitePlayer.name)}</small>` : ""}
     <div class="role-deal-actions">
       <button class="secondary-button" data-action="role-back" ${canBack ? "" : "disabled"}>戻る</button>
       <button class="primary-button role-ok-button" data-action="role-ok">OK</button>
@@ -2932,6 +2936,10 @@ function getRoleDealCenterHtml() {
 }
 
 function shouldBlinkSeerTarget(player) {
+  return isSeerRandomWhiteTarget(player);
+}
+
+function isSeerRandomWhiteTarget(player) {
   const roleId = state.roleDealQueue[state.roleDealIndex];
   return roleId === "seer" && state.roleDealSelectedPlayerIds.length > 0 && player.id === getSeerBlinkPlayerId();
 }

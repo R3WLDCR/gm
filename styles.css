@@ -1024,6 +1024,15 @@ textarea:focus {
   font-weight: 800;
 }
 
+.table-core .role-deal-hint {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
 .role-deal-actions {
   width: 100%;
   display: grid;
@@ -1312,6 +1321,11 @@ textarea:focus {
 
 .round-seat.status-seer-werewolf .seat-status-badge {
   background: var(--rose);
+}
+
+.round-seat .seer-white-badge {
+  background: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
 }
 
 .round-seat.seer-blink {
