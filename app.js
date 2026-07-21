@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.19.1";
+const APP_VERSION = "v1.19.2";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -2919,7 +2919,6 @@ function getRoleDealCenterHtml() {
   const role = getRole(roleId);
   const selectedPlayers = state.roleDealSelectedPlayerIds.map(findPlayer).filter(Boolean);
   const canBack = state.roleDealIndex > 0;
-  const seerWhitePlayer = roleId === "seer" && selectedPlayers.length ? findPlayer(getSeerBlinkPlayerId()) : null;
   const selectedText = selectedPlayers.length
     ? `${selectedPlayers.map((player) => escapeHtml(player.name)).join("、")} に割り当て`
     : "参加者を選択";
@@ -2927,7 +2926,6 @@ function getRoleDealCenterHtml() {
     <span>次の役職</span>
     <strong>${escapeHtml(role ? role.name : "未配役")}</strong>
     <small>${selectedText}</small>
-    ${seerWhitePlayer ? `<small class="role-deal-hint">ランダム白: ${escapeHtml(seerWhitePlayer.name)}</small>` : ""}
     <div class="role-deal-actions">
       <button class="secondary-button" data-action="role-back" ${canBack ? "" : "disabled"}>戻る</button>
       <button class="primary-button role-ok-button" data-action="role-ok">OK</button>

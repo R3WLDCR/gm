@@ -1024,15 +1024,6 @@ textarea:focus {
   font-weight: 800;
 }
 
-.table-core .role-deal-hint {
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-size: 0.82rem;
-  font-weight: 900;
-}
-
 .role-deal-actions {
   width: 100%;
   display: grid;
