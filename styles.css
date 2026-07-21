@@ -3478,3 +3478,310 @@ body.participant-action-view .action-confirm-actions {
     font-size: clamp(9.4rem, 29vw, 18rem);
   }
 }
+
+@media (max-width: 480px) {
+  .app-shell {
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  }
+
+  .topbar {
+    gap: 8px;
+    padding-bottom: 8px;
+  }
+
+  .title-row {
+    align-items: center;
+    flex-direction: row;
+    gap: 6px;
+  }
+
+  .eyebrow {
+    font-size: 0.72rem;
+  }
+
+  .version-badge {
+    font-size: 0.65rem;
+    padding: 2px 5px;
+  }
+
+  .screen-tabs {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 3px;
+    padding: 3px;
+  }
+
+  .screen-tab {
+    min-height: 38px;
+    padding: 0 2px;
+    font-size: clamp(0.68rem, 2.9vw, 0.82rem);
+  }
+
+  .panel {
+    padding: 10px;
+  }
+
+  .panel-heading {
+    gap: 8px;
+  }
+
+  .panel-heading h2 {
+    font-size: clamp(1.35rem, 6vw, 1.8rem);
+  }
+
+  .table-panel {
+    min-height: auto;
+  }
+
+  .round-table,
+  .vote-round-table,
+  .action-round-table {
+    min-height: min(92svh, 620px);
+  }
+
+  .round-seat {
+    width: clamp(72px, 23vw, 96px);
+    min-height: 52px;
+    padding: 5px 4px;
+    gap: 1px;
+  }
+
+  .round-seat strong {
+    max-width: calc(100% - 8px);
+    font-size: clamp(0.72rem, 3.4vw, 0.95rem);
+  }
+
+  .round-seat small {
+    font-size: 0.62rem;
+  }
+
+  .seat-status-badge {
+    padding: 2px 5px;
+    font-size: 0.6rem;
+  }
+
+  .table-core {
+    width: min(150px, 42%);
+    min-height: 86px;
+    padding: 8px;
+  }
+
+  .table-core strong {
+    font-size: clamp(1.25rem, 6vw, 1.7rem);
+  }
+
+  .gm-seat {
+    min-width: 64px;
+    min-height: 30px;
+    font-size: 0.72rem;
+  }
+
+  .vote-control-panel {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .vote-input-grid,
+  .vote-result-grid,
+  .revote-assist-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .vote-summary,
+  .vote-record-list {
+    max-height: 160px;
+  }
+
+  .vote-table-actions {
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: max(8px, env(safe-area-inset-left));
+    width: auto;
+    gap: 6px;
+  }
+
+  .vote-table-actions .secondary-button,
+  .vote-table-actions .primary-button {
+    min-height: 46px;
+    padding: 0 10px;
+    font-size: clamp(0.95rem, 4vw, 1.15rem);
+  }
+
+  .plea-button,
+  .exile-button {
+    min-height: 48px;
+    font-size: clamp(1rem, 4.5vw, 1.25rem);
+  }
+
+  body.timer-fullscreen-view .timer-strip,
+  body.timer-fullscreen-view .timer-face,
+  body.plea-fullscreen-view .plea-timer-view,
+  body.revote-plea-fullscreen-view .revote-plea-timer-view,
+  body.night-transition-fullscreen-view .night-transition-view,
+  body.attack-result-fullscreen-view .attack-result-view {
+    min-height: 100svh;
+  }
+
+  body.timer-fullscreen-view .timer-ring {
+    --timer-ring-size: min(82svh, 94vw);
+  }
+
+  body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
+    font-size: clamp(6rem, 32vw, 10rem);
+  }
+
+  body.timer-fullscreen-view .timer-corner-actions {
+    left: max(10px, env(safe-area-inset-left));
+    bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  body.timer-fullscreen-view .vote-start-button {
+    min-width: 112px;
+    min-height: 48px;
+    font-size: clamp(1rem, 4vw, 1.25rem);
+  }
+
+  .night-transition-content strong,
+  .attack-result-content strong {
+    max-width: 94vw;
+    font-size: clamp(3.2rem, 18vw, 6rem);
+  }
+
+  .attack-result-content p,
+  .attack-result-content span,
+  .night-transition-content p {
+    font-size: clamp(0.95rem, 4.2vw, 1.25rem);
+  }
+
+  .attack-result-ok-button,
+  .night-transition-ok-button,
+  .victory-back-button {
+    min-height: 48px;
+    min-width: 112px;
+    font-size: clamp(1rem, 4vw, 1.25rem);
+  }
+
+  body.victory-fullscreen-view .victory-image {
+    width: 100vw;
+    height: 100svh;
+    min-height: 100svh;
+  }
+
+  body.participant-action-view .medium-result-card,
+  body.participant-action-view .blocked-role-card {
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  }
+
+  body.participant-action-view .seer-result-card:not(.has-result) strong,
+  body.participant-action-view .knight-result-card strong,
+  body.participant-action-view .medium-result-card strong {
+    font-size: clamp(3.6rem, 18vw, 7rem);
+  }
+
+  body.participant-action-view .seer-result-card.has-result strong,
+  body.participant-action-view .medium-only-result-card.has-result strong {
+    font-size: clamp(2.2rem, 10vw, 4.4rem);
+  }
+
+  body.participant-action-view .seer-result-card.has-result em,
+  body.participant-action-view .medium-only-result-card.has-result em {
+    font-size: clamp(6rem, 28vw, 10rem);
+  }
+
+  .log-day-block {
+    padding: 10px;
+  }
+
+  .log-line {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 8px;
+  }
+}
+
+@media (max-height: 480px) and (orientation: landscape) {
+  .app-shell {
+    padding: 6px max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left));
+  }
+
+  .topbar {
+    padding-bottom: 6px;
+  }
+
+  .screen-tabs {
+    gap: 3px;
+    padding: 3px;
+  }
+
+  .screen-tab {
+    min-height: 34px;
+    font-size: 0.72rem;
+  }
+
+  .panel {
+    padding: 8px;
+  }
+
+  .round-table,
+  .vote-round-table,
+  .action-round-table {
+    min-height: 430px;
+  }
+
+  .round-seat {
+    width: clamp(74px, 14vw, 110px);
+    min-height: 48px;
+    padding: 4px;
+  }
+
+  .round-seat strong {
+    font-size: clamp(0.72rem, 2vw, 0.95rem);
+  }
+
+  .round-seat small,
+  .seat-status-badge {
+    font-size: 0.58rem;
+  }
+
+  .vote-control-panel {
+    max-height: 38svh;
+    overflow: auto;
+  }
+
+  .vote-input-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  }
+
+  .vote-summary,
+  .vote-record-list {
+    max-height: 82px;
+  }
+
+  .vote-table-actions {
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: min(430px, 56vw);
+  }
+
+  body.timer-fullscreen-view .timer-ring {
+    --timer-ring-size: min(84svh, 48vw);
+  }
+
+  body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
+    font-size: clamp(5.4rem, 18vw, 8.5rem);
+  }
+
+  .night-transition-content strong,
+  .attack-result-content strong {
+    font-size: clamp(3.8rem, 13vw, 7rem);
+  }
+
+  body.participant-action-view .seer-result-card:not(.has-result) strong,
+  body.participant-action-view .knight-result-card strong,
+  body.participant-action-view .medium-result-card strong {
+    font-size: clamp(4rem, 14vw, 8rem);
+  }
+
+  body.participant-action-view .seer-result-card.has-result em,
+  body.participant-action-view .medium-only-result-card.has-result em {
+    font-size: clamp(6rem, 18vw, 10rem);
+  }
+}
