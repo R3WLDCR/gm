@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.19.2";
+const APP_VERSION = "v1.20.0";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -3449,11 +3449,11 @@ async function synchronizeNow({ initial = false, manual = false } = {}) {
   }
   const cloudIsNew = isAfter(cloudRecord.updated_at, syncMeta.lastCloudUpdatedAt);
   if (initial && !syncMeta.lastCloudUpdatedAt && hadLocalDataAtStartup) {
-    showCloudConflict(cloudRecord);
+    await resolveByNewestRecord(cloudRecord);
     return;
   }
   if (cloudIsNew && cloudRecord.updated_by_device !== deviceId) {
-    showCloudConflict(cloudRecord);
+    await resolveByNewestRecord(cloudRecord);
     return;
   }
   if (syncMeta.dirty) {
@@ -3532,6 +3532,31 @@ async function applyCloudRecord(record) {
   resumeNightTransitionTimer();
 }
 
+async function resolveByNewestRecord(record) {
+  if (!record?.payload) return;
+  const cloudTime = toTimestamp(record.updated_at);
+  const localTime = toTimestamp(syncMeta.localUpdatedAt);
+  if (cloudTime && localTime) {
+    if (cloudTime > localTime) {
+      await applyCloudRecord(record);
+      return;
+    }
+    if (localTime > cloudTime) {
+      await uploadLocalState();
+      return;
+    }
+  }
+  if (!syncMeta.dirty && cloudTime) {
+    await applyCloudRecord(record);
+    return;
+  }
+  if (syncMeta.dirty && localTime && !cloudTime) {
+    await uploadLocalState();
+    return;
+  }
+  showCloudConflict(record);
+}
+
 function showCloudConflict(record) {
   pendingCloudRecord = record;
   syncMeta.status = syncMeta.dirty ? "conflict" : "remote";
@@ -3583,7 +3608,7 @@ function renderSyncStatus() {
     offline: ["オフライン", "通信復帰後に同期します"],
     syncing: ["同期中", syncMeta.error || "同期中"],
     synced: ["同期済み", "クラウドと同期されています"],
-    remote: ["更新あり", "別端末の更新があります"],
+    remote: ["更新あり", "クラウド側が新しいため取得できます"],
     conflict: ["競合", "残すデータを選択してください"],
     error: ["エラー", syncMeta.error || "同期できませんでした"],
   };
@@ -3636,6 +3661,12 @@ function isAfter(value, baseline) {
   if (!value) return false;
   if (!baseline) return true;
   return new Date(value).getTime() > new Date(baseline).getTime();
+}
+
+function toTimestamp(value) {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : 0;
 }
 
 function setSyncBusy(label) {
