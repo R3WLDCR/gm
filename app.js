@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.20.1";
+const APP_VERSION = "v1.20.2";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -1754,10 +1754,7 @@ function renderRoundProgressStatus() {
 }
 
 function getRoundProgressText() {
-  if (state.phase === "setup") return "準備中";
-  const phase = phaseLabels[state.phase]?.[0] || "";
-  const dayText = state.day ? `${state.day}日目` : "1日目";
-  return `${dayText} ${phase} ${formatTime(state.timerSeconds)}`;
+  return getProgressBadgeText();
 }
 
 function getProgressBadgeText() {
