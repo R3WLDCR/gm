@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.20.0";
+const APP_VERSION = "v1.20.1";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -142,6 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "undoStepBtn",
     "playerName",
     "addPlayerBtn",
+    "progressBadge",
     "playerList",
     "startBtn",
     "roleList",
@@ -1698,6 +1699,7 @@ function renderScreen() {
 
 function renderHeader() {
   if (els.appVersionBadge) els.appVersionBadge.textContent = APP_VERSION;
+  if (els.progressBadge) els.progressBadge.textContent = getProgressBadgeText();
   if (els.undoStepBtn) {
     els.undoStepBtn.disabled = !state.undoHistory.length;
     els.undoStepBtn.title = state.undoHistory.length ? `戻す: ${state.undoHistory[0].label}` : "戻せる進行操作はありません";
@@ -1756,6 +1758,13 @@ function getRoundProgressText() {
   const phase = phaseLabels[state.phase]?.[0] || "";
   const dayText = state.day ? `${state.day}日目` : "1日目";
   return `${dayText} ${phase} ${formatTime(state.timerSeconds)}`;
+}
+
+function getProgressBadgeText() {
+  if (state.phase === "setup") return "準備中";
+  const phase = phaseLabels[state.phase]?.[0] || "";
+  const dayText = state.day ? `${state.day}日目` : "1日目";
+  return `${dayText} ${phase}`;
 }
 
 function getTimerProgress() {
