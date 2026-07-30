@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.20.3";
+const APP_VERSION = "v1.20.4";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -3506,7 +3506,7 @@ async function uploadLocalState() {
     .from("gm_user_states")
     .upsert({
       user_id: syncUser.id,
-      payload: getStatePayload(),
+      payload: getCloudStatePayload(),
       updated_at: updatedAt,
       updated_by_device: deviceId,
     })
@@ -3800,6 +3800,10 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     payload.nextLogId = state.nextLogId;
   }
   return payload;
+}
+
+function getCloudStatePayload() {
+  return getStatePayload({ includeUndoHistory: false, includeLogRestorePoints: false });
 }
 
 function restore() {
