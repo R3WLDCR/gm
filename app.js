@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.20.2";
+const APP_VERSION = "v1.20.3";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -1604,7 +1604,7 @@ function isVictoryFullscreenView() {
 function isParticipantActionView() {
   if (state.screen !== "action") return false;
   const roleId = getCurrentActionRoleId();
-  if (roleId === "medium") return Boolean(getLastExiledPlayer());
+  if (roleId === "medium") return hasLivingRole("medium") && Boolean(getLastExiledPlayer());
   return Boolean(state.actionSelectedTargetId && ["seer", "knight", "werewolf"].includes(roleId));
 }
 
@@ -2190,6 +2190,18 @@ function replayActionPanelAnimation() {
 }
 
 function renderMediumResult() {
+  if (!hasLivingRole("medium")) {
+    stopActionGateCountdown();
+    if (hasAssignedRole("medium") && state.actionBlockedRoleId !== "medium") {
+      startBlockedRoleCountdown("medium");
+    }
+    if (hasAssignedRole("medium")) {
+      renderBlockedRoleCountdown(ACTION_ROLE_LABELS.medium);
+    } else {
+      els.actionRoundTable.innerHTML = '<div class="round-empty">霊媒師がいません</div>';
+    }
+    return;
+  }
   const player = getLastExiledPlayer();
   if (!player) {
     els.actionRoundTable.innerHTML = '<div class="round-empty">直前の追放者がいません</div>';
@@ -2494,7 +2506,7 @@ function getCurrentActionRoleId() {
   return ACTION_ROLE_ORDER[state.actionRoleIndex] || "";
 }
 
-function advanceActionRole() {
+function advanceActionRole({ logComplete = true } = {}) {
   while (state.actionRoleIndex < ACTION_ROLE_ORDER.length) {
     const roleId = getCurrentActionRoleId();
     if (!hasLivingRole(roleId)) {
@@ -2515,7 +2527,7 @@ function advanceActionRole() {
   if (!state.actionComplete) {
     stopActionGateCountdown();
     state.actionComplete = true;
-    addLog("夜の行動完了");
+    if (logComplete) addLog("夜の行動完了");
   }
 }
 
@@ -3931,6 +3943,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     state.nightStartGuardedPlayerId = savedNightStartGuardedPlayerId || state.lastGuardedPlayerId;
     state.lastGuardedPlayerId = state.nightStartGuardedPlayerId;
     resetActionSelection();
+    advanceActionRole({ logComplete: false });
   }
 }
 
