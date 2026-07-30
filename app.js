@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.20.5";
+const APP_VERSION = "v1.20.6";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -3339,49 +3339,64 @@ async function initializeSync() {
     renderSyncStatus();
     return;
   }
-  supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-  renderSyncStatus();
-  const { data } = await supabaseClient.auth.getSession();
-  syncAuthReady = true;
-  syncUser = data.session?.user || null;
-  supabaseClient.auth.onAuthStateChange((_event, session) => {
+  try {
+    supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+    renderSyncStatus();
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error) throw error;
     syncAuthReady = true;
-    syncUser = session?.user || null;
-    pendingCloudRecord = null;
+    syncUser = data.session?.user || null;
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+      syncAuthReady = true;
+      syncUser = session?.user || null;
+      pendingCloudRecord = null;
+      renderSyncStatus();
+      if (syncUser) synchronizeNow({ initial: true });
+    });
     renderSyncStatus();
     if (syncUser) synchronizeNow({ initial: true });
-  });
-  renderSyncStatus();
-  if (syncUser) synchronizeNow({ initial: true });
+  } catch (error) {
+    syncAuthReady = true;
+    syncUser = null;
+    setSyncError(formatSyncError(error, "同期初期化"));
+  }
 }
 
 async function handleLogin(event) {
   event.preventDefault();
   if (!ensureSyncConfigured()) return;
   setSyncBusy("ログイン中");
-  const { error } = await supabaseClient.auth.signInWithPassword({
-    email: els.loginEmailInput.value.trim(),
-    password: els.loginPasswordInput.value,
-  });
-  if (error) return setSyncError(toJapaneseAuthError(error.message));
-  els.loginForm.reset();
+  try {
+    const { error } = await supabaseClient.auth.signInWithPassword({
+      email: els.loginEmailInput.value.trim(),
+      password: els.loginPasswordInput.value,
+    });
+    if (error) return setSyncError(toJapaneseAuthError(error.message));
+    els.loginForm.reset();
+  } catch (error) {
+    setSyncError(formatSyncError(error, "ログイン"));
+  }
 }
 
 async function handleSignup(event) {
   event.preventDefault();
   if (!ensureSyncConfigured()) return;
   setSyncBusy("登録中");
-  const { error } = await supabaseClient.auth.signUp({
-    email: els.signupEmailInput.value.trim(),
-    password: els.signupPasswordInput.value,
-    options: { emailRedirectTo: getAuthRedirectUrl() },
-  });
-  if (error) return setSyncError(toJapaneseAuthError(error.message));
-  els.signupForm.reset();
-  syncMeta.status = "local";
-  renderSyncStatus();
-  addLog("確認メールを送信しました");
-  renderAndStore();
+  try {
+    const { error } = await supabaseClient.auth.signUp({
+      email: els.signupEmailInput.value.trim(),
+      password: els.signupPasswordInput.value,
+      options: { emailRedirectTo: getAuthRedirectUrl() },
+    });
+    if (error) return setSyncError(toJapaneseAuthError(error.message));
+    els.signupForm.reset();
+    syncMeta.status = "local";
+    renderSyncStatus();
+    addLog("確認メールを送信しました");
+    renderAndStore();
+  } catch (error) {
+    setSyncError(formatSyncError(error, "登録"));
+  }
 }
 
 function formatCurrentGameLogForCopy() {
@@ -3443,94 +3458,115 @@ function getNextNightLogSection(section) {
 
 async function handleLogout() {
   if (!ensureSyncConfigured()) return;
-  const { error } = await supabaseClient.auth.signOut();
-  if (error) return setSyncError(error.message);
-  syncUser = null;
-  syncMeta.status = "local";
-  saveSyncMeta();
-  renderSyncStatus();
+  try {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) return setSyncError(error.message);
+    syncUser = null;
+    syncMeta.status = "local";
+    saveSyncMeta();
+    renderSyncStatus();
+  } catch (error) {
+    setSyncError(formatSyncError(error, "ログアウト"));
+  }
 }
 
 async function synchronizeNow({ initial = false, manual = false } = {}) {
-  cancelScheduledSync();
-  if (!supabaseClient || !syncUser) return;
-  if (!navigator.onLine) {
-    syncMeta.status = "offline";
+  try {
+    cancelScheduledSync();
+    if (!supabaseClient || !syncUser) return;
+    if (!navigator.onLine) {
+      syncMeta.status = "offline";
+      renderSyncStatus();
+      return;
+    }
+    if (pendingCloudRecord && !manual) return;
+    setSyncBusy("同期中");
+    const cloudRecord = await fetchCloudRecord();
+    if (cloudRecord === undefined) return;
+    if (!cloudRecord) {
+      await uploadLocalState();
+      return;
+    }
+    const cloudIsNew = isAfter(cloudRecord.updated_at, syncMeta.lastCloudUpdatedAt);
+    if (initial && !syncMeta.lastCloudUpdatedAt && hadLocalDataAtStartup) {
+      await resolveByNewestRecord(cloudRecord);
+      return;
+    }
+    if (cloudIsNew && cloudRecord.updated_by_device !== deviceId) {
+      await resolveByNewestRecord(cloudRecord);
+      return;
+    }
+    if (syncMeta.dirty) {
+      await uploadLocalState();
+      return;
+    }
+    syncMeta.status = "synced";
+    syncMeta.lastCloudUpdatedAt = cloudRecord.updated_at || syncMeta.lastCloudUpdatedAt;
+    syncMeta.lastSyncedAt = new Date().toISOString();
+    saveSyncMeta();
     renderSyncStatus();
-    return;
+  } catch (error) {
+    setSyncError(formatSyncError(error, "同期"));
   }
-  if (pendingCloudRecord && !manual) return;
-  setSyncBusy("同期中");
-  const cloudRecord = await fetchCloudRecord();
-  if (cloudRecord === undefined) return;
-  if (!cloudRecord) {
-    await uploadLocalState();
-    return;
-  }
-  const cloudIsNew = isAfter(cloudRecord.updated_at, syncMeta.lastCloudUpdatedAt);
-  if (initial && !syncMeta.lastCloudUpdatedAt && hadLocalDataAtStartup) {
-    await resolveByNewestRecord(cloudRecord);
-    return;
-  }
-  if (cloudIsNew && cloudRecord.updated_by_device !== deviceId) {
-    await resolveByNewestRecord(cloudRecord);
-    return;
-  }
-  if (syncMeta.dirty) {
-    await uploadLocalState();
-    return;
-  }
-  syncMeta.status = "synced";
-  syncMeta.lastCloudUpdatedAt = cloudRecord.updated_at || syncMeta.lastCloudUpdatedAt;
-  syncMeta.lastSyncedAt = new Date().toISOString();
-  saveSyncMeta();
-  renderSyncStatus();
 }
 
 async function fetchCloudRecord() {
-  const { data, error } = await supabaseClient
-    .from("gm_user_states")
-    .select("payload, updated_at, updated_by_device")
-    .eq("user_id", syncUser.id)
-    .maybeSingle();
-  if (error) {
-    setSyncError(error.message);
+  try {
+    const { data, error } = await supabaseClient
+      .from("gm_user_states")
+      .select("payload, updated_at, updated_by_device")
+      .eq("user_id", syncUser.id)
+      .maybeSingle();
+    if (error) {
+      setSyncError(formatSyncError(error, "クラウド取得"));
+      return undefined;
+    }
+    return data || null;
+  } catch (error) {
+    setSyncError(formatSyncError(error, "クラウド取得"));
     return undefined;
   }
-  return data || null;
 }
 
 async function uploadLocalState() {
   if (!supabaseClient || !syncUser || !navigator.onLine) return;
   setSyncBusy("アップロード中");
-  const updatedAt = new Date().toISOString();
-  const { data, error } = await supabaseClient
-    .from("gm_user_states")
-    .upsert({
-      user_id: syncUser.id,
-      payload: getCloudStatePayload(),
-      updated_at: updatedAt,
-      updated_by_device: deviceId,
-    })
-    .select("updated_at, updated_by_device")
-    .single();
-  if (error) return setSyncError(error.message);
-  pendingCloudRecord = null;
-  syncMeta.dirty = false;
-  syncMeta.status = "synced";
-  syncMeta.lastCloudUpdatedAt = data.updated_at || updatedAt;
-  syncMeta.lastSyncedAt = new Date().toISOString();
-  saveSyncMeta();
-  renderSyncStatus();
+  try {
+    const updatedAt = new Date().toISOString();
+    const { data, error } = await supabaseClient
+      .from("gm_user_states")
+      .upsert({
+        user_id: syncUser.id,
+        payload: getCloudStatePayload(),
+        updated_at: updatedAt,
+        updated_by_device: deviceId,
+      }, { onConflict: "user_id" })
+      .select("updated_at, updated_by_device")
+      .single();
+    if (error) return setSyncError(formatSyncError(error, "アップロード"));
+    pendingCloudRecord = null;
+    syncMeta.dirty = false;
+    syncMeta.status = "synced";
+    syncMeta.lastCloudUpdatedAt = data.updated_at || updatedAt;
+    syncMeta.lastSyncedAt = new Date().toISOString();
+    saveSyncMeta();
+    renderSyncStatus();
+  } catch (error) {
+    setSyncError(formatSyncError(error, "アップロード"));
+  }
 }
 
 async function downloadPendingCloudState() {
-  if (!pendingCloudRecord) {
-    const record = await fetchCloudRecord();
-    if (!record) return;
-    pendingCloudRecord = record;
+  try {
+    if (!pendingCloudRecord) {
+      const record = await fetchCloudRecord();
+      if (!record) return;
+      pendingCloudRecord = record;
+    }
+    await applyCloudRecord(pendingCloudRecord);
+  } catch (error) {
+    setSyncError(formatSyncError(error, "クラウド取得"));
   }
-  await applyCloudRecord(pendingCloudRecord);
 }
 
 async function applyCloudRecord(record) {
@@ -3700,6 +3736,31 @@ function setSyncError(message) {
   syncMeta.error = message;
   saveSyncMeta();
   renderSyncStatus();
+}
+
+function formatSyncError(error, label) {
+  const message = getErrorMessage(error);
+  if (/failed to fetch|networkerror|load failed/i.test(message)) {
+    return `${label}: 通信に失敗しました`;
+  }
+  if (/jwt|token|session/i.test(message)) {
+    return `${label}: ログイン状態を確認してください`;
+  }
+  if (/duplicate key|conflict/i.test(message)) {
+    return `${label}: 同期データの更新に失敗しました`;
+  }
+  return `${label}: ${message}`;
+}
+
+function getErrorMessage(error) {
+  if (!error) return "不明なエラー";
+  if (typeof error === "string") return error;
+  if (error.message) return error.message;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "不明なエラー";
+  }
 }
 
 function toJapaneseAuthError(message) {
