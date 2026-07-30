@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.20.4";
+const APP_VERSION = "v1.20.5";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -631,7 +631,9 @@ function setPhase(phase) {
 function setScreen(screen) {
   const previousScreen = state.screen;
   state.screen = screen;
-  if (screen === "action" && previousScreen !== "action") restartNightActions();
+  if (screen === "action" && previousScreen !== "action" && state.phase === "night" && !state.actionComplete) {
+    restartNightActions();
+  }
   else renderAndStore();
 }
 
