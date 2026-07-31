@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.20.6";
+const APP_VERSION = "v1.20.7";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -87,6 +87,7 @@ const state = {
   seerCheckResults: {},
   actionRoleIndex: ACTION_ROLE_ORDER.length,
   actionComplete: false,
+  actionIntroRoleId: "",
   actionSelectedTargetId: "",
   actionResultVisible: false,
   actionGateRoleId: "",
@@ -391,6 +392,7 @@ function startRoundTable() {
   state.seerBlinkPlayerId = "";
   state.seerCheckResults = {};
   state.actionComplete = false;
+  state.actionIntroRoleId = "";
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
   getActivePlayers().forEach((player) => {
@@ -413,6 +415,7 @@ function startProgress() {
   state.day = state.day || 1;
   state.actionRoleIndex = ACTION_ROLE_ORDER.length;
   state.actionComplete = false;
+  state.actionIntroRoleId = "";
   state.guardedPlayerId = "";
   state.seerCheckResults = {};
   resetTimerValue(240);
@@ -437,6 +440,7 @@ function startNightActions({ recordUndo = true } = {}) {
   assignRemainingVillagers();
   state.actionRoleIndex = 0;
   state.actionComplete = false;
+  state.actionIntroRoleId = "";
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
   state.actionGateBaseSeconds = 0;
@@ -446,6 +450,7 @@ function startNightActions({ recordUndo = true } = {}) {
   state.nightStartGuardedPlayerId = state.lastGuardedPlayerId;
   resetActionSelection();
   advanceActionRole();
+  prepareActionIntroForCurrentRole();
   renderAndStore();
 }
 
@@ -650,6 +655,7 @@ function restartNightActions() {
   assignRemainingVillagers();
   state.actionRoleIndex = 0;
   state.actionComplete = false;
+  state.actionIntroRoleId = "";
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
   state.actionGateBaseSeconds = 0;
@@ -659,6 +665,7 @@ function restartNightActions() {
   state.nightStartGuardedPlayerId = state.lastGuardedPlayerId;
   resetActionSelection();
   advanceActionRole();
+  prepareActionIntroForCurrentRole();
   renderAndStore();
 }
 
@@ -1457,6 +1464,7 @@ function nextDay() {
   state.votes = {};
   state.actionRoleIndex = ACTION_ROLE_ORDER.length;
   state.actionComplete = false;
+  state.actionIntroRoleId = "";
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
   state.actionGateBaseSeconds = 0;
@@ -1508,6 +1516,7 @@ function resetGame() {
   state.seerCheckResults = {};
   state.actionRoleIndex = ACTION_ROLE_ORDER.length;
   state.actionComplete = false;
+  state.actionIntroRoleId = "";
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
   state.actionGateBaseSeconds = 0;
@@ -1543,6 +1552,7 @@ function resetToFirstNight() {
   state.voteSelectedPlayerId = "";
   state.actionRoleIndex = ACTION_ROLE_ORDER.length;
   state.actionComplete = false;
+  state.actionIntroRoleId = "";
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
   state.actionGateBaseSeconds = 0;
@@ -2122,7 +2132,7 @@ function renderRevotePleaTimerView() {
 function renderActionRoundTable() {
   if (!els.actionRoundTable) return;
   const roleId = getCurrentActionRoleId();
-  const nextActionRenderKey = [roleId, state.actionSelectedTargetId, state.actionResultVisible, state.actionBlockedRoleId].join("|");
+  const nextActionRenderKey = [roleId, state.actionIntroRoleId, state.actionSelectedTargetId, state.actionResultVisible, state.actionBlockedRoleId].join("|");
   if (nextActionRenderKey !== actionRenderKey) {
     actionRenderKey = nextActionRenderKey;
     replayActionPanelAnimation();
@@ -2138,6 +2148,11 @@ function renderActionRoundTable() {
 
   if (state.actionBlockedRoleId === roleId) {
     renderBlockedRoleCountdown(roleName);
+    return;
+  }
+
+  if (state.actionIntroRoleId === roleId) {
+    renderActionRoleIntro(roleName);
     return;
   }
 
@@ -2178,6 +2193,19 @@ function renderBlockedRoleCountdown(roleName) {
       <strong>${state.actionBlockedSeconds}</strong>
     </div>
   `;
+}
+
+function renderActionRoleIntro(roleName) {
+  els.actionRoleTitle.textContent = roleName;
+  els.actionHelp.textContent = "役職を確認してください";
+  els.actionRoundTable.innerHTML = `
+    <div class="medium-result-card medium-only-result-card action-role-intro-card">
+      <span>夜が訪れます</span>
+      <strong>${escapeHtml(roleName)}</strong>
+      <button class="primary-button medium-ok-button action-role-intro-ok-button" type="button">OK</button>
+    </div>
+  `;
+  els.actionRoundTable.querySelector(".action-role-intro-ok-button")?.addEventListener("click", confirmActionRoleIntro);
 }
 
 function getActionHelpText(roleId, roleName) {
@@ -2222,6 +2250,16 @@ function renderMediumResult() {
   `;
   els.actionRoundTable.querySelector(".medium-undo-button")?.addEventListener("click", backToExileScreen);
   els.actionRoundTable.querySelector(".medium-ok-button")?.addEventListener("click", () => handleActionTarget(player));
+}
+
+function prepareActionIntroForCurrentRole() {
+  const roleId = getCurrentActionRoleId();
+  state.actionIntroRoleId = roleId === "medium" && hasLivingRole("medium") && Boolean(getLastExiledPlayer()) ? roleId : "";
+}
+
+function confirmActionRoleIntro() {
+  state.actionIntroRoleId = "";
+  renderAndStore();
 }
 
 function renderSeerResult() {
@@ -2553,9 +2591,11 @@ function backToPreviousActionRole() {
   state.actionBlockedRoleId = "";
   state.actionBlockedSeconds = 0;
   state.actionComplete = false;
+  state.actionIntroRoleId = "";
   state.actionRoleIndex = Math.max(0, Math.min(ACTION_ROLE_ORDER.length - 1, state.actionRoleIndex - 1));
   resetActionSelection();
   advanceActionRole();
+  prepareActionIntroForCurrentRole();
   renderAndStore();
 }
 
@@ -2574,6 +2614,7 @@ function backToExileScreen() {
   state.voteSelectedPlayerId = exiledPlayer?.id || "";
   state.actionRoleIndex = ACTION_ROLE_ORDER.length;
   state.actionComplete = false;
+  state.actionIntroRoleId = "";
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
   state.actionGateBaseSeconds = 0;
@@ -2667,6 +2708,7 @@ function handleActionTarget(player) {
     return;
   } else if (roleId === "medium") {
     pushUndoSnapshot("霊媒確定");
+    state.actionIntroRoleId = "";
     completedLogId = addLog(formatActionLog("霊媒", "medium", player, getDivinationResult(player)));
   } else if (roleId === "werewolf") {
     state.actionSelectedTargetId = player.id;
@@ -2676,6 +2718,7 @@ function handleActionTarget(player) {
   }
 
   state.actionRoleIndex += 1;
+  state.actionIntroRoleId = "";
   resetActionSelection();
   advanceActionRole();
   if (completedLogId) markLogRestorable(completedLogId);
@@ -3839,6 +3882,7 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     seerCheckResults: state.seerCheckResults,
     actionRoleIndex: state.actionRoleIndex,
     actionComplete: state.actionComplete,
+    actionIntroRoleId: state.actionIntroRoleId,
     actionSelectedTargetId: state.actionSelectedTargetId,
     actionResultVisible: state.actionResultVisible,
     actionGateRoleId: state.actionGateRoleId,
@@ -3981,6 +4025,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.seerCheckResults = saved.seerCheckResults && typeof saved.seerCheckResults === "object" ? saved.seerCheckResults : {};
   state.actionRoleIndex = Number.isInteger(saved.actionRoleIndex) ? saved.actionRoleIndex : ACTION_ROLE_ORDER.length;
   state.actionComplete = saved.actionComplete === true;
+  state.actionIntroRoleId = saved.actionIntroRoleId || "";
   state.actionSelectedTargetId = saved.actionSelectedTargetId || "";
   state.actionResultVisible = saved.actionResultVisible === true;
   state.actionGateRoleId = saved.actionGateRoleId || "";
@@ -4001,6 +4046,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     const savedNightStartGuardedPlayerId = saved.nightStartGuardedPlayerId || "";
     state.actionRoleIndex = 0;
     state.actionComplete = false;
+    state.actionIntroRoleId = "";
     state.actionGateRoleId = "";
     state.actionGateSeconds = 0;
     state.actionGateBaseSeconds = 0;
@@ -4011,6 +4057,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     state.lastGuardedPlayerId = state.nightStartGuardedPlayerId;
     resetActionSelection();
     advanceActionRole({ logComplete: false });
+    prepareActionIntroForCurrentRole();
   }
 }
 
