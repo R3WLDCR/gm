@@ -1204,14 +1204,16 @@ textarea:focus {
 }
 
 .round-seat.vote-top-current {
-  outline: 4px solid rgba(217, 163, 23, 0.24);
+  z-index: 5;
+  transform: translate(-50%, -50%) scale(1.04);
+  outline: 5px solid rgba(217, 163, 23, 0.32);
   border-color: #d9a317;
   background:
-    linear-gradient(rgba(250, 204, 21, 0.16), rgba(250, 204, 21, 0.16)),
+    linear-gradient(rgba(250, 204, 21, 0.24), rgba(250, 204, 21, 0.24)),
     #fff8df;
   box-shadow:
-    0 0 0 4px rgba(250, 204, 21, 0.1),
-    0 14px 30px rgba(217, 163, 23, 0.14);
+    0 0 0 6px rgba(250, 204, 21, 0.16),
+    0 18px 36px rgba(217, 163, 23, 0.24);
 }
 
 .round-seat.vote-top-current strong {
@@ -1223,14 +1225,35 @@ textarea:focus {
 }
 
 .round-seat.vote-top-final {
-  outline: 6px solid rgba(185, 79, 90, 0.34);
-  border-color: var(--rose);
+  z-index: 8;
+  transform: translate(-50%, -50%) scale(1.1);
+  outline: 7px solid rgba(185, 79, 90, 0.46);
+  border-color: #be123c;
   background:
-    linear-gradient(rgba(185, 79, 90, 0.2), rgba(185, 79, 90, 0.2)),
+    linear-gradient(rgba(185, 79, 90, 0.28), rgba(185, 79, 90, 0.28)),
     #fff1f2;
   box-shadow:
-    0 0 0 6px rgba(185, 79, 90, 0.12),
-    0 18px 38px rgba(185, 79, 90, 0.22);
+    0 0 0 9px rgba(185, 79, 90, 0.18),
+    0 0 24px rgba(225, 29, 72, 0.22),
+    0 22px 46px rgba(185, 79, 90, 0.32);
+  animation: voteTopFinalPulse 1.6s ease-in-out infinite;
+}
+
+.round-seat.vote-top-final::before {
+  content: "最多得票";
+  position: absolute;
+  left: 50%;
+  top: -22px;
+  transform: translateX(-50%);
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #be123c;
+  color: white;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(190, 18, 60, 0.26);
 }
 
 .round-seat.vote-top-final strong {
@@ -1239,6 +1262,23 @@ textarea:focus {
 
 .round-seat.vote-top-final small {
   color: #9f3d4c;
+}
+
+@keyframes voteTopFinalPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 9px rgba(185, 79, 90, 0.18),
+      0 0 24px rgba(225, 29, 72, 0.22),
+      0 22px 46px rgba(185, 79, 90, 0.32);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 13px rgba(185, 79, 90, 0.1),
+      0 0 34px rgba(225, 29, 72, 0.34),
+      0 24px 50px rgba(185, 79, 90, 0.36);
+  }
 }
 
 .round-seat.vote-assigned {
