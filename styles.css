@@ -1204,16 +1204,18 @@ textarea:focus {
 }
 
 .round-seat.vote-top-current {
-  z-index: 5;
-  transform: translate(-50%, -50%) scale(1.08);
-  outline: 6px solid rgba(217, 163, 23, 0.38);
+  z-index: 7;
+  transform: translate(-50%, -50%) scale(1.14);
+  outline: 8px solid rgba(217, 163, 23, 0.48);
   border-color: #d9a317;
   background:
-    linear-gradient(rgba(250, 204, 21, 0.24), rgba(250, 204, 21, 0.24)),
+    linear-gradient(rgba(250, 204, 21, 0.34), rgba(250, 204, 21, 0.34)),
     #fff8df;
   box-shadow:
-    0 0 0 6px rgba(250, 204, 21, 0.16),
-    0 18px 36px rgba(217, 163, 23, 0.24);
+    0 0 0 9px rgba(250, 204, 21, 0.2),
+    0 0 28px rgba(217, 163, 23, 0.28),
+    0 22px 44px rgba(217, 163, 23, 0.3);
+  animation: voteTopCurrentPulse 1.4s ease-in-out infinite;
 }
 
 .round-seat.vote-top-current strong {
@@ -1273,22 +1275,50 @@ textarea:focus {
   width: fit-content;
   max-width: calc(100% - 10px);
   justify-self: center;
-  padding: 4px 10px;
+  padding: 6px 12px;
+  border: 2px solid rgba(122, 75, 0, 0.18);
   border-radius: 999px;
-  background: #d9a317;
+  background: #facc15;
   color: #2f1f00;
-  font-size: 0.78rem;
+  font-size: 0.96rem;
   font-weight: 950;
   line-height: 1;
   white-space: nowrap;
-  box-shadow: 0 8px 18px rgba(217, 163, 23, 0.24);
+  box-shadow: 0 10px 22px rgba(217, 163, 23, 0.3);
+}
+
+.round-seat.vote-top-current .vote-leader-badge {
+  background: #f59e0b;
+  color: #231600;
+  font-size: 1rem;
+  box-shadow:
+    0 0 0 4px rgba(245, 158, 11, 0.2),
+    0 12px 26px rgba(217, 119, 6, 0.34);
 }
 
 .round-seat.vote-top-final .vote-leader-badge {
   background: #be123c;
+  border-color: rgba(255, 255, 255, 0.26);
   color: white;
   font-size: 0.86rem;
   box-shadow: 0 10px 24px rgba(190, 18, 60, 0.34);
+}
+
+@keyframes voteTopCurrentPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 9px rgba(250, 204, 21, 0.2),
+      0 0 28px rgba(217, 163, 23, 0.28),
+      0 22px 44px rgba(217, 163, 23, 0.3);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 13px rgba(250, 204, 21, 0.12),
+      0 0 38px rgba(217, 163, 23, 0.42),
+      0 24px 48px rgba(217, 163, 23, 0.34);
+  }
 }
 
 @keyframes voteTopFinalPulse {
