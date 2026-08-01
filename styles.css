@@ -1365,7 +1365,7 @@ textarea:focus {
 }
 
 .round-seat.exiled::after {
-  content: "追放";
+  content: "処刑";
   position: absolute;
   right: 8px;
   top: 8px;
