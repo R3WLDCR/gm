@@ -1205,8 +1205,8 @@ textarea:focus {
 
 .round-seat.vote-top-current {
   z-index: 5;
-  transform: translate(-50%, -50%) scale(1.04);
-  outline: 5px solid rgba(217, 163, 23, 0.32);
+  transform: translate(-50%, -50%) scale(1.08);
+  outline: 6px solid rgba(217, 163, 23, 0.38);
   border-color: #d9a317;
   background:
     linear-gradient(rgba(250, 204, 21, 0.24), rgba(250, 204, 21, 0.24)),
@@ -1226,8 +1226,8 @@ textarea:focus {
 
 .round-seat.vote-top-final {
   z-index: 8;
-  transform: translate(-50%, -50%) scale(1.1);
-  outline: 7px solid rgba(185, 79, 90, 0.46);
+  transform: translate(-50%, -50%) scale(1.16);
+  outline: 8px solid rgba(185, 79, 90, 0.52);
   border-color: #be123c;
   background:
     linear-gradient(rgba(185, 79, 90, 0.28), rgba(185, 79, 90, 0.28)),
@@ -1262,6 +1262,33 @@ textarea:focus {
 
 .round-seat.vote-top-final small {
   color: #9f3d4c;
+}
+
+.round-seat.vote-top-final::before {
+  content: none;
+  display: none;
+}
+
+.round-seat .vote-leader-badge {
+  width: fit-content;
+  max-width: calc(100% - 10px);
+  justify-self: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #d9a317;
+  color: #2f1f00;
+  font-size: 0.78rem;
+  font-weight: 950;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(217, 163, 23, 0.24);
+}
+
+.round-seat.vote-top-final .vote-leader-badge {
+  background: #be123c;
+  color: white;
+  font-size: 0.86rem;
+  box-shadow: 0 10px 24px rgba(190, 18, 60, 0.34);
 }
 
 @keyframes voteTopFinalPulse {
