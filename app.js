@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.20.15";
+const APP_VERSION = "v1.20.16";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -2212,7 +2212,6 @@ function renderActionRoleIntro(roleName) {
   els.actionHelp.textContent = "役職を確認してください";
   els.actionRoundTable.innerHTML = `
     <div class="medium-result-card medium-only-result-card action-role-intro-card">
-      <span>夜が訪れます</span>
       <strong>${escapeHtml(roleName)}</strong>
       <button class="primary-button medium-ok-button action-role-intro-ok-button" type="button">OK</button>
     </div>
