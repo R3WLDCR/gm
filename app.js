@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.20.16";
+const APP_VERSION = "v1.20.17";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -1466,6 +1466,20 @@ function getTopVotedPlayerIds() {
   return entries.filter(([, count]) => count === maxCount).map(([id]) => id);
 }
 
+function getVoteOutcomeDecisionId() {
+  if (!state.voteRecords.length || state.pendingRevotePleaCandidateIds.length || isRevoteAssignmentMode()) return "";
+  syncVoteCountsFromRecords();
+  const topIds = getTopVotedPlayerIds();
+  if (topIds.length !== 1) return "";
+  const topId = topIds[0];
+  const topCount = state.votes[topId] || 0;
+  const otherMax = getLivingPlayers()
+    .filter((player) => player.id !== topId && isActivePlayer(player))
+    .reduce((max, player) => Math.max(max, state.votes[player.id] || 0), 0);
+  const remainingVotes = Math.max(0, getVoteVoterPlayers().length - state.voteRecords.length);
+  return topCount > otherMax + remainingVotes ? topId : "";
+}
+
 function nextDay() {
   pushUndoSnapshot("次の日へ");
   stopActionGateCountdown();
@@ -1913,7 +1927,7 @@ function renderVoteControls() {
   targets = getVoteTargetPlayers();
   document.querySelector(".vote-input-grid")?.toggleAttribute("hidden", revoteMode);
   if (els.voteRemainingText) {
-    const remaining = getVoteVoterPlayers().length;
+    const remaining = Math.max(0, getVoteVoterPlayers().length - state.voteRecords.length);
     els.voteRemainingText.textContent = `残り投票者 ${remaining}人`;
   }
   renderPlayerSelect(els.voteVoterSelect, voters, state.voteVoterId, "投票者を選択");
@@ -1950,7 +1964,7 @@ function renderVoteControls() {
 function canUseExileButton() {
   if (state.voteSelectedPlayerId) return true;
   if (!state.voteRecords.length || state.pendingRevotePleaCandidateIds.length || isRevoteAssignmentMode()) return false;
-  return getTopVotedPlayerIds().length === 1;
+  return Boolean(getVoteOutcomeDecisionId());
 }
 
 function renderRevoteAssist() {
@@ -2357,6 +2371,7 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
   const topVotedIdSet = new Set(topVotedIds);
   const topVoteFinalized = voteMode && topVotedIds.length > 0 && state.voteRecords.length >= getLivingPlayers().length;
   const earlyDecisionId = voteMode && state.voteSelectedPlayerId && !isRevoteAssignmentMode() ? state.voteSelectedPlayerId : "";
+  const voteOutcomeDecisionId = voteMode ? getVoteOutcomeDecisionId() : "";
   if (container === els.roundTable) {
     els.dealPlayerCount.textContent = `${players.length}人`;
     els.progressStartBtn.hidden = !dealMode || !isRoleDealComplete();
@@ -2401,8 +2416,8 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
     const actionDisabled = actionMode && !canSelectActionTarget(getCurrentActionRoleId(), player);
     const voteAssignment = voteMode ? getVoteAssignmentForVoter(player.id) : null;
     const voteSelfDisabled = voteMode && !revoteTargetSelectMode && isRevoteAssignmentMode() && player.id === getCurrentRevoteTargetId();
-    const isTopVoted = voteMode && (topVotedIdSet.has(player.id) || player.id === earlyDecisionId);
-    const isVoteDecision = player.id === earlyDecisionId || (topVoteFinalized && topVotedIds.length === 1 && topVotedIds[0] === player.id);
+    const isTopVoted = voteMode && (topVotedIdSet.has(player.id) || player.id === earlyDecisionId || player.id === voteOutcomeDecisionId);
+    const isVoteDecision = player.id === earlyDecisionId || player.id === voteOutcomeDecisionId || (topVoteFinalized && topVotedIds.length === 1 && topVotedIds[0] === player.id);
     const voteCount = voteMode ? state.votes[player.id] || 0 : 0;
     const seat = document.createElement("button");
     seat.type = "button";
