@@ -1241,23 +1241,6 @@ textarea:focus {
   animation: voteTopFinalPulse 1.6s ease-in-out infinite;
 }
 
-.round-seat.vote-top-final::before {
-  content: "最多得票";
-  position: absolute;
-  left: 50%;
-  top: -22px;
-  transform: translateX(-50%);
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: #be123c;
-  color: white;
-  font-size: 0.68rem;
-  font-weight: 900;
-  line-height: 1;
-  white-space: nowrap;
-  box-shadow: 0 8px 18px rgba(190, 18, 60, 0.26);
-}
-
 .round-seat.vote-top-final strong {
   color: #7f1d2d;
 }
@@ -1272,10 +1255,14 @@ textarea:focus {
 }
 
 .round-seat .vote-leader-badge {
-  width: fit-content;
-  max-width: calc(100% - 10px);
-  justify-self: center;
-  padding: 6px 12px;
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  z-index: 2;
+  width: max-content;
+  max-width: calc(100% + 22px);
+  transform: translateX(-50%);
+  padding: 4px 9px;
   border: 2px solid rgba(122, 75, 0, 0.18);
   border-radius: 999px;
   background: #facc15;
@@ -1285,6 +1272,10 @@ textarea:focus {
   line-height: 1;
   white-space: nowrap;
   box-shadow: 0 10px 22px rgba(217, 163, 23, 0.3);
+}
+
+.round-seat.has-vote-leader {
+  padding-top: 24px;
 }
 
 .round-seat.vote-top-current .vote-leader-badge {
