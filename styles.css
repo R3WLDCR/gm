@@ -1979,7 +1979,7 @@ textarea:focus {
 
 #attackResultLead,
 #attackResultMessage {
-  font-size: clamp(1.8rem, 5vw, 3.4rem);
+  font-size: clamp(2.4rem, 7vw, 5.2rem);
   line-height: 1.15;
 }
 
