@@ -1977,6 +1977,12 @@ textarea:focus {
   font-weight: 900;
 }
 
+#attackResultLead,
+#attackResultMessage {
+  font-size: clamp(1.8rem, 5vw, 3.4rem);
+  line-height: 1.15;
+}
+
 .attack-result-view.attack-result-dawn .attack-result-content p {
   opacity: 0;
   filter: blur(8px);
