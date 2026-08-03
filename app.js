@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.20.13";
+const APP_VERSION = "v1.20.14";
 const MEDIUM_GATE_MIN_SECONDS = 10;
 const MEDIUM_GATE_MAX_SECONDS = 15;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -2357,6 +2357,7 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
   const topVotedIds = voteMode && !isRevoteAssignmentMode() && !state.pendingRevotePleaCandidateIds.length ? getTopVotedPlayerIds() : [];
   const topVotedIdSet = new Set(topVotedIds);
   const topVoteFinalized = voteMode && topVotedIds.length > 0 && state.voteRecords.length >= getLivingPlayers().length;
+  const earlyDecisionId = voteMode && state.voteSelectedPlayerId && !isRevoteAssignmentMode() ? state.voteSelectedPlayerId : "";
   if (container === els.roundTable) {
     els.dealPlayerCount.textContent = `${players.length}人`;
     els.progressStartBtn.hidden = !dealMode || !isRoleDealComplete();
@@ -2401,11 +2402,12 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
     const actionDisabled = actionMode && !canSelectActionTarget(getCurrentActionRoleId(), player);
     const voteAssignment = voteMode ? getVoteAssignmentForVoter(player.id) : null;
     const voteSelfDisabled = voteMode && !revoteTargetSelectMode && isRevoteAssignmentMode() && player.id === getCurrentRevoteTargetId();
-    const isTopVoted = voteMode && topVotedIdSet.has(player.id);
+    const isTopVoted = voteMode && (topVotedIdSet.has(player.id) || player.id === earlyDecisionId);
+    const isVoteDecision = player.id === earlyDecisionId || (topVoteFinalized && topVotedIds.length === 1 && topVotedIds[0] === player.id);
     const voteCount = voteMode ? state.votes[player.id] || 0 : 0;
     const seat = document.createElement("button");
     seat.type = "button";
-    seat.className = `round-seat ${player.alive ? "" : "dead"} ${actionDisabled ? "action-disabled" : ""} ${voteSelfDisabled ? "vote-self-disabled" : ""} ${revoteTargetSelectMode ? "revote-target-option" : ""} ${status ? `status-${status.type}` : ""} ${state.exiledPlayerIds.includes(player.id) ? "exiled" : ""} ${isTopVoted ? (topVoteFinalized ? "vote-top-final" : "vote-top-current") : ""} ${isTopVoted ? "has-vote-leader" : ""} ${voteMode && state.voteSelectedPlayerId === player.id ? "vote-selected" : ""} ${voteAssignment ? "vote-assigned" : ""} ${voteAssignment?.targetId === getCurrentRevoteTargetId() ? "vote-assigned-current" : ""} ${!hideRoles && player.roleId ? "assigned" : ""} ${hideRoles ? "" : getRoleColorClass(player.roleId)} ${seerRandomWhite ? "seer-blink" : ""} ${
+    seat.className = `round-seat ${player.alive ? "" : "dead"} ${actionDisabled ? "action-disabled" : ""} ${voteSelfDisabled ? "vote-self-disabled" : ""} ${revoteTargetSelectMode ? "revote-target-option" : ""} ${status ? `status-${status.type}` : ""} ${state.exiledPlayerIds.includes(player.id) ? "exiled" : ""} ${isTopVoted ? (isVoteDecision ? "vote-top-final" : "vote-top-current") : ""} ${isTopVoted ? "has-vote-leader" : ""} ${voteMode && state.voteSelectedPlayerId === player.id ? "vote-selected" : ""} ${voteAssignment ? "vote-assigned" : ""} ${voteAssignment?.targetId === getCurrentRevoteTargetId() ? "vote-assigned-current" : ""} ${!hideRoles && player.roleId ? "assigned" : ""} ${hideRoles ? "" : getRoleColorClass(player.roleId)} ${seerRandomWhite ? "seer-blink" : ""} ${
       state.roleDealSelectedPlayerIds.includes(player.id) ? "selected" : ""
     }`;
     seat.disabled = actionDisabled;
@@ -2414,7 +2416,7 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
     seat.style.setProperty("--seat-x", `${x}%`);
     seat.style.setProperty("--seat-y", `${y}%`);
     seat.innerHTML = `
-      ${isTopVoted ? `<span class="vote-leader-badge">${topVoteFinalized ? "最多" : "暫定"} ${voteCount}票</span>` : ""}
+      ${isTopVoted ? `<span class="vote-leader-badge">${isVoteDecision ? "決定" : topVoteFinalized ? "最多" : "暫定"} ${voteCount}票</span>` : ""}
       <strong>${escapeHtml(player.name)}</strong>
       <small>${role ? escapeHtml(role.name) : revoteTargetSelectMode ? "決戦候補" : voteAssignment ? `→ ${escapeHtml(voteAssignment.targetName)}` : hideRoles ? "" : "未配役"}</small>
       ${status ? `<span class="seat-status-badge">${status.label}</span>` : ""}
