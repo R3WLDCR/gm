@@ -1983,11 +1983,11 @@ textarea:focus {
   line-height: 1.15;
 }
 
-.attack-result-view.attack-result-dawn .attack-result-content p {
+.attack-result-view.attack-result-dawn #attackResultLead,
+.attack-result-view.attack-result-prompt #attackResultMessage {
   opacity: 0;
-  filter: blur(8px);
-  transform: translateY(16px);
-  animation: attackResultDawnText 2.2s ease-out 0.75s forwards;
+  transform: scale(1.34);
+  animation: attackResultRecede 5s ease-out forwards;
 }
 
 .attack-result-content strong {
@@ -2010,16 +2010,23 @@ textarea:focus {
   }
 }
 
-@keyframes attackResultDawnText {
+@keyframes attackResultRecede {
   0% {
     opacity: 0;
-    filter: blur(8px);
-    transform: translateY(16px);
+    filter: blur(12px);
+    transform: translateY(0.14em) scale(1.34);
   }
-  100% {
+
+  18% {
     opacity: 1;
     filter: blur(0);
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0.3;
+    filter: blur(1px);
+    transform: translateY(-0.1em) scale(0.56);
   }
 }
 
