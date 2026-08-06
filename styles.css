@@ -2095,18 +2095,21 @@ textarea:focus {
 .night-transition-typewriter-char {
   display: inline-block;
   opacity: 0;
-  transform: translateY(0.28em);
-  animation: nightTransitionTypewriter 620ms ease-out var(--typewriter-delay) forwards;
+  filter: blur(9px);
+  transform: translateY(0.16em) scale(0.98);
+  animation: nightTransitionTypewriter 1100ms ease-out var(--typewriter-delay) forwards;
 }
 
 @keyframes nightTransitionTypewriter {
   0% {
     opacity: 0;
-    transform: translateY(0.28em);
+    filter: blur(9px);
+    transform: translateY(0.16em) scale(0.98);
   }
 
   100% {
     opacity: 1;
+    filter: blur(0);
     transform: translateY(0);
   }
 }
