@@ -2095,16 +2095,16 @@ textarea:focus {
 .night-transition-typewriter-char {
   display: inline-block;
   opacity: 0;
-  filter: blur(9px);
-  transform: translateY(0.16em) scale(0.98);
-  animation: nightTransitionTypewriter 1100ms ease-out var(--typewriter-delay) forwards;
+  filter: blur(14px);
+  transform: translateY(0.2em) scale(0.97);
+  animation: nightTransitionTypewriter 980ms ease-out var(--typewriter-delay) forwards;
 }
 
 @keyframes nightTransitionTypewriter {
   0% {
     opacity: 0;
-    filter: blur(9px);
-    transform: translateY(0.16em) scale(0.98);
+    filter: blur(14px);
+    transform: translateY(0.2em) scale(0.97);
   }
 
   100% {
