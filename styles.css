@@ -2073,7 +2073,7 @@ textarea:focus {
   text-shadow: 0 20px 54px rgba(0, 0, 0, 0.48);
 }
 
-.night-transition-content span {
+#nightTransitionSeconds {
   width: clamp(76px, 12vw, 132px);
   aspect-ratio: 1;
   display: grid;
@@ -2088,8 +2088,27 @@ textarea:focus {
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.26);
 }
 
-.night-transition-content span[hidden] {
+#nightTransitionSeconds[hidden] {
   display: none;
+}
+
+.night-transition-typewriter-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.28em);
+  animation: nightTransitionTypewriter 620ms ease-out var(--typewriter-delay) forwards;
+}
+
+@keyframes nightTransitionTypewriter {
+  0% {
+    opacity: 0;
+    transform: translateY(0.28em);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .night-transition-ok-button {

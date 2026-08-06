@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.20.23";
+const APP_VERSION = "v1.20.24";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -794,6 +794,7 @@ function resetRevotePleaTimerState() {
 
 function startNightTransition(result) {
   stopAllLiveTimers();
+  els.nightTransitionTitle?.removeAttribute("data-typewriter-text");
   state.showNightTransition = true;
   state.nightTransitionSeconds = getNightTransitionDelaySeconds(result);
   state.nightTransitionOkSeconds = NIGHT_TRANSITION_OK_DELAY_SECONDS;
@@ -2067,7 +2068,21 @@ function renderNightTransitionView() {
     els.nightTransitionLead.textContent = "";
   }
   if (els.nightTransitionTitle) {
-    els.nightTransitionTitle.textContent = state.nightTransitionOutcome === "victory" ? getVictoryTitle(state.nightTransitionWinner) : "夜が訪れる";
+    const title = state.nightTransitionOutcome === "victory" ? getVictoryTitle(state.nightTransitionWinner) : "夜が訪れる";
+    if (state.nightTransitionOutcome === "victory") {
+      els.nightTransitionTitle.textContent = title;
+    } else if (els.nightTransitionTitle.dataset.typewriterText !== title) {
+      els.nightTransitionTitle.dataset.typewriterText = title;
+      els.nightTransitionTitle.replaceChildren(
+        ...Array.from(title, (character, index) => {
+          const span = document.createElement("span");
+          span.className = "night-transition-typewriter-char";
+          span.textContent = character;
+          span.style.setProperty("--typewriter-delay", `${index * 180}ms`);
+          return span;
+        }),
+      );
+    }
   }
   if (els.nightTransitionSeconds) {
     els.nightTransitionSeconds.textContent = "";
