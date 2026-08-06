@@ -2115,6 +2115,10 @@ textarea:focus {
 }
 
 .night-transition-ok-button {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 3;
   min-width: clamp(140px, 20vw, 220px);
   min-height: clamp(54px, 8svh, 72px);
   border-radius: 8px;
