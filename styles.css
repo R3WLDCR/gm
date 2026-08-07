@@ -2000,6 +2000,8 @@ textarea:focus {
 
 .attack-result-view.attack-result-dawn #attackResultLead {
   color: #fff;
+  font-size: clamp(4rem, 12vw, 9.5rem);
+  line-height: 1;
 }
 
 .attack-result-view.attack-result-prompt #attackResultMessage,
@@ -3866,6 +3868,10 @@ body.participant-action-view .action-confirm-actions {
     font-size: clamp(3.2rem, 18vw, 6rem);
   }
 
+  .attack-result-view.attack-result-dawn #attackResultLead {
+    font-size: clamp(3.2rem, 18vw, 6rem);
+  }
+
   .attack-result-content p,
   .attack-result-content span,
   .night-transition-content p {
@@ -3991,6 +3997,10 @@ body.participant-action-view .action-confirm-actions {
 
   .night-transition-content strong,
   .attack-result-content strong {
+    font-size: clamp(3.8rem, 13vw, 7rem);
+  }
+
+  .attack-result-view.attack-result-dawn #attackResultLead {
     font-size: clamp(3.8rem, 13vw, 7rem);
   }
 
