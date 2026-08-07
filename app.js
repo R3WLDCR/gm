@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.21.7";
+const APP_VERSION = "v1.21.8";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -2150,7 +2150,7 @@ function renderAttackResultView() {
   const player = findPlayer(state.attackResultTargetId);
   const name = state.attackResultSucceeded ? player?.name || "不明" : "犠牲者なし";
   if (els.attackResultLead) {
-    els.attackResultLead.textContent = "朝がおとずれます";
+    els.attackResultLead.textContent = "朝が訪れます";
     els.attackResultLead.hidden = state.attackResultStage !== ATTACK_RESULT_STAGE_DAWN;
   }
   if (els.attackResultName) {
