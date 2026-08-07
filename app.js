@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.21.24";
+const APP_VERSION = "v1.21.25";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -35,6 +35,7 @@ const ATTACK_RESULT_OK_DELAY_SECONDS = 5;
 const ATTACK_RESULT_STAGE_DAWN = "dawn";
 const ATTACK_RESULT_STAGE_RESULT = "result";
 const ATTACK_RESULT_STAGE_READY = "ready";
+const VOTE_START_DELAY_SECONDS = 5;
 const DEBUG_HISTORY_LIMIT = 10;
 
 const state = {
@@ -47,6 +48,7 @@ const state = {
   timerBase: 300,
   timerRunning: false,
   timerFocus: false,
+  timerEndRevealSeconds: 0,
   timerResetCount: 0,
   showVoteTable: false,
   voteSelectedPlayerId: "",
@@ -122,6 +124,7 @@ const phaseLabels = {
 
 const els = {};
 let timerId = null;
+let timerEndRevealTimerId = null;
 let pleaTimerId = null;
 let revotePleaTimerId = null;
 let nightTransitionTimerId = null;
@@ -260,6 +263,7 @@ document.addEventListener("DOMContentLoaded", () => {
   resumeNightTransitionTimer();
   resumeAttackResultRevealTimer();
   resumeVictoryRevealTimer();
+  resumeTimerEndRevealCountdown();
   initializeSync();
 });
 
@@ -472,7 +476,9 @@ function showVoteRoundTable() {
   state.phase = "vote";
   state.timerRunning = false;
   state.timerFocus = false;
+  state.timerEndRevealSeconds = 0;
   stopTimer();
+  stopTimerEndRevealCountdown();
   state.showVoteTable = true;
   state.voteSelectedPlayerId = "";
   renderAndStore();
@@ -487,9 +493,11 @@ function skipTimerToVoteButton() {
   state.timerSeconds = 0;
   state.timerRunning = false;
   state.timerFocus = true;
+  state.timerEndRevealSeconds = VOTE_START_DELAY_SECONDS;
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
   stopTimer();
+  startTimerEndRevealCountdown();
   renderAndStore();
 }
 
@@ -501,7 +509,9 @@ function backToTimerScreen() {
   state.voteSelectedPlayerId = "";
   state.timerRunning = false;
   state.timerFocus = false;
+  state.timerEndRevealSeconds = 0;
   stopTimer();
+  stopTimerEndRevealCountdown();
   renderAndStore();
 }
 
@@ -712,6 +722,8 @@ function startTimer() {
     if (state.timerSeconds === 0) {
       stopTimer();
       state.timerRunning = false;
+      state.timerEndRevealSeconds = VOTE_START_DELAY_SECONDS;
+      startTimerEndRevealCountdown();
     }
     render();
     store();
@@ -721,6 +733,27 @@ function startTimer() {
 function stopTimer() {
   if (timerId) window.clearInterval(timerId);
   timerId = null;
+}
+
+function resumeTimerEndRevealCountdown() {
+  if (state.timerEndRevealSeconds > 0 && state.timerSeconds === 0 && state.timerFocus && !state.showVoteTable) {
+    startTimerEndRevealCountdown();
+  }
+}
+
+function startTimerEndRevealCountdown() {
+  if (state.timerEndRevealSeconds <= 0) return;
+  stopTimerEndRevealCountdown();
+  timerEndRevealTimerId = window.setInterval(() => {
+    state.timerEndRevealSeconds = Math.max(0, state.timerEndRevealSeconds - 1);
+    if (state.timerEndRevealSeconds === 0) stopTimerEndRevealCountdown();
+    renderAndStore();
+  }, 1000);
+}
+
+function stopTimerEndRevealCountdown() {
+  if (timerEndRevealTimerId) window.clearInterval(timerEndRevealTimerId);
+  timerEndRevealTimerId = null;
 }
 
 function startPleaTimer() {
@@ -960,6 +993,7 @@ function resetTimer() {
   const wasRunning = state.timerRunning;
   state.timerSeconds = state.timerBase;
   state.timerRunning = false;
+  state.timerEndRevealSeconds = 0;
   if (state.timerFocus) {
     state.timerResetCount = wasRunning ? state.timerResetCount + 1 : 2;
     if (state.timerResetCount >= 2) {
@@ -968,6 +1002,7 @@ function resetTimer() {
     }
   }
   stopTimer();
+  stopTimerEndRevealCountdown();
   renderAndStore();
 }
 
@@ -980,9 +1015,11 @@ function resetTimerValue(seconds) {
   state.timerSeconds = seconds;
   state.timerRunning = false;
   state.timerFocus = false;
+  state.timerEndRevealSeconds = 0;
   state.timerResetCount = 0;
   state.showVoteTable = false;
   stopTimer();
+  stopTimerEndRevealCountdown();
 }
 
 function addSelectedNote(label) {
@@ -1425,6 +1462,7 @@ function applyRestoredPayload(payload) {
   pruneLogRestorePoints();
   stopAllLiveTimers();
   state.timerRunning = false;
+  state.timerEndRevealSeconds = 0;
   state.pleaRunning = false;
   state.revotePleaRunning = false;
   if (state.showNightTransition) {
@@ -1452,6 +1490,7 @@ function pruneLogRestorePoints() {
 
 function stopAllLiveTimers() {
   stopTimer();
+  stopTimerEndRevealCountdown();
   stopPleaTimer();
   stopRevotePleaTimer();
   stopNightTransitionTimer();
@@ -1560,6 +1599,7 @@ async function copyLog() {
 function resetGame() {
   if (!confirm("卓を初期化しますか？")) return;
   stopTimer();
+  stopTimerEndRevealCountdown();
   resetPleaTimerState();
   resetVoteSession();
   stopActionGateCountdown();
@@ -1574,6 +1614,7 @@ function resetGame() {
   state.timerBase = 300;
   state.timerRunning = false;
   state.timerFocus = false;
+  state.timerEndRevealSeconds = 0;
   state.timerResetCount = 0;
   state.votes = {};
   state.logs = [];
@@ -1606,6 +1647,7 @@ function resetToFirstNight() {
   if (!confirm("進行を初日夜に戻しますか？")) return;
   pushUndoSnapshot("初日へ戻す");
   stopTimer();
+  stopTimerEndRevealCountdown();
   resetPleaTimerState();
   resetVoteSession();
   stopActionGateCountdown();
@@ -1618,6 +1660,7 @@ function resetToFirstNight() {
   state.attackedPlayerIds = [];
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
+  state.timerEndRevealSeconds = 0;
   state.actionRoleIndex = ACTION_ROLE_ORDER.length;
   state.actionComplete = false;
   state.actionIntroRoleId = "";
@@ -1824,9 +1867,9 @@ function renderHeader() {
   timerRing?.style.setProperty("--timer-progress", getTimerProgress());
   timerRing?.classList.toggle("timer-warning", state.timerSeconds > 0 && state.timerSeconds <= 30);
   timerRing?.classList.toggle("timer-ended", state.timerSeconds === 0);
-  const voteStartVisible = state.timerSeconds === 0 && state.timerFocus;
+  const voteStartVisible = timerEndVisible && state.timerEndRevealSeconds === 0;
   els.voteStartBtn.hidden = !voteStartVisible;
-  els.timerStart.hidden = voteStartVisible;
+  els.timerStart.hidden = timerEndVisible;
   els.timerStart.textContent = state.timerRunning ? "⏸" : "開始";
   document.querySelector(".table-panel")?.classList.toggle("timer-focus", state.timerFocus);
   document.querySelector(".table-panel")?.classList.toggle("vote-table-mode", state.showVoteTable);
@@ -2620,7 +2663,9 @@ function startPleaForTarget(playerId) {
   state.showVoteTable = false;
   state.timerRunning = false;
   state.timerFocus = false;
+  state.timerEndRevealSeconds = 0;
   stopTimer();
+  stopTimerEndRevealCountdown();
   stopPleaTimer();
   state.pleaRunning = false;
   renderAndStore();
@@ -3772,6 +3817,7 @@ async function applyCloudRecord(record) {
   render();
   resumeNightTransitionTimer();
   resumeVictoryRevealTimer();
+  resumeTimerEndRevealCountdown();
 }
 
 async function resolveByNewestRecord(record) {
@@ -3983,6 +4029,7 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     timerSeconds: state.timerSeconds,
     timerBase: state.timerBase,
     timerFocus: state.timerFocus,
+    timerEndRevealSeconds: state.timerEndRevealSeconds,
     timerResetCount: state.timerResetCount,
     showVoteTable: state.showVoteTable,
     voteSelectedPlayerId: state.voteSelectedPlayerId,
@@ -4075,9 +4122,12 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.screen = saved.screen || "setup";
   state.phase = saved.phase || "setup";
   state.day = saved.day || 0;
-  state.timerSeconds = saved.timerSeconds || 300;
-  state.timerBase = saved.timerBase || 300;
-  state.timerFocus = saved.timerFocus || false;
+  state.timerSeconds = Number.isFinite(Number(saved.timerSeconds)) ? Math.max(0, Number(saved.timerSeconds)) : 300;
+  state.timerBase = Number.isFinite(Number(saved.timerBase)) ? Math.max(1, Number(saved.timerBase)) : 300;
+  state.timerFocus = saved.timerFocus === true;
+  state.timerEndRevealSeconds = Number.isFinite(Number(saved.timerEndRevealSeconds))
+    ? Math.max(0, Math.min(VOTE_START_DELAY_SECONDS, Number(saved.timerEndRevealSeconds)))
+    : 0;
   state.timerResetCount = saved.timerResetCount || 0;
   state.showVoteTable = saved.showVoteTable || false;
   state.voteSelectedPlayerId = saved.voteSelectedPlayerId || "";
