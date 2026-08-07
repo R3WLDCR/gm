@@ -1985,6 +1985,15 @@ textarea:focus {
   animation: attackResultDawnBrighten 3s ease-out forwards;
 }
 
+.attack-result-view.attack-result-dawn {
+  background: #000;
+  color: #fff;
+}
+
+.attack-result-view.attack-result-dawn #attackResultLead {
+  color: #fff;
+}
+
 .attack-result-view[hidden] {
   display: none;
 }
