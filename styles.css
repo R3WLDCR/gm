@@ -2128,6 +2128,10 @@ textarea:focus {
   animation: nightTransitionTypewriter 980ms ease-out var(--typewriter-delay) forwards;
 }
 
+.night-transition-waiting .night-transition-typewriter-char {
+  animation: none;
+}
+
 @keyframes nightTransitionTypewriter {
   0% {
     opacity: 0;
