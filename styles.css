@@ -2031,8 +2031,8 @@ textarea:focus {
 
 .attack-result-view.attack-result-prompt #attackResultMessage {
   opacity: 0;
-  transform: translateY(0.12em) scale(1.08);
-  animation: attackResultReveal 900ms ease-out forwards;
+  transform: translateY(0.14em) scale(1.34);
+  animation: attackResultPromptRecede 5s ease-out forwards;
 }
 
 .attack-result-content strong {
@@ -2055,17 +2055,23 @@ textarea:focus {
   }
 }
 
-@keyframes attackResultReveal {
+@keyframes attackResultPromptRecede {
   0% {
     opacity: 0;
     filter: blur(12px);
-    transform: translateY(0.12em) scale(1.08);
+    transform: translateY(0.14em) scale(1.34);
   }
 
-  100% {
+  18% {
     opacity: 1;
     filter: blur(0);
     transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0.3;
+    filter: blur(1px);
+    transform: translateY(-0.1em) scale(0.56);
   }
 }
 
