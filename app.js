@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.21.19";
+const APP_VERSION = "v1.21.20";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -2390,7 +2390,7 @@ function renderSeerResult() {
     renderActionRoundTable();
     return;
   }
-  const result = player.roleId === "werewolf" ? "人狼" : "村人";
+  const result = getSeerResultLabel(state.seerCheckResults[player.id]);
   const gateReady = isActionGateReady("seer");
   const canAdvance = !state.actionResultVisible || gateReady;
   els.actionHelp.textContent = state.actionResultVisible
@@ -2559,7 +2559,7 @@ function getSeatStatus(player, actionRoleId = "") {
   if (actionRoleId === "seer" && state.seerCheckResults[player.id]) {
     return {
       type: state.seerCheckResults[player.id] === "人狼" ? "seer-werewolf" : "seer-villager",
-      label: state.seerCheckResults[player.id],
+      label: getSeerResultLabel(state.seerCheckResults[player.id]),
     };
   }
   return null;
@@ -2834,7 +2834,7 @@ function handleActionTarget(player) {
   } else if (roleId === "medium") {
     pushUndoSnapshot("霊媒確定");
     state.actionIntroRoleId = "";
-    completedLogId = addLog(formatActionLog("霊媒", "medium", player, getDivinationResult(player)));
+    completedLogId = addLog(formatActionLog("霊媒", "medium", player, getMediumResult(player)));
   } else if (roleId === "werewolf") {
     state.actionSelectedTargetId = player.id;
     state.actionResultVisible = false;
@@ -3025,7 +3025,15 @@ function formatActionLog(actionName, roleId, target, result = "") {
 }
 
 function getDivinationResult(player) {
+  return player.roleId === "werewolf" ? "人狼" : "市民";
+}
+
+function getMediumResult(player) {
   return player.roleId === "werewolf" ? "人狼" : "村人";
+}
+
+function getSeerResultLabel(result) {
+  return result === "人狼" ? "人狼" : "市民";
 }
 
 function hasLivingRole(roleId) {
