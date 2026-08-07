@@ -1,10 +1,10 @@
 ﻿const DEFAULT_ROLES = [
   { id: "werewolf", name: "人狼", team: "人狼陣営", count: 1 },
   { id: "madman", name: "裏切り者", team: "人狼陣営", count: 1 },
-  { id: "seer", name: "預言者", team: "村人陣営", count: 1 },
-  { id: "medium", name: "霊媒師", team: "村人陣営", count: 1 },
-  { id: "knight", name: "ボディガード", team: "村人陣営", count: 1 },
-  { id: "villager", name: "村人", team: "村人陣営", count: 0 },
+  { id: "seer", name: "預言者", team: "市民陣営", count: 1 },
+  { id: "medium", name: "霊媒師", team: "市民陣営", count: 1 },
+  { id: "knight", name: "ボディガード", team: "市民陣営", count: 1 },
+  { id: "villager", name: "市民", team: "市民陣営", count: 0 },
 ];
 
 const STANDARD_ROLE_ORDER = ["werewolf", "seer", "medium", "knight", "madman"];
@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.21.20";
+const APP_VERSION = "v1.21.21";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -1674,7 +1674,7 @@ function renderParticipantViewMode() {
   const victoryFullscreen = isVictoryFullscreenView();
   document.body.classList.toggle("victory-fullscreen-view", victoryFullscreen);
   document.body.classList.toggle("werewolf-victory-view", victoryFullscreen && state.gameWinner === "人狼陣営");
-  document.body.classList.toggle("village-victory-view", victoryFullscreen && state.gameWinner === "村人陣営");
+  document.body.classList.toggle("village-victory-view", victoryFullscreen && state.gameWinner === "市民陣営");
 }
 
 function isVictoryFullscreenView() {
@@ -1713,7 +1713,7 @@ function renderVictoryBanner() {
   const revealStage = state.victoryRevealStage || "winner";
   els.victoryBanner?.toggleAttribute("hidden", !visible);
   els.victoryBanner?.classList.toggle("victory-werewolf", visible && state.gameWinner === "人狼陣営");
-  els.victoryBanner?.classList.toggle("victory-village", visible && state.gameWinner === "村人陣営");
+  els.victoryBanner?.classList.toggle("victory-village", visible && state.gameWinner === "市民陣営");
   els.victoryBanner?.classList.toggle("victory-reveal-announcement", visible && revealStage === "announcement");
   els.victoryBanner?.classList.toggle("victory-reveal-prompt", visible && revealStage === "prompt");
   els.victoryBanner?.classList.toggle("victory-reveal-winner", visible && revealStage === "winner");
@@ -1748,13 +1748,13 @@ function scheduleVictoryBackButton(ended) {
 
 function getVictoryTitle(winner) {
   if (winner === "人狼陣営") return "人狼勝利";
-  if (winner === "村人陣営") return "市民勝利";
+  if (winner === "市民陣営") return "市民勝利";
   return "";
 }
 
 function getVictoryMessage(winner) {
   if (winner === "人狼陣営") return "血が零れている";
-  if (winner === "村人陣営") return "光の演出";
+  if (winner === "市民陣営") return "光の演出";
   return "";
 }
 
@@ -2129,7 +2129,7 @@ function renderNightTransitionView() {
   els.nightTransitionView.classList.toggle("night-transition-waiting", state.nightTransitionSeconds > 0);
   els.nightTransitionView.classList.toggle("night-transition-victory", state.nightTransitionOutcome === "victory");
   els.nightTransitionView.classList.toggle("night-transition-werewolf-victory", state.nightTransitionOutcome === "victory" && state.nightTransitionWinner === "人狼陣営");
-  els.nightTransitionView.classList.toggle("night-transition-village-victory", state.nightTransitionOutcome === "victory" && state.nightTransitionWinner === "村人陣営");
+  els.nightTransitionView.classList.toggle("night-transition-village-victory", state.nightTransitionOutcome === "victory" && state.nightTransitionWinner === "市民陣営");
   if (els.nightTransitionLead) {
     els.nightTransitionLead.textContent = "";
   }
@@ -2358,7 +2358,7 @@ function renderMediumResult() {
     els.actionRoundTable.innerHTML = '<div class="round-empty">直前の追放者がいません</div>';
     return;
   }
-  const result = player.roleId === "werewolf" ? "人狼" : "村人";
+  const result = player.roleId === "werewolf" ? "人狼" : "市民";
   startActionGateCountdown("medium");
   const gateReady = isActionGateReady("medium");
   els.actionRoundTable.innerHTML = `
@@ -3029,7 +3029,7 @@ function getDivinationResult(player) {
 }
 
 function getMediumResult(player) {
-  return player.roleId === "werewolf" ? "人狼" : "村人";
+  return player.roleId === "werewolf" ? "人狼" : "市民";
 }
 
 function getSeerResultLabel(result) {
@@ -3080,7 +3080,7 @@ function getGameResult() {
   const villageCount = livingPlayers.length - werewolfCount;
 
   if (werewolfCount === 0) {
-    return { ended: true, winner: "村人陣営" };
+    return { ended: true, winner: "市民陣営" };
   }
   if (werewolfCount >= villageCount) {
     return { ended: true, winner: "人狼陣営" };
@@ -4125,7 +4125,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
       ? NIGHT_TRANSITION_OK_DELAY_SECONDS
       : 0;
   state.nightTransitionOutcome = saved.nightTransitionOutcome === "victory" ? "victory" : "night";
-  state.nightTransitionWinner = saved.nightTransitionWinner || "";
+  state.nightTransitionWinner = normalizeVillageTeam(saved.nightTransitionWinner || "");
   if (state.showNightTransition) {
     state.screen = "table";
     state.phase = "vote";
@@ -4190,7 +4190,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.nightStartGuardedPlayerId = saved.nightStartGuardedPlayerId || state.lastGuardedPlayerId || "";
   state.playerSortMode = ["manual", "daily", "total"].includes(saved.playerSortMode) ? saved.playerSortMode : "manual";
   state.participationCountedForDeal = saved.participationCountedForDeal === true;
-  state.gameWinner = saved.gameWinner || "";
+  state.gameWinner = normalizeVillageTeam(saved.gameWinner || "");
   state.victoryShownAt = Number.isFinite(Number(saved.victoryShownAt)) ? Number(saved.victoryShownAt) : 0;
   state.victoryRevealStage = ["announcement", "prompt", "winner"].includes(saved.victoryRevealStage) ? saved.victoryRevealStage : state.gameWinner ? "winner" : "announcement";
   state.victoryRevealSeconds = Number.isFinite(Number(saved.victoryRevealSeconds))
@@ -4234,7 +4234,12 @@ function normalizeLogs(logs) {
   return logs.map((log) => ({
     ...log,
     id: log.id || `legacy-log-${fallbackId++}`,
+    text: String(log.text || "").replaceAll("村人", "市民"),
   }));
+}
+
+function normalizeVillageTeam(team) {
+  return team === "村人陣営" ? "市民陣営" : team;
 }
 
 function getNextLogIdFromLogs(logs) {
