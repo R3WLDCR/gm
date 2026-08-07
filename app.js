@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.21.8";
+const APP_VERSION = "v1.21.9";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -1715,7 +1715,7 @@ function renderVictoryBanner() {
   els.victoryBanner?.classList.toggle("victory-reveal-prompt", visible && revealStage === "prompt");
   els.victoryBanner?.classList.toggle("victory-reveal-winner", visible && revealStage === "winner");
   if (els.victoryLeadText) {
-    els.victoryLeadText.textContent = !visible ? "" : revealStage === "announcement" ? "勝敗が付きました" : revealStage === "prompt" ? "勝利したのは" : "";
+    els.victoryLeadText.textContent = !visible ? "" : revealStage === "announcement" ? "ゲーム終了" : revealStage === "prompt" ? "勝利したのは" : "";
   }
   if (els.victoryVisualMark) {
     els.victoryVisualMark.textContent = state.gameWinner === "人狼陣営" ? "✦" : "✧";
