@@ -2123,9 +2123,9 @@ textarea:focus {
 .night-transition-typewriter-char {
   display: inline-block;
   opacity: 0;
-  filter: blur(14px);
-  transform: translateY(0.2em) scale(0.97);
-  animation: nightTransitionTypewriter 980ms ease-out var(--typewriter-delay) forwards;
+  filter: blur(18px);
+  transform: translateY(0.24em) scale(0.96);
+  animation: nightTransitionTypewriter 1400ms ease-out var(--typewriter-delay) forwards;
 }
 
 .night-transition-waiting .night-transition-typewriter-char {
@@ -2135,8 +2135,8 @@ textarea:focus {
 @keyframes nightTransitionTypewriter {
   0% {
     opacity: 0;
-    filter: blur(14px);
-    transform: translateY(0.2em) scale(0.97);
+    filter: blur(18px);
+    transform: translateY(0.24em) scale(0.96);
   }
 
   100% {

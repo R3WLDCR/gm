@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.21.5";
+const APP_VERSION = "v1.21.6";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -2120,7 +2120,7 @@ function renderNightTransitionView() {
           const span = document.createElement("span");
           span.className = "night-transition-typewriter-char";
           span.textContent = character;
-          span.style.setProperty("--typewriter-delay", `${index * 165}ms`);
+          span.style.setProperty("--typewriter-delay", `${index * 260}ms`);
           return span;
         }),
       );
