@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.21.22";
+const APP_VERSION = "v1.21.23";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -2390,7 +2390,7 @@ function renderSeerResult() {
     renderActionRoundTable();
     return;
   }
-  const result = getSeerResultLabel(state.seerCheckResults[player.id]);
+  const result = getSeerResultLabel(state.seerCheckResults[player.id] || getDivinationResult(player));
   const gateReady = isActionGateReady("seer");
   const canAdvance = !state.actionResultVisible || gateReady;
   els.actionHelp.textContent = state.actionResultVisible
