@@ -1990,7 +1990,19 @@ textarea:focus {
   color: #fff;
 }
 
+.attack-result-view.attack-result-prompt,
+.attack-result-view.attack-result-ready {
+  background: #000;
+  color: #fff;
+}
+
 .attack-result-view.attack-result-dawn #attackResultLead {
+  color: #fff;
+}
+
+.attack-result-view.attack-result-prompt #attackResultMessage,
+.attack-result-view.attack-result-ready #attackResultName,
+.attack-result-view.attack-result-ready #attackResultName.no-victim {
   color: #fff;
 }
 
