@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.21.11";
+const APP_VERSION = "v1.21.12";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -1393,6 +1393,7 @@ function undoLastStep() {
   applyRestoredPayload(snapshot.payload);
   state.undoHistory = rest;
   renderAndStore();
+  resumeVictoryRevealTimer();
 }
 
 function markLatestLogRestorable() {
@@ -1413,6 +1414,7 @@ function restoreToLogPoint(logId) {
   if (!confirm(`${log?.text || "選択したログ"} まで戻しますか？`)) return;
   applyRestoredPayload(payload);
   renderAndStore();
+  resumeVictoryRevealTimer();
 }
 
 function applyRestoredPayload(payload) {
