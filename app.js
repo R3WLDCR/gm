@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.21.15";
+const APP_VERSION = "v1.21.16";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -2172,7 +2172,22 @@ function renderAttackResultView() {
   const player = findPlayer(state.attackResultTargetId);
   const name = state.attackResultSucceeded ? player?.name || "不明" : "犠牲者なし";
   if (els.attackResultLead) {
-    els.attackResultLead.textContent = "朝が訪れます";
+    const dawnText = "朝が訪れます";
+    if (state.attackResultStage !== ATTACK_RESULT_STAGE_DAWN) {
+      els.attackResultLead.removeAttribute("data-reveal-text");
+      els.attackResultLead.textContent = dawnText;
+    } else if (els.attackResultLead.dataset.revealText !== dawnText) {
+      els.attackResultLead.dataset.revealText = dawnText;
+      els.attackResultLead.replaceChildren(
+        ...Array.from(dawnText, (character, index) => {
+          const span = document.createElement("span");
+          span.className = "night-transition-typewriter-char";
+          span.textContent = character;
+          span.style.setProperty("--typewriter-delay", `${index * 260}ms`);
+          return span;
+        }),
+      );
+    }
     els.attackResultLead.hidden = state.attackResultStage !== ATTACK_RESULT_STAGE_DAWN;
   }
   if (els.attackResultName) {

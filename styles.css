@@ -1994,6 +1994,13 @@ textarea:focus {
   color: #fff;
 }
 
+.attack-result-content #attackResultLead .night-transition-typewriter-char {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
 .attack-result-view[hidden] {
   display: none;
 }
@@ -2022,7 +2029,6 @@ textarea:focus {
   line-height: 1.15;
 }
 
-.attack-result-view.attack-result-dawn #attackResultLead,
 .attack-result-view.attack-result-prompt #attackResultMessage {
   opacity: 0;
   transform: translateY(0.12em) scale(1.08);
