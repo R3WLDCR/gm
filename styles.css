@@ -352,6 +352,15 @@ body.victory-fullscreen-view .victory-reveal-prompt .victory-copy span {
   line-height: 1.1;
 }
 
+body.victory-fullscreen-view .victory-banner.victory-reveal-announcement {
+  background: #000;
+  color: #fff;
+}
+
+body.victory-fullscreen-view .victory-reveal-announcement .victory-copy span {
+  color: #fff;
+}
+
 body.victory-fullscreen-view .victory-reveal-winner .victory-copy strong {
   color: white;
   font-size: clamp(4.5rem, 15vw, 12rem);
