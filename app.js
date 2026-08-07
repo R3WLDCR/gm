@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.21.1";
+const APP_VERSION = "v1.21.2";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -1424,12 +1424,15 @@ function applyRestoredPayload(payload) {
   state.timerRunning = false;
   state.pleaRunning = false;
   state.revotePleaRunning = false;
-  state.showNightTransition = false;
-  state.nightTransitionSeconds = NIGHT_TRANSITION_MIN_SECONDS;
-  state.nightTransitionOkSeconds = NIGHT_TRANSITION_OK_DELAY_SECONDS;
-  state.nightTransitionOutcome = "night";
-  state.nightTransitionWinner = "";
-  resetAttackResultState();
+  if (state.showNightTransition) {
+    state.nightTransitionSeconds = 0;
+    state.nightTransitionOkSeconds = 0;
+  }
+  if (state.showAttackResult) {
+    state.attackResultStage = ATTACK_RESULT_STAGE_READY;
+    state.attackResultRevealSeconds = 0;
+    state.attackResultOkSeconds = 0;
+  }
   state.actionGateRoleId = "";
   state.actionGateSeconds = 0;
   state.actionGateBaseSeconds = 0;
@@ -2614,16 +2617,11 @@ function confirmSelectedPlayerExile() {
   const player = findPlayer(state.voteSelectedPlayerId);
   if (player) player.alive = false;
   addLog(player ? `${player.name} を追放` : "追放");
-  markLatestLogRestorable();
   state.voteSelectedPlayerId = "";
   const result = getGameResult();
-  if (result.ended) {
-    startNightTransition(result);
-    return;
-  } else {
-    startNightTransition(result);
-    return;
-  }
+  startNightTransition(result);
+  markLatestLogRestorable();
+  renderAndStore();
 }
 
 function getCurrentActionRoleId() {
