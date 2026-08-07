@@ -337,6 +337,27 @@ body.victory-fullscreen-view .victory-copy {
   display: none;
 }
 
+body.victory-fullscreen-view .victory-copy {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  padding: clamp(24px, 8vw, 96px);
+}
+
+body.victory-fullscreen-view .victory-reveal-announcement .victory-copy span,
+body.victory-fullscreen-view .victory-reveal-prompt .victory-copy span {
+  font-size: clamp(3rem, 12vw, 9rem);
+  line-height: 1.1;
+}
+
+body.victory-fullscreen-view .victory-reveal-winner .victory-copy strong {
+  color: white;
+  font-size: clamp(4.5rem, 15vw, 12rem);
+  text-shadow: 0 8px 30px rgba(0, 0, 0, 0.54);
+}
+
 body.victory-fullscreen-view .victory-image {
   position: relative;
   z-index: 1;
@@ -368,8 +389,8 @@ body.victory-fullscreen-view .victory-image {
   display: none;
 }
 
-body.werewolf-victory-view .victory-banner.victory-werewolf .victory-image-werewolf,
-body.village-victory-view .victory-banner.victory-village .victory-image-village {
+body.werewolf-victory-view .victory-banner.victory-werewolf.victory-reveal-winner .victory-image-werewolf,
+body.village-victory-view .victory-banner.victory-village.victory-reveal-winner .victory-image-village {
   display: block;
   animation: victoryImageFadeIn 2800ms ease-out forwards;
 }

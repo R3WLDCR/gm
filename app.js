@@ -19,12 +19,13 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.20.29";
+const APP_VERSION = "v1.21.0";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
 const ACTION_GATE_MAX_SECONDS = 25;
 const VICTORY_BACK_DELAY_MS = 10000;
+const VICTORY_REVEAL_STEP_SECONDS = 5;
 const PLEA_TIMER_SECONDS = 30;
 const NIGHT_TRANSITION_MIN_SECONDS = 3;
 const NIGHT_TRANSITION_MAX_SECONDS = 8;
@@ -104,6 +105,8 @@ const state = {
   participationCountedForDeal: false,
   gameWinner: "",
   victoryShownAt: 0,
+  victoryRevealStage: "announcement",
+  victoryRevealSeconds: VICTORY_REVEAL_STEP_SECONDS,
   victoryDismissed: false,
   undoHistory: [],
   logRestorePoints: {},
@@ -126,6 +129,7 @@ let attackResultRevealTimerId = null;
 let actionGateTimerId = null;
 let actionBlockedTimerId = null;
 let victoryBackTimerId = null;
+let victoryRevealTimerId = null;
 let actionRenderKey = "";
 let syncTimer = null;
 let supabaseClient = null;
@@ -254,6 +258,7 @@ document.addEventListener("DOMContentLoaded", () => {
   render();
   resumeNightTransitionTimer();
   resumeAttackResultRevealTimer();
+  resumeVictoryRevealTimer();
   initializeSync();
 });
 
@@ -1448,12 +1453,42 @@ function stopAllLiveTimers() {
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
   stopVictoryBackTimer();
+  stopVictoryRevealTimer();
 }
 
 function stopVictoryBackTimer() {
   if (!victoryBackTimerId) return;
   window.clearTimeout(victoryBackTimerId);
   victoryBackTimerId = null;
+}
+
+function startVictoryRevealTimer() {
+  if (!state.gameWinner || state.victoryDismissed || state.victoryRevealStage === "winner") return;
+  stopVictoryRevealTimer();
+  victoryRevealTimerId = window.setInterval(() => {
+    state.victoryRevealSeconds = Math.max(0, state.victoryRevealSeconds - 1);
+    if (state.victoryRevealSeconds === 0) {
+      if (state.victoryRevealStage === "announcement") {
+        state.victoryRevealStage = "prompt";
+        state.victoryRevealSeconds = VICTORY_REVEAL_STEP_SECONDS;
+      } else {
+        state.victoryRevealStage = "winner";
+        state.victoryShownAt = Date.now();
+        stopVictoryRevealTimer();
+      }
+    }
+    renderAndStore();
+  }, 1000);
+}
+
+function resumeVictoryRevealTimer() {
+  if (!state.gameWinner || state.victoryDismissed || state.victoryRevealStage === "winner") return;
+  startVictoryRevealTimer();
+}
+
+function stopVictoryRevealTimer() {
+  if (victoryRevealTimerId) window.clearInterval(victoryRevealTimerId);
+  victoryRevealTimerId = null;
 }
 
 function getTopVotedPlayerIds() {
@@ -1555,7 +1590,7 @@ function resetGame() {
   state.attackedPlayerIds = [];
   state.playerSortMode = "manual";
   state.participationCountedForDeal = false;
-  state.gameWinner = "";
+  clearGameWinner();
   state.undoHistory = [];
   resetActionSelection();
   renderAndStore();
@@ -1587,7 +1622,7 @@ function resetToFirstNight() {
   state.actionBlockedSeconds = 0;
   state.guardedPlayerId = "";
   state.lastGuardedPlayerId = "";
-  state.gameWinner = "";
+  clearGameWinner();
   state.nightStartGuardedPlayerId = "";
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
@@ -1669,23 +1704,27 @@ function isAttackResultFullscreenView() {
 
 function renderVictoryBanner() {
   const visible = Boolean(state.gameWinner && !state.victoryDismissed);
+  const revealStage = state.victoryRevealStage || "winner";
   els.victoryBanner?.toggleAttribute("hidden", !visible);
   els.victoryBanner?.classList.toggle("victory-werewolf", visible && state.gameWinner === "人狼陣営");
   els.victoryBanner?.classList.toggle("victory-village", visible && state.gameWinner === "村人陣営");
+  els.victoryBanner?.classList.toggle("victory-reveal-announcement", visible && revealStage === "announcement");
+  els.victoryBanner?.classList.toggle("victory-reveal-prompt", visible && revealStage === "prompt");
+  els.victoryBanner?.classList.toggle("victory-reveal-winner", visible && revealStage === "winner");
   if (els.victoryLeadText) {
-    els.victoryLeadText.textContent = visible ? "ゲーム終了" : "";
+    els.victoryLeadText.textContent = !visible ? "" : revealStage === "announcement" ? "勝敗が付きました" : revealStage === "prompt" ? "勝利したのは" : "";
   }
   if (els.victoryVisualMark) {
     els.victoryVisualMark.textContent = state.gameWinner === "人狼陣営" ? "✦" : "✧";
   }
   if (els.victoryWinnerText) {
-    els.victoryWinnerText.textContent = getVictoryTitle(state.gameWinner);
+    els.victoryWinnerText.textContent = visible && revealStage === "winner" ? state.gameWinner : "";
   }
   if (els.victoryMessageText) {
-    els.victoryMessageText.textContent = getVictoryMessage(state.gameWinner);
+    els.victoryMessageText.textContent = "";
   }
   if (els.victoryBackBtn) {
-    const canBack = visible && Date.now() - (state.victoryShownAt || 0) >= VICTORY_BACK_DELAY_MS;
+    const canBack = visible && revealStage === "winner" && Date.now() - (state.victoryShownAt || 0) >= VICTORY_BACK_DELAY_MS;
     els.victoryBackBtn.hidden = !canBack || state.victoryDismissed;
   }
   scheduleVictoryBackButton(visible);
@@ -3006,17 +3045,24 @@ function getGameResult() {
 
 function setGameWinner(winner) {
   state.gameWinner = winner;
-  state.victoryShownAt = Date.now();
+  state.victoryShownAt = 0;
+  state.victoryRevealStage = "announcement";
+  state.victoryRevealSeconds = VICTORY_REVEAL_STEP_SECONDS;
   state.victoryDismissed = false;
+  startVictoryRevealTimer();
 }
 
 function clearGameWinner() {
+  stopVictoryRevealTimer();
   state.gameWinner = "";
   state.victoryShownAt = 0;
+  state.victoryRevealStage = "announcement";
+  state.victoryRevealSeconds = VICTORY_REVEAL_STEP_SECONDS;
   state.victoryDismissed = false;
 }
 
 function dismissVictoryFullscreen() {
+  stopVictoryRevealTimer();
   state.victoryDismissed = true;
   state.screen = "table";
   state.showVoteTable = false;
@@ -3680,6 +3726,7 @@ async function applyCloudRecord(record) {
   saveSyncMeta();
   render();
   resumeNightTransitionTimer();
+  resumeVictoryRevealTimer();
 }
 
 async function resolveByNewestRecord(record) {
@@ -3949,6 +3996,8 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     participationCountedForDeal: state.participationCountedForDeal,
     gameWinner: state.gameWinner,
     victoryShownAt: state.victoryShownAt,
+    victoryRevealStage: state.victoryRevealStage,
+    victoryRevealSeconds: state.victoryRevealSeconds,
     victoryDismissed: state.victoryDismissed,
   };
   if (includeUndoHistory) {
@@ -4098,6 +4147,12 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.participationCountedForDeal = saved.participationCountedForDeal === true;
   state.gameWinner = saved.gameWinner || "";
   state.victoryShownAt = Number.isFinite(Number(saved.victoryShownAt)) ? Number(saved.victoryShownAt) : 0;
+  state.victoryRevealStage = ["announcement", "prompt", "winner"].includes(saved.victoryRevealStage) ? saved.victoryRevealStage : state.gameWinner ? "winner" : "announcement";
+  state.victoryRevealSeconds = Number.isFinite(Number(saved.victoryRevealSeconds))
+    ? Math.max(0, Math.min(VICTORY_REVEAL_STEP_SECONDS, Number(saved.victoryRevealSeconds)))
+    : state.victoryRevealStage === "winner"
+      ? 0
+      : VICTORY_REVEAL_STEP_SECONDS;
   state.victoryDismissed = saved.victoryDismissed === true;
   state.undoHistory = Array.isArray(saved.undoHistory) ? saved.undoHistory.slice(0, DEBUG_HISTORY_LIMIT) : [];
   if (resetActionScreen && state.screen === "action") {
