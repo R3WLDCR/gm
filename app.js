@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.21.25";
+const APP_VERSION = "v1.21.26";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -3155,7 +3155,13 @@ function dismissVictoryFullscreen() {
   stopVictoryRevealTimer();
   state.victoryDismissed = true;
   state.screen = "table";
+  state.phase = "day";
   state.showVoteTable = false;
+  state.timerRunning = false;
+  state.timerFocus = false;
+  state.timerEndRevealSeconds = 0;
+  stopTimer();
+  stopTimerEndRevealCountdown();
   renderAndStore();
 }
 
