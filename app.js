@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.21.27";
+const APP_VERSION = "v1.22.0";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -32,6 +32,9 @@ const NIGHT_TRANSITION_MAX_SECONDS = 8;
 const NIGHT_TRANSITION_OK_DELAY_SECONDS = 5;
 const ATTACK_RESULT_REVEAL_SECONDS = 5;
 const ATTACK_RESULT_OK_DELAY_SECONDS = 5;
+const ATTACK_RESULT_PAUSE_SECONDS = 3;
+const ATTACK_RESULT_STAGE_NIGHT_COMPLETE = "night-complete";
+const ATTACK_RESULT_STAGE_NIGHT_WAIT = "night-wait";
 const ATTACK_RESULT_STAGE_DAWN = "dawn";
 const ATTACK_RESULT_STAGE_RESULT = "result";
 const ATTACK_RESULT_STAGE_READY = "ready";
@@ -81,7 +84,8 @@ const state = {
   attackResultTargetId: "",
   attackResultSucceeded: false,
   attackResultWinner: "",
-  attackResultStage: ATTACK_RESULT_STAGE_DAWN,
+  attackResultStage: ATTACK_RESULT_STAGE_NIGHT_COMPLETE,
+  attackResultPauseSeconds: ATTACK_RESULT_PAUSE_SECONDS,
   attackResultRevealSeconds: ATTACK_RESULT_REVEAL_SECONDS,
   attackResultOkSeconds: ATTACK_RESULT_OK_DELAY_SECONDS,
   logs: [],
@@ -947,23 +951,36 @@ function resetAttackResultState() {
   state.attackResultTargetId = "";
   state.attackResultSucceeded = false;
   state.attackResultWinner = "";
-  state.attackResultStage = ATTACK_RESULT_STAGE_DAWN;
+  state.attackResultStage = ATTACK_RESULT_STAGE_NIGHT_COMPLETE;
+  state.attackResultPauseSeconds = ATTACK_RESULT_PAUSE_SECONDS;
   state.attackResultRevealSeconds = ATTACK_RESULT_REVEAL_SECONDS;
   state.attackResultOkSeconds = ATTACK_RESULT_OK_DELAY_SECONDS;
 }
 
 function resumeAttackResultRevealTimer() {
   if (!state.showAttackResult) return;
+  if (state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_COMPLETE) return;
   if (state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0) return;
   startAttackResultRevealTimer();
 }
 
 function startAttackResultRevealTimer() {
   if (!state.showAttackResult) return;
+  if (state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_COMPLETE) return;
   if (state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0) return;
+  if (state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_WAIT && state.attackResultPauseSeconds === 0) {
+    state.attackResultStage = ATTACK_RESULT_STAGE_DAWN;
+    state.attackResultRevealSeconds = ATTACK_RESULT_REVEAL_SECONDS;
+  }
   stopAttackResultRevealTimer();
   attackResultRevealTimerId = window.setInterval(() => {
-    if (state.attackResultStage === ATTACK_RESULT_STAGE_READY) {
+    if (state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_WAIT) {
+      state.attackResultPauseSeconds = Math.max(0, state.attackResultPauseSeconds - 1);
+      if (state.attackResultPauseSeconds === 0) {
+        state.attackResultStage = ATTACK_RESULT_STAGE_DAWN;
+        state.attackResultRevealSeconds = ATTACK_RESULT_REVEAL_SECONDS;
+      }
+    } else if (state.attackResultStage === ATTACK_RESULT_STAGE_READY) {
       state.attackResultOkSeconds = Math.max(0, state.attackResultOkSeconds - 1);
       if (state.attackResultOkSeconds === 0) {
         stopAttackResultRevealTimer();
@@ -971,7 +988,7 @@ function startAttackResultRevealTimer() {
     } else {
       state.attackResultRevealSeconds = Math.max(0, state.attackResultRevealSeconds - 1);
     }
-    if (state.attackResultRevealSeconds === 0 && state.attackResultStage !== ATTACK_RESULT_STAGE_READY) {
+    if (state.attackResultRevealSeconds === 0 && [ATTACK_RESULT_STAGE_DAWN, ATTACK_RESULT_STAGE_RESULT].includes(state.attackResultStage)) {
       if (state.attackResultStage === ATTACK_RESULT_STAGE_DAWN) {
         state.attackResultStage = ATTACK_RESULT_STAGE_RESULT;
         state.attackResultRevealSeconds = ATTACK_RESULT_REVEAL_SECONDS;
@@ -1471,6 +1488,7 @@ function applyRestoredPayload(payload) {
   }
   if (state.showAttackResult) {
     state.attackResultStage = ATTACK_RESULT_STAGE_READY;
+    state.attackResultPauseSeconds = 0;
     state.attackResultRevealSeconds = 0;
     state.attackResultOkSeconds = 0;
   }
@@ -2208,23 +2226,26 @@ function renderAttackResultView() {
   if (!els.attackResultView) return;
   els.attackResultView.hidden = !state.showAttackResult;
   if (!state.showAttackResult) return;
+  els.attackResultView.classList.toggle("attack-result-night-complete", state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_COMPLETE);
+  els.attackResultView.classList.toggle("attack-result-night-wait", state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_WAIT);
   els.attackResultView.classList.toggle("attack-result-dawn", state.attackResultStage === ATTACK_RESULT_STAGE_DAWN);
   els.attackResultView.classList.toggle("attack-result-prompt", state.attackResultStage === ATTACK_RESULT_STAGE_RESULT);
   els.attackResultView.classList.toggle("attack-result-ready", state.attackResultStage === ATTACK_RESULT_STAGE_READY);
+  const nightCompleteVisible = state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_COMPLETE;
   const promptVisible = state.attackResultStage === ATTACK_RESULT_STAGE_RESULT;
   const nameVisible = state.attackResultStage === ATTACK_RESULT_STAGE_READY;
-  const okVisible = state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0;
+  const okVisible = nightCompleteVisible || (state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0);
   const player = findPlayer(state.attackResultTargetId);
   const name = state.attackResultSucceeded ? player?.name || "不明" : "犠牲者なし";
   if (els.attackResultLead) {
-    const dawnText = "朝が訪れます";
+    const leadText = nightCompleteVisible ? "夜行動終了" : "朝が訪れます";
     if (state.attackResultStage !== ATTACK_RESULT_STAGE_DAWN) {
       els.attackResultLead.removeAttribute("data-reveal-text");
-      els.attackResultLead.textContent = dawnText;
-    } else if (els.attackResultLead.dataset.revealText !== dawnText) {
-      els.attackResultLead.dataset.revealText = dawnText;
+      els.attackResultLead.textContent = leadText;
+    } else if (els.attackResultLead.dataset.revealText !== leadText) {
+      els.attackResultLead.dataset.revealText = leadText;
       els.attackResultLead.replaceChildren(
-        ...Array.from(dawnText, (character, index) => {
+        ...Array.from(leadText, (character, index) => {
           const span = document.createElement("span");
           span.className = "night-transition-typewriter-char";
           span.textContent = character;
@@ -2233,7 +2254,7 @@ function renderAttackResultView() {
         }),
       );
     }
-    els.attackResultLead.hidden = state.attackResultStage !== ATTACK_RESULT_STAGE_DAWN;
+    els.attackResultLead.hidden = !nightCompleteVisible && state.attackResultStage !== ATTACK_RESULT_STAGE_DAWN;
   }
   if (els.attackResultName) {
     els.attackResultName.textContent = name;
@@ -2979,7 +3000,8 @@ function showAttackResultScreen(attackResult, gameResult) {
   state.attackResultTargetId = attackResult.targetId || "";
   state.attackResultSucceeded = attackResult.succeeded === true;
   state.attackResultWinner = gameResult.ended ? gameResult.winner : "";
-  state.attackResultStage = ATTACK_RESULT_STAGE_DAWN;
+  state.attackResultStage = ATTACK_RESULT_STAGE_NIGHT_COMPLETE;
+  state.attackResultPauseSeconds = ATTACK_RESULT_PAUSE_SECONDS;
   state.attackResultRevealSeconds = ATTACK_RESULT_REVEAL_SECONDS;
   state.attackResultOkSeconds = ATTACK_RESULT_OK_DELAY_SECONDS;
   state.screen = "table";
@@ -2987,12 +3009,19 @@ function showAttackResultScreen(attackResult, gameResult) {
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
   stopAllLiveTimers();
-  startAttackResultRevealTimer();
   renderAndStore();
 }
 
 function completeAttackResult() {
-  if (!state.showAttackResult || state.attackResultStage !== ATTACK_RESULT_STAGE_READY) return;
+  if (!state.showAttackResult) return;
+  if (state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_COMPLETE) {
+    state.attackResultStage = ATTACK_RESULT_STAGE_NIGHT_WAIT;
+    state.attackResultPauseSeconds = ATTACK_RESULT_PAUSE_SECONDS;
+    startAttackResultRevealTimer();
+    renderAndStore();
+    return;
+  }
+  if (state.attackResultStage !== ATTACK_RESULT_STAGE_READY) return;
   if (state.attackResultOkSeconds > 0) return;
   const winner = state.attackResultWinner;
   resetAttackResultState();
@@ -3824,6 +3853,7 @@ async function applyCloudRecord(record) {
   saveSyncMeta();
   render();
   resumeNightTransitionTimer();
+  resumeAttackResultRevealTimer();
   resumeVictoryRevealTimer();
   resumeTimerEndRevealCountdown();
 }
@@ -4071,6 +4101,7 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     attackResultSucceeded: state.attackResultSucceeded,
     attackResultWinner: state.attackResultWinner,
     attackResultStage: state.attackResultStage,
+    attackResultPauseSeconds: state.attackResultPauseSeconds,
     attackResultRevealSeconds: state.attackResultRevealSeconds,
     attackResultOkSeconds: state.attackResultOkSeconds,
     logs: state.logs,
@@ -4196,9 +4227,18 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.attackResultTargetId = saved.attackResultTargetId || "";
   state.attackResultSucceeded = saved.attackResultSucceeded === true;
   state.attackResultWinner = saved.attackResultWinner || "";
-  state.attackResultStage = [ATTACK_RESULT_STAGE_DAWN, ATTACK_RESULT_STAGE_RESULT, ATTACK_RESULT_STAGE_READY].includes(saved.attackResultStage)
+  state.attackResultStage = [
+    ATTACK_RESULT_STAGE_NIGHT_COMPLETE,
+    ATTACK_RESULT_STAGE_NIGHT_WAIT,
+    ATTACK_RESULT_STAGE_DAWN,
+    ATTACK_RESULT_STAGE_RESULT,
+    ATTACK_RESULT_STAGE_READY,
+  ].includes(saved.attackResultStage)
     ? saved.attackResultStage
     : ATTACK_RESULT_STAGE_READY;
+  state.attackResultPauseSeconds = Number.isFinite(Number(saved.attackResultPauseSeconds))
+    ? Math.max(0, Math.min(ATTACK_RESULT_PAUSE_SECONDS, Number(saved.attackResultPauseSeconds)))
+    : ATTACK_RESULT_PAUSE_SECONDS;
   state.attackResultRevealSeconds = Number.isFinite(Number(saved.attackResultRevealSeconds))
     ? Math.max(0, Math.min(ATTACK_RESULT_REVEAL_SECONDS, Number(saved.attackResultRevealSeconds)))
     : ATTACK_RESULT_REVEAL_SECONDS;
@@ -4212,7 +4252,8 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     state.phase = "night";
     state.showVoteTable = false;
   } else {
-    state.attackResultStage = ATTACK_RESULT_STAGE_DAWN;
+    state.attackResultStage = ATTACK_RESULT_STAGE_NIGHT_COMPLETE;
+    state.attackResultPauseSeconds = ATTACK_RESULT_PAUSE_SECONDS;
     state.attackResultRevealSeconds = ATTACK_RESULT_REVEAL_SECONDS;
     state.attackResultOkSeconds = ATTACK_RESULT_OK_DELAY_SECONDS;
   }

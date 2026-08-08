@@ -1992,6 +1992,12 @@ textarea:focus {
   color: #fff;
 }
 
+.attack-result-view.attack-result-night-complete,
+.attack-result-view.attack-result-night-wait {
+  background: #000;
+  color: #fff;
+}
+
 .attack-result-view.attack-result-prompt,
 .attack-result-view.attack-result-ready {
   background: #000;
@@ -2002,6 +2008,16 @@ textarea:focus {
   color: #fff;
   font-size: clamp(4rem, 12vw, 9.5rem);
   line-height: 1;
+}
+
+.attack-result-view.attack-result-night-complete #attackResultLead {
+  color: #fff;
+  font-size: clamp(4rem, 12vw, 9.5rem);
+  line-height: 1;
+}
+
+.attack-result-view.attack-result-night-wait .attack-result-content > :not(.attack-result-ok-button) {
+  visibility: hidden;
 }
 
 .attack-result-view.attack-result-prompt #attackResultMessage,
@@ -3868,7 +3884,8 @@ body.participant-action-view .action-confirm-actions {
     font-size: clamp(3.2rem, 18vw, 6rem);
   }
 
-  .attack-result-view.attack-result-dawn #attackResultLead {
+  .attack-result-view.attack-result-dawn #attackResultLead,
+  .attack-result-view.attack-result-night-complete #attackResultLead {
     font-size: clamp(3.2rem, 18vw, 6rem);
   }
 
@@ -4000,7 +4017,8 @@ body.participant-action-view .action-confirm-actions {
     font-size: clamp(3.8rem, 13vw, 7rem);
   }
 
-  .attack-result-view.attack-result-dawn #attackResultLead {
+  .attack-result-view.attack-result-dawn #attackResultLead,
+  .attack-result-view.attack-result-night-complete #attackResultLead {
     font-size: clamp(3.8rem, 13vw, 7rem);
   }
 
