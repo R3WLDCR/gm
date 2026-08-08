@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.21.26";
+const APP_VERSION = "v1.21.27";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -2374,7 +2374,9 @@ function renderActionRoleIntro(roleName) {
 
 function getActionHelpText(roleId, roleName) {
   if (!roleId) return "次の日へ進めます";
-  return roleId === "medium" ? "直近の追放者を確認してください" : `${roleName}の対象を選んでください`;
+  if (roleId === "medium") return "直近の追放者を確認してください";
+  if (roleId === "werewolf") return "襲撃の対象を選んでください";
+  return `${roleName}の対象を選んでください`;
 }
 
 function replayActionPanelAnimation() {
