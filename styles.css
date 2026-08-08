@@ -3188,12 +3188,14 @@ body.timer-fullscreen-view .vote-transition-message:not([hidden]) {
   position: fixed;
   inset: 0;
   z-index: 10;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #fff;
   font-size: clamp(4rem, 12vw, 9.5rem);
   font-weight: 900;
   line-height: 1;
+  white-space: nowrap;
   pointer-events: none;
   text-align: center;
   text-shadow: 0 20px 54px rgba(0, 0, 0, 0.48);
