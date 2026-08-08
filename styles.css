@@ -2176,8 +2176,7 @@ textarea:focus {
   display: none;
 }
 
-.night-transition-typewriter-char,
-.timer-end-character {
+.night-transition-typewriter-char {
   display: inline-block;
   opacity: 0;
   filter: blur(18px);
@@ -2436,10 +2435,6 @@ textarea:focus {
 #timerDisplay.timer-ended {
   animation: timerEndedBlink 0.65s ease-in-out infinite;
   color: #dc2626;
-}
-
-#timerEndMessage {
-  display: none;
 }
 
 @keyframes timerEndedBlink {
@@ -3165,16 +3160,6 @@ body.timer-fullscreen-view .timer-ring.timer-ended {
 body.timer-fullscreen-view .timer-ring.timer-ended .timer-ring-inner {
   background: transparent;
   box-shadow: none;
-}
-
-body.timer-fullscreen-view #timerEndMessage {
-  display: block;
-  color: #fff;
-  font-size: clamp(3.8rem, 13vw, 10rem);
-  font-weight: 900;
-  line-height: 1;
-  text-align: center;
-  text-shadow: 0 0 30px rgba(255, 255, 255, 0.16);
 }
 
 body.timer-fullscreen-view .timer-ring-inner .timer-controls {

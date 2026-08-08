@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.22.0";
+const APP_VERSION = "v1.22.1";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 15;
@@ -176,7 +176,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "timerMinus",
     "timerPlus",
     "timerDisplay",
-    "timerEndMessage",
     "timerStart",
     "timerReset",
     "voteStartBtn",
@@ -1862,24 +1861,6 @@ function renderHeader() {
   els.timerDisplay.classList.toggle("timer-warning", state.timerSeconds > 0 && state.timerSeconds <= 30);
   els.timerDisplay.classList.toggle("timer-ended", state.timerSeconds === 0);
   const timerEndVisible = state.timerSeconds === 0 && state.timerFocus;
-  els.timerEndMessage?.toggleAttribute("hidden", !timerEndVisible);
-  if (els.timerEndMessage) {
-    if (!timerEndVisible) {
-      els.timerEndMessage.removeAttribute("data-reveal-text");
-      els.timerEndMessage.textContent = "投票";
-    } else if (els.timerEndMessage.dataset.revealText !== "投票") {
-      els.timerEndMessage.dataset.revealText = "投票";
-      els.timerEndMessage.replaceChildren(
-        ...Array.from("投票", (character, index) => {
-          const span = document.createElement("span");
-          span.className = "timer-end-character";
-          span.textContent = character;
-          span.style.setProperty("--typewriter-delay", `${index * 260}ms`);
-          return span;
-        }),
-      );
-    }
-  }
   const timerRing = document.querySelector(".timer-ring");
   timerRing?.setAttribute("aria-label", `残り時間 ${formatTime(state.timerSeconds)}`);
   timerRing?.style.setProperty("--timer-progress", getTimerProgress());
