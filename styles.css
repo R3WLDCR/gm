@@ -1612,6 +1612,14 @@ textarea:focus {
   display: none;
 }
 
+.table-panel.victory-round-table-mode .timer-strip {
+  display: none;
+}
+
+.table-panel.victory-round-table-mode .vote-round-table {
+  padding-bottom: 0;
+}
+
 .vote-table-actions {
   position: fixed;
   right: max(14px, env(safe-area-inset-right));

@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.22.5";
+const APP_VERSION = "v1.22.6";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 5;
@@ -1753,6 +1753,10 @@ function isTimerFullscreenView() {
   return state.screen === "table" && state.timerFocus && (state.timerRunning || state.timerSeconds === 0) && !state.showVoteTable && !state.showPleaTimer;
 }
 
+function isVictoryRoundTableView() {
+  return state.screen === "table" && state.victoryDismissed && Boolean(state.gameWinner);
+}
+
 function isPleaFullscreenView() {
   return state.screen === "table" && state.showPleaTimer;
 }
@@ -1892,6 +1896,7 @@ function renderHeader() {
   els.timerStart.textContent = state.timerRunning ? "⏸" : "開始";
   document.querySelector(".table-panel")?.classList.toggle("timer-focus", state.timerFocus);
   document.querySelector(".table-panel")?.classList.toggle("vote-table-mode", state.showVoteTable);
+  document.querySelector(".table-panel")?.classList.toggle("victory-round-table-mode", isVictoryRoundTableView());
   document.querySelector(".table-panel")?.classList.toggle("plea-timer-mode", state.showPleaTimer);
   document.querySelector(".table-panel")?.classList.toggle("revote-plea-timer-mode", state.showRevotePleaTimer);
   document.querySelector(".vote-table-actions")?.toggleAttribute("hidden", !state.showVoteTable);
@@ -2033,9 +2038,14 @@ function renderRoundTable() {
 
 function renderVoteRoundTable() {
   if (!els.voteRoundTable) return;
-  els.voteRoundTable.hidden = !state.showVoteTable;
-  if (!state.showVoteTable) {
+  const victoryRoundTable = isVictoryRoundTableView();
+  els.voteRoundTable.hidden = !state.showVoteTable && !victoryRoundTable;
+  if (!state.showVoteTable && !victoryRoundTable) {
     els.voteRoundTable.innerHTML = "";
+    return;
+  }
+  if (victoryRoundTable) {
+    renderRoundTableInto(els.voteRoundTable, { hideRoles: false });
     return;
   }
   const currentRevoteTargetId = isRevoteAssignmentMode() && !isRevoteTargetSelectMode() ? getCurrentRevoteTargetId() : "";
