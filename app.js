@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.22.7";
+const APP_VERSION = "v1.22.8";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 5;
@@ -61,6 +61,8 @@ const state = {
   pleaRunning: false,
   exiledPlayerIds: [],
   attackedPlayerIds: [],
+  exiledPlayerDays: {},
+  attackedPlayerDays: {},
   votes: {},
   voteRecords: [],
   voteVoterId: "",
@@ -407,6 +409,10 @@ function startRoundTable() {
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
   state.seerCheckResults = {};
+  state.exiledPlayerIds = [];
+  state.attackedPlayerIds = [];
+  state.exiledPlayerDays = {};
+  state.attackedPlayerDays = {};
   state.actionComplete = false;
   state.actionIntroRoleId = "";
   state.showVoteTable = false;
@@ -1652,7 +1658,10 @@ function resetGame() {
   state.guardedPlayerId = "";
   state.lastGuardedPlayerId = "";
   state.nightStartGuardedPlayerId = "";
+  state.exiledPlayerIds = [];
   state.attackedPlayerIds = [];
+  state.exiledPlayerDays = {};
+  state.attackedPlayerDays = {};
   state.playerSortMode = "manual";
   state.participationCountedForDeal = false;
   clearGameWinner();
@@ -1676,6 +1685,8 @@ function resetToFirstNight() {
   state.votes = {};
   state.exiledPlayerIds = [];
   state.attackedPlayerIds = [];
+  state.exiledPlayerDays = {};
+  state.attackedPlayerDays = {};
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
   state.timerEndRevealSeconds = 0;
@@ -2630,8 +2641,12 @@ function isRoundTableDealMode() {
 }
 
 function getSeatStatus(player, actionRoleId = "") {
-  if (state.exiledPlayerIds.includes(player.id)) return { type: "exiled", label: "処刑" };
-  if (state.attackedPlayerIds.includes(player.id)) return { type: "attacked", label: "襲撃" };
+  if (state.exiledPlayerIds.includes(player.id)) {
+    return { type: "exiled", label: `${state.exiledPlayerDays[player.id] || state.day || 1}日目 処刑` };
+  }
+  if (state.attackedPlayerIds.includes(player.id)) {
+    return { type: "attacked", label: `${state.attackedPlayerDays[player.id] || state.day || 1}日目 襲撃` };
+  }
   if (!player.alive) return { type: "dead", label: "処刑" };
   if (actionRoleId === "seer" && state.seerCheckResults[player.id]) {
     return {
@@ -2732,6 +2747,7 @@ function confirmSelectedPlayerExile() {
   if (!state.exiledPlayerIds.includes(state.voteSelectedPlayerId)) {
     state.exiledPlayerIds.push(state.voteSelectedPlayerId);
   }
+  state.exiledPlayerDays[state.voteSelectedPlayerId] = state.day || 1;
   const player = findPlayer(state.voteSelectedPlayerId);
   if (player) player.alive = false;
   addLog(player ? `${player.name} を追放` : "追放");
@@ -2828,6 +2844,7 @@ function backToExileScreen() {
   resetActionSelection();
   if (exiledPlayer) {
     state.exiledPlayerIds.pop();
+    delete state.exiledPlayerDays[exiledPlayer.id];
     exiledPlayer.alive = true;
     removeLatestLog(`${exiledPlayer.name} を追放`);
   }
@@ -2979,6 +2996,7 @@ function resolveNightAttack(player) {
     if (!state.attackedPlayerIds.includes(player.id)) {
       state.attackedPlayerIds.push(player.id);
     }
+    state.attackedPlayerDays[player.id] = state.day || 1;
     addLog(`襲撃成功: ${actorNames} → ${player.name}`);
   }
   state.actionRoleIndex += 1;
@@ -4088,6 +4106,8 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     pleaRunning: state.pleaRunning,
     exiledPlayerIds: state.exiledPlayerIds,
     attackedPlayerIds: state.attackedPlayerIds,
+    exiledPlayerDays: state.exiledPlayerDays,
+    attackedPlayerDays: state.attackedPlayerDays,
     votes: state.votes,
     voteRecords: state.voteRecords,
     voteVoterId: state.voteVoterId,
@@ -4192,6 +4212,8 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   }
   state.exiledPlayerIds = saved.exiledPlayerIds || [];
   state.attackedPlayerIds = saved.attackedPlayerIds || [];
+  state.exiledPlayerDays = saved.exiledPlayerDays && typeof saved.exiledPlayerDays === "object" ? saved.exiledPlayerDays : {};
+  state.attackedPlayerDays = saved.attackedPlayerDays && typeof saved.attackedPlayerDays === "object" ? saved.attackedPlayerDays : {};
   state.timerRunning = false;
   state.votes = saved.votes || {};
   state.voteRecords = Array.isArray(saved.voteRecords) ? saved.voteRecords : [];
