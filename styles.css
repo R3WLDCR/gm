@@ -863,6 +863,71 @@ textarea:focus {
   gap: 8px;
 }
 
+.match-log-selector,
+.match-log-content {
+  display: grid;
+  gap: 8px;
+}
+
+.match-log-heading {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.match-log-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.match-log-select {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+}
+
+.match-log-select strong,
+.match-log-select span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.match-log-select span,
+.match-log-empty {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.match-log-row.selected .match-log-select {
+  border-color: rgba(12, 122, 103, 0.55);
+  background: #edf5f2;
+}
+
+.match-log-delete {
+  align-self: stretch;
+  width: 40px;
+  height: auto;
+  color: #933741;
+  background: #fae8ea;
+}
+
+.match-log-empty {
+  margin: 0;
+  padding: 8px 2px;
+}
+
 .player-list {
   max-height: 520px;
   overflow: auto;

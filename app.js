@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.22.9";
+const APP_VERSION = "v1.23.0";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 5;
@@ -91,6 +91,11 @@ const state = {
   attackResultRevealSeconds: ATTACK_RESULT_REVEAL_SECONDS,
   attackResultOkSeconds: ATTACK_RESULT_OK_DELAY_SECONDS,
   logs: [],
+  matchHistory: [],
+  currentMatchId: "",
+  currentMatchStartedAt: 0,
+  currentMatchArchived: false,
+  selectedLogMatchId: "current",
   roleDealQueue: [],
   roleDealIndex: 0,
   roleDealSelectedPlayerIds: [],
@@ -395,6 +400,8 @@ function toggleParticipation(id) {
 }
 
 function startRoundTable() {
+  archiveCurrentMatch();
+  beginNewMatch();
   clearGameWinner();
   resetNightTransitionState();
   resetAttackResultState();
@@ -444,6 +451,39 @@ function startProgress() {
   addLog("進行開始");
   markLatestLogRestorable();
   renderAndStore();
+}
+
+function beginNewMatch({ createId = true } = {}) {
+  state.logs = [];
+  state.logRestorePoints = {};
+  state.nextLogId = 1;
+  state.currentMatchId = createId ? `match-${crypto.randomUUID()}` : "";
+  state.currentMatchStartedAt = createId ? Date.now() : 0;
+  state.currentMatchArchived = false;
+  state.selectedLogMatchId = "current";
+}
+
+function archiveCurrentMatch() {
+  if (!state.currentMatchId || state.currentMatchArchived || !state.logs.length) return false;
+  const winner = getWinnerFromLogs(state.logs, state.gameWinner);
+  state.matchHistory.unshift({
+    id: state.currentMatchId,
+    startedAt: state.currentMatchStartedAt || Date.now(),
+    savedAt: Date.now(),
+    status: winner ? "finished" : "interrupted",
+    winner,
+    playerNames: getActivePlayers().map((player) => player.name),
+    logs: state.logs.map((log) => ({ ...log })),
+  });
+  state.currentMatchArchived = true;
+  return true;
+}
+
+function finalizeGameWinner(winner) {
+  setGameWinner(winner);
+  addLog(`ゲーム終了: ${winner}の勝利`);
+  archiveCurrentMatch();
+  markLatestLogRestorable();
 }
 
 function startNightActions({ recordUndo = true } = {}) {
@@ -894,9 +934,7 @@ function finishVictoryNightTransition(winner) {
   state.nightTransitionOkSeconds = NIGHT_TRANSITION_OK_DELAY_SECONDS;
   state.nightTransitionOutcome = "night";
   state.nightTransitionWinner = "";
-  setGameWinner(winner);
-  addLog(`ゲーム終了: ${winner}の勝利`);
-  markLatestLogRestorable();
+  finalizeGameWinner(winner);
   renderAndStore();
 }
 
@@ -1610,12 +1648,13 @@ function nextDay() {
 }
 
 async function copyLog() {
-  const text = formatCurrentGameLogForCopy();
+  const match = getSelectedLogMatch();
+  const text = formatGameLogForCopy(match.logs, match.winner);
   try {
     await navigator.clipboard.writeText(text);
-    addLog("ログをコピーした");
+    if (match.id === "current") addLog("ログをコピーした");
   } catch {
-    addLog("コピーできなかった");
+    if (match.id === "current") addLog("コピーできなかった");
   }
   renderAndStore();
 }
@@ -1628,7 +1667,6 @@ function resetGame() {
   resetVoteSession();
   stopActionGateCountdown();
   stopBlockedRoleCountdown();
-  localStorage.removeItem(STORAGE_KEY);
   state.players = [];
   state.roles = DEFAULT_ROLES.map((role) => ({ ...role }));
   state.screen = "setup";
@@ -1641,7 +1679,7 @@ function resetGame() {
   state.timerEndRevealSeconds = 0;
   state.timerResetCount = 0;
   state.votes = {};
-  state.logs = [];
+  beginNewMatch({ createId: false });
   state.roleDealQueue = [];
   state.roleDealIndex = 0;
   state.roleDealSelectedPlayerIds = [];
@@ -3014,9 +3052,7 @@ function finishNightActions({ attackResult = null } = {}) {
     return;
   }
   if (result.ended) {
-    setGameWinner(result.winner);
-    addLog(`ゲーム終了: ${result.winner}の勝利`);
-    markLatestLogRestorable();
+    finalizeGameWinner(result.winner);
   } else {
     enterDayAfterNight();
   }
@@ -3055,9 +3091,7 @@ function completeAttackResult() {
   const winner = state.attackResultWinner;
   resetAttackResultState();
   if (winner) {
-    setGameWinner(winner);
-    addLog(`ゲーム終了: ${winner}の勝利`);
-    markLatestLogRestorable();
+    finalizeGameWinner(winner);
     renderAndStore();
     return;
   }
@@ -3479,13 +3513,28 @@ function renderVotes() {
 
 function renderLog() {
   els.logList.innerHTML = "";
-  const groups = groupLogsByDay(state.logs.slice(0, 80));
-  const hasRestorableLog = state.logs.slice(0, 80).some((log) => state.logRestorePoints?.[log.id]);
-  if (state.logs.length && !hasRestorableLog) {
+  const selectedMatch = getSelectedLogMatch();
+  const visibleHistory = state.matchHistory.filter((match) => match.id !== state.currentMatchId);
+  const selectors = document.createElement("div");
+  selectors.className = "match-log-selector";
+  selectors.innerHTML = `
+    <p class="match-log-heading">現在の試合</p>
+    ${getMatchLogSelectorHtml({ id: "current", status: state.currentMatchArchived ? "finished" : "current", winner: state.gameWinner, playerNames: getActivePlayers().map((player) => player.name), savedAt: state.currentMatchStartedAt }, selectedMatch.id === "current")}
+    <p class="match-log-heading">保存済み試合</p>
+    ${visibleHistory.length ? visibleHistory.map((match) => getMatchLogSelectorHtml(match, selectedMatch.id === match.id)).join("") : '<p class="match-log-empty">保存済みの試合はありません</p>'}
+  `;
+  els.logList.appendChild(selectors);
+
+  const logContent = document.createElement("div");
+  logContent.className = "match-log-content";
+  const groups = groupLogsByDay(selectedMatch.logs.slice(0, 80));
+  const currentMatchSelected = selectedMatch.id === "current";
+  const hasRestorableLog = currentMatchSelected && state.logs.slice(0, 80).some((log) => state.logRestorePoints?.[log.id]);
+  if (currentMatchSelected && state.logs.length && !hasRestorableLog) {
     const notice = document.createElement("div");
     notice.className = "log-restore-notice";
     notice.textContent = "この表示中のログには復元ポイントがありません。新しく発生した進行ログから「ここへ戻る」が表示されます。";
-    els.logList.appendChild(notice);
+    logContent.appendChild(notice);
   }
   groups.forEach((group) => {
     const block = document.createElement("section");
@@ -3494,19 +3543,67 @@ function renderLog() {
       <h3>${escapeHtml(group.label)}</h3>
       <div class="log-day-entries">
         ${group.logs
-          .map((log) => getLogLineHtml(log))
+          .map((log) => getLogLineHtml(log, currentMatchSelected))
           .join("")}
       </div>
     `;
-    els.logList.appendChild(block);
+    logContent.appendChild(block);
   });
+  if (!groups.length) logContent.innerHTML = '<p class="match-log-empty">ログはまだありません</p>';
+  els.logList.appendChild(logContent);
   els.logList.querySelectorAll("[data-restore-log-id]").forEach((button) => {
     button.addEventListener("click", () => restoreToLogPoint(button.dataset.restoreLogId));
   });
+  els.logList.querySelectorAll("[data-select-log-match]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.selectedLogMatchId = button.dataset.selectLogMatch;
+      renderAndStore();
+    });
+  });
+  els.logList.querySelectorAll("[data-delete-log-match]").forEach((button) => {
+    button.addEventListener("click", () => deleteSavedMatch(button.dataset.deleteLogMatch));
+  });
 }
 
-function getLogLineHtml(log) {
-  const tag = state.logRestorePoints?.[log.id] ? "button" : "div";
+function getMatchLogSelectorHtml(match, selected) {
+  const summary = getMatchLogSummary(match);
+  const deleteButton = match.id === "current" ? "" : `<button class="icon-button match-log-delete" type="button" data-delete-log-match="${escapeHtml(match.id)}" aria-label="この試合を削除" title="削除">×</button>`;
+  return `<div class="match-log-row ${selected ? "selected" : ""}"><button class="match-log-select" type="button" data-select-log-match="${escapeHtml(match.id)}"><strong>${escapeHtml(summary.title)}</strong><span>${escapeHtml(summary.meta)}</span></button>${deleteButton}</div>`;
+}
+
+function getMatchLogSummary(match) {
+  const savedAt = match.savedAt || match.startedAt;
+  const date = savedAt ? formatSyncTime(savedAt) : "日時不明";
+  const people = Array.isArray(match.playerNames) ? `${match.playerNames.length}人` : "";
+  if (match.status === "current") return { title: "進行中", meta: people || "新しい試合" };
+  if (match.status === "interrupted") return { title: "中断した試合", meta: [date, people].filter(Boolean).join("・") };
+  return { title: match.winner ? `${match.winner}の勝利` : "終了した試合", meta: [date, people].filter(Boolean).join("・") };
+}
+
+function getSelectedLogMatch() {
+  if (state.selectedLogMatchId !== "current") {
+    const historyMatch = state.matchHistory.find((match) => match.id === state.selectedLogMatchId);
+    if (historyMatch) return historyMatch;
+  }
+  return {
+    id: "current",
+    status: state.currentMatchArchived ? "finished" : "current",
+    winner: state.gameWinner,
+    playerNames: getActivePlayers().map((player) => player.name),
+    logs: state.logs,
+  };
+}
+
+function deleteSavedMatch(matchId) {
+  const match = state.matchHistory.find((item) => item.id === matchId);
+  if (!match || !confirm("この試合のログを削除しますか？")) return;
+  state.matchHistory = state.matchHistory.filter((item) => item.id !== matchId);
+  state.selectedLogMatchId = "current";
+  renderAndStore();
+}
+
+function getLogLineHtml(log, allowRestore = false) {
+  const tag = allowRestore && state.logRestorePoints?.[log.id] ? "button" : "div";
   const restoreAttr = tag === "button" ? ` type="button" data-restore-log-id="${escapeHtml(log.id)}" aria-label="${escapeHtml(log.text)}まで戻る"` : "";
   const className = tag === "button" ? "log-line log-line-restorable" : "log-line";
   const restoreBadge = tag === "button" ? '<small class="log-restore-badge">ここへ戻る</small>' : "";
@@ -3696,12 +3793,16 @@ async function handleSignup(event) {
 }
 
 function formatCurrentGameLogForCopy() {
+  return formatGameLogForCopy(state.logs, state.gameWinner);
+}
+
+function formatGameLogForCopy(logs, fallbackWinner = "") {
   const copyExcludedTexts = new Set(["ログをコピーした", "コピーできなかった", "保存した"]);
-  const latestStartIndex = state.logs.findIndex((log) => log.text === "配役完了。1日目の夜へ");
-  const sourceLogs = latestStartIndex >= 0 ? state.logs.slice(0, latestStartIndex + 1) : state.logs;
+  const latestStartIndex = logs.findIndex((log) => log.text === "配役完了。1日目の夜へ");
+  const sourceLogs = latestStartIndex >= 0 ? logs.slice(0, latestStartIndex + 1) : logs;
   const entries = sourceLogs.filter((log) => !copyExcludedTexts.has(log.text)).reverse();
   const lines = ["【人狼GMログ】"];
-  const winner = getWinnerFromLogs(entries);
+  const winner = getWinnerFromLogs(entries, fallbackWinner);
 
   if (winner) {
     lines.push(`結果: ${winner}の勝利`);
@@ -3727,12 +3828,12 @@ function formatCurrentGameLogForCopy() {
   return lines.join("\n").trim();
 }
 
-function getWinnerFromLogs(entries) {
+function getWinnerFromLogs(entries, fallbackWinner = "") {
   for (let index = entries.length - 1; index >= 0; index -= 1) {
     const match = entries[index].text.match(/^ゲーム終了: (.+)の勝利$/);
     if (match) return match[1];
   }
-  return state.gameWinner || "";
+  return fallbackWinner || "";
 }
 
 function getExplicitLogSection(text, currentSection) {
@@ -4136,6 +4237,11 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     attackResultRevealSeconds: state.attackResultRevealSeconds,
     attackResultOkSeconds: state.attackResultOkSeconds,
     logs: state.logs,
+    matchHistory: state.matchHistory,
+    currentMatchId: state.currentMatchId,
+    currentMatchStartedAt: state.currentMatchStartedAt,
+    currentMatchArchived: state.currentMatchArchived,
+    selectedLogMatchId: state.selectedLogMatchId,
     roleDealQueue: state.roleDealQueue,
     roleDealIndex: state.roleDealIndex,
     roleDealSelectedPlayerIds: state.roleDealSelectedPlayerIds,
@@ -4301,6 +4407,11 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.logs = normalizeLogs(saved.logs || []);
   state.nextLogId = Number.isInteger(saved.nextLogId) ? Math.max(saved.nextLogId, getNextLogIdFromLogs(state.logs)) : getNextLogIdFromLogs(state.logs);
   state.logRestorePoints = saved.logRestorePoints && typeof saved.logRestorePoints === "object" ? saved.logRestorePoints : {};
+  state.matchHistory = normalizeMatchHistory(saved.matchHistory || []);
+  state.currentMatchId = saved.currentMatchId || (state.logs.length ? `match-${crypto.randomUUID()}` : "");
+  state.currentMatchStartedAt = Number.isFinite(Number(saved.currentMatchStartedAt)) ? Number(saved.currentMatchStartedAt) : state.logs.length ? Date.now() : 0;
+  state.currentMatchArchived = saved.currentMatchArchived === true;
+  state.selectedLogMatchId = state.matchHistory.some((match) => match.id === saved.selectedLogMatchId) ? saved.selectedLogMatchId : "current";
   pruneLogRestorePoints();
   state.roleDealQueue = saved.roleDealQueue || [];
   state.roleDealIndex = saved.roleDealIndex || 0;
@@ -4368,6 +4479,22 @@ function normalizeLogs(logs) {
     id: log.id || `legacy-log-${fallbackId++}`,
     text: String(log.text || "").replaceAll("村人", "市民"),
   }));
+}
+
+function normalizeMatchHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history
+    .filter((match) => match && typeof match === "object" && match.id)
+    .map((match) => ({
+      id: String(match.id),
+      startedAt: Number(match.startedAt) || 0,
+      savedAt: Number(match.savedAt) || 0,
+      status: match.status === "interrupted" ? "interrupted" : "finished",
+      winner: normalizeVillageTeam(match.winner || ""),
+      playerNames: Array.isArray(match.playerNames) ? match.playerNames.map((name) => String(name)) : [],
+      logs: normalizeLogs(Array.isArray(match.logs) ? match.logs : []),
+    }))
+    .sort((a, b) => b.savedAt - a.savedAt);
 }
 
 function normalizeVillageTeam(team) {
