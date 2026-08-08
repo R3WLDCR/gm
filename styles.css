@@ -369,6 +369,10 @@ body.victory-fullscreen-view .victory-reveal-winner .victory-copy strong {
   text-shadow: 0 8px 30px rgba(0, 0, 0, 0.54);
 }
 
+body.victory-fullscreen-view .victory-reveal-winner .victory-copy {
+  display: none;
+}
+
 body.victory-fullscreen-view .victory-image {
   position: relative;
   z-index: 1;
@@ -1926,6 +1930,12 @@ textarea:focus {
 
 .night-transition-view.night-transition-waiting {
   background: #020203;
+}
+
+.night-transition-view:not(.night-transition-victory):not(.night-transition-waiting) {
+  background:
+    linear-gradient(rgba(2, 6, 8, 0.12), rgba(2, 6, 8, 0.12)),
+    url("./images/night.png") center / cover no-repeat;
 }
 
 .night-transition-view.night-transition-victory {
