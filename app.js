@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.23.2";
+const APP_VERSION = "v1.23.3";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 5;
@@ -854,6 +854,24 @@ function playNightTransitionSound() {
   });
 }
 
+function unlockNightTransitionSound() {
+  const sound = els.nightTransitionSound;
+  if (!sound || sound.dataset.unlocked === "true") return;
+  sound.muted = true;
+  const unlock = sound.play();
+  if (!unlock?.then) return;
+  unlock
+    .then(() => {
+      sound.pause();
+      sound.currentTime = 0;
+      sound.muted = false;
+      sound.dataset.unlocked = "true";
+    })
+    .catch(() => {
+      sound.muted = false;
+    });
+}
+
 function stopNightTransitionSound() {
   const sound = els.nightTransitionSound;
   if (sound) {
@@ -971,7 +989,8 @@ function startNightTransition(result) {
   state.phase = "vote";
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
-  if (!result.ended) playNightTransitionSound();
+  if (result.ended) unlockNightTransitionSound();
+  else playNightTransitionSound();
   renderAndStore();
   startNightTransitionTimer();
 }
@@ -3318,6 +3337,7 @@ function setGameWinner(winner) {
   state.victoryRevealStage = "announcement";
   state.victoryRevealSeconds = VICTORY_REVEAL_STEP_SECONDS;
   state.victoryDismissed = false;
+  if (winner === "人狼陣営") playNightTransitionSound();
   startVictoryRevealTimer();
 }
 
