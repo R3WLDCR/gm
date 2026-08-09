@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.23.0";
+const APP_VERSION = "v1.23.1";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 5;
@@ -136,6 +136,7 @@ const phaseLabels = {
 const els = {};
 let timerId = null;
 let timerEndRevealTimerId = null;
+let timerEndSoundPlaying = false;
 let pleaTimerId = null;
 let revotePleaTimerId = null;
 let nightTransitionTimerId = null;
@@ -184,9 +185,11 @@ document.addEventListener("DOMContentLoaded", () => {
     "timerPlus",
     "timerDisplay",
     "voteTransitionMessage",
+    "timerEndSound",
     "timerStart",
     "timerReset",
     "voteStartBtn",
+    "stopTimerSoundBtn",
     "skipToVoteBtn",
     "backToTimerBtn",
     "pleaBtn",
@@ -315,6 +318,11 @@ function bindEvents() {
   els.timerStart.addEventListener("click", toggleTimer);
   els.timerReset.addEventListener("click", resetTimer);
   els.voteStartBtn.addEventListener("click", showVoteRoundTable);
+  els.stopTimerSoundBtn?.addEventListener("click", stopTimerEndSound);
+  els.timerEndSound?.addEventListener("ended", () => {
+    timerEndSoundPlaying = false;
+    render();
+  });
   els.skipToVoteBtn.addEventListener("click", skipTimerToVoteButton);
   els.backToTimerBtn.addEventListener("click", backToTimerScreen);
   els.exileBtn.addEventListener("click", handleExileButton);
@@ -528,6 +536,7 @@ function showVoteRoundTable() {
   state.timerFocus = false;
   state.timerEndRevealSeconds = 0;
   stopTimer();
+  stopTimerEndSound();
   stopTimerEndRevealCountdown();
   state.showVoteTable = true;
   state.voteSelectedPlayerId = "";
@@ -561,6 +570,7 @@ function backToTimerScreen() {
   state.timerFocus = false;
   state.timerEndRevealSeconds = 0;
   stopTimer();
+  stopTimerEndSound();
   stopTimerEndRevealCountdown();
   renderAndStore();
 }
@@ -758,6 +768,8 @@ function toggleTimer() {
   state.timerRunning = !state.timerRunning;
   state.timerResetCount = 0;
   if (state.timerRunning) {
+    stopTimerEndSound();
+    if (state.phase === "day") unlockTimerEndSound();
     startTimer();
   } else {
     stopTimer();
@@ -773,6 +785,7 @@ function startTimer() {
       stopTimer();
       state.timerRunning = false;
       state.timerEndRevealSeconds = VOTE_START_DELAY_SECONDS;
+      if (state.phase === "day") playTimerEndSound();
       startTimerEndRevealCountdown();
     }
     render();
@@ -783,6 +796,48 @@ function startTimer() {
 function stopTimer() {
   if (timerId) window.clearInterval(timerId);
   timerId = null;
+}
+
+function unlockTimerEndSound() {
+  const sound = els.timerEndSound;
+  if (!sound || sound.dataset.unlocked === "true") return;
+  sound.muted = true;
+  const unlock = sound.play();
+  if (!unlock?.then) return;
+  unlock
+    .then(() => {
+      sound.pause();
+      sound.currentTime = 0;
+      sound.muted = false;
+      sound.dataset.unlocked = "true";
+    })
+    .catch(() => {
+      sound.muted = false;
+    });
+}
+
+function playTimerEndSound() {
+  const sound = els.timerEndSound;
+  if (!sound) return;
+  stopTimerEndSound();
+  sound.currentTime = 0;
+  const playback = sound.play();
+  timerEndSoundPlaying = true;
+  playback?.catch(() => {
+    timerEndSoundPlaying = false;
+    render();
+  });
+}
+
+function stopTimerEndSound() {
+  const sound = els.timerEndSound;
+  if (sound) {
+    sound.pause();
+    sound.currentTime = 0;
+  }
+  if (!timerEndSoundPlaying) return;
+  timerEndSoundPlaying = false;
+  render();
 }
 
 function resumeTimerEndRevealCountdown() {
@@ -1063,6 +1118,7 @@ function resetTimer() {
     }
   }
   stopTimer();
+  stopTimerEndSound();
   stopTimerEndRevealCountdown();
   renderAndStore();
 }
@@ -1080,6 +1136,7 @@ function resetTimerValue(seconds) {
   state.timerResetCount = 0;
   state.showVoteTable = false;
   stopTimer();
+  stopTimerEndSound();
   stopTimerEndRevealCountdown();
 }
 
@@ -1552,6 +1609,7 @@ function pruneLogRestorePoints() {
 
 function stopAllLiveTimers() {
   stopTimer();
+  stopTimerEndSound();
   stopTimerEndRevealCountdown();
   stopPleaTimer();
   stopRevotePleaTimer();
