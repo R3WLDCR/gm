@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.23.1";
+const APP_VERSION = "v1.23.2";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 5;
@@ -137,6 +137,7 @@ const els = {};
 let timerId = null;
 let timerEndRevealTimerId = null;
 let timerEndSoundPlaying = false;
+let nightTransitionSoundPlaying = false;
 let pleaTimerId = null;
 let revotePleaTimerId = null;
 let nightTransitionTimerId = null;
@@ -186,6 +187,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "timerDisplay",
     "voteTransitionMessage",
     "timerEndSound",
+    "nightTransitionSound",
     "timerStart",
     "timerReset",
     "voteStartBtn",
@@ -840,6 +842,27 @@ function stopTimerEndSound() {
   render();
 }
 
+function playNightTransitionSound() {
+  const sound = els.nightTransitionSound;
+  if (!sound) return;
+  stopNightTransitionSound();
+  sound.currentTime = 0;
+  const playback = sound.play();
+  nightTransitionSoundPlaying = true;
+  playback?.catch(() => {
+    nightTransitionSoundPlaying = false;
+  });
+}
+
+function stopNightTransitionSound() {
+  const sound = els.nightTransitionSound;
+  if (sound) {
+    sound.pause();
+    sound.currentTime = 0;
+  }
+  nightTransitionSoundPlaying = false;
+}
+
 function resumeTimerEndRevealCountdown() {
   if (state.timerEndRevealSeconds > 0 && state.timerSeconds === 0 && state.timerFocus && !state.showVoteTable) {
     startTimerEndRevealCountdown();
@@ -948,6 +971,7 @@ function startNightTransition(result) {
   state.phase = "vote";
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
+  if (!result.ended) playNightTransitionSound();
   renderAndStore();
   startNightTransitionTimer();
 }
@@ -996,6 +1020,7 @@ function finishVictoryNightTransition(winner) {
 function completeNightTransition() {
   if (state.nightTransitionSeconds > 0 || state.nightTransitionOkSeconds > 0) return;
   stopNightTransitionTimer();
+  stopNightTransitionSound();
   const outcome = state.nightTransitionOutcome;
   const winner = state.nightTransitionWinner;
   state.showNightTransition = false;
@@ -1017,6 +1042,7 @@ function stopNightTransitionTimer() {
 
 function resetNightTransitionState() {
   stopNightTransitionTimer();
+  stopNightTransitionSound();
   state.showNightTransition = false;
   state.nightTransitionSeconds = NIGHT_TRANSITION_MIN_SECONDS;
   state.nightTransitionOkSeconds = NIGHT_TRANSITION_OK_DELAY_SECONDS;
@@ -1610,6 +1636,7 @@ function pruneLogRestorePoints() {
 function stopAllLiveTimers() {
   stopTimer();
   stopTimerEndSound();
+  stopNightTransitionSound();
   stopTimerEndRevealCountdown();
   stopPleaTimer();
   stopRevotePleaTimer();

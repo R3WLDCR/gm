@@ -1,4 +1,4 @@
-const CACHE_NAME = "werewolf-gm-v1.23.1";
+const CACHE_NAME = "werewolf-gm-v1.23.2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -13,6 +13,7 @@ const APP_SHELL = [
   "./images/village-victory.png",
   "./images/night.png",
   "./sounds/timer-end.mp3",
+  "./sounds/wolf-cries.mp3",
 ];
 
 self.addEventListener("install", (event) => {
