@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.23.3";
+const APP_VERSION = "v1.23.4";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 5;
@@ -989,8 +989,7 @@ function startNightTransition(result) {
   state.phase = "vote";
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
-  if (result.ended) unlockNightTransitionSound();
-  else playNightTransitionSound();
+  unlockNightTransitionSound();
   renderAndStore();
   startNightTransitionTimer();
 }
@@ -1013,6 +1012,9 @@ function startNightTransitionTimer() {
       if (state.nightTransitionSeconds === 0 && state.nightTransitionOutcome === "victory" && state.nightTransitionWinner) {
         finishVictoryNightTransition(state.nightTransitionWinner);
         return;
+      }
+      if (state.nightTransitionSeconds === 0 && state.nightTransitionOutcome === "night") {
+        playNightTransitionSound();
       }
     } else {
       state.nightTransitionOkSeconds = Math.max(0, state.nightTransitionOkSeconds - 1);
