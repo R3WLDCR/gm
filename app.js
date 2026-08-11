@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.23.6";
+const APP_VERSION = "v1.23.7";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 5;
@@ -141,6 +141,7 @@ let nightTransitionSoundPlaying = false;
 let pleaTimerId = null;
 let revotePleaTimerId = null;
 let nightTransitionTimerId = null;
+let nightTransitionFallbackTimerId = null;
 let attackResultRevealTimerId = null;
 let actionGateTimerId = null;
 let actionBlockedTimerId = null;
@@ -859,9 +860,9 @@ function playNightTransitionSound() {
   const sound = els.nightTransitionSound;
   if (!sound) return;
   stopNightTransitionSound();
-  sound.currentTime = 0;
   let playback;
   try {
+    sound.currentTime = 0;
     playback = sound.play();
   } catch {
     return;
@@ -875,9 +876,9 @@ function playNightTransitionSound() {
 function unlockNightTransitionSound() {
   const sound = els.nightTransitionSound;
   if (!sound || sound.dataset.unlocked === "true") return;
-  sound.muted = true;
   let unlock;
   try {
+    sound.muted = true;
     unlock = sound.play();
   } catch {
     sound.muted = false;
@@ -898,9 +899,11 @@ function unlockNightTransitionSound() {
 
 function stopNightTransitionSound() {
   const sound = els.nightTransitionSound;
-  if (sound) {
+  try {
     sound.pause();
     sound.currentTime = 0;
+  } catch {
+    // Audio failures must not interrupt the game flow.
   }
   nightTransitionSoundPlaying = false;
 }
@@ -1026,6 +1029,7 @@ function resumeNightTransitionTimer() {
 function startNightTransitionTimer() {
   if (!state.showNightTransition) return;
   stopNightTransitionTimer();
+  startNightTransitionFallback();
   if (state.nightTransitionSeconds === 0 && state.nightTransitionOutcome === "victory" && state.nightTransitionWinner) {
     finishVictoryNightTransition(state.nightTransitionWinner);
     return;
@@ -1040,6 +1044,7 @@ function startNightTransitionTimer() {
       if (state.nightTransitionSeconds === 0 && state.nightTransitionOutcome === "night") {
         playNightTransitionSound();
       }
+      if (state.nightTransitionSeconds === 0) stopNightTransitionFallback();
     } else {
       state.nightTransitionOkSeconds = Math.max(0, state.nightTransitionOkSeconds - 1);
     }
@@ -1083,6 +1088,22 @@ function completeNightTransition() {
 function stopNightTransitionTimer() {
   if (nightTransitionTimerId) window.clearInterval(nightTransitionTimerId);
   nightTransitionTimerId = null;
+  stopNightTransitionFallback();
+}
+
+function startNightTransitionFallback() {
+  stopNightTransitionFallback();
+  nightTransitionFallbackTimerId = window.setTimeout(() => {
+    if (!state.showNightTransition || state.nightTransitionSeconds === 0) return;
+    state.nightTransitionSeconds = 0;
+    if (state.nightTransitionOutcome === "night") playNightTransitionSound();
+    renderAndStore();
+  }, (NIGHT_TRANSITION_MAX_SECONDS + 2) * 1000);
+}
+
+function stopNightTransitionFallback() {
+  if (nightTransitionFallbackTimerId) window.clearTimeout(nightTransitionFallbackTimerId);
+  nightTransitionFallbackTimerId = null;
 }
 
 function resetNightTransitionState() {
