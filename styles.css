@@ -2044,25 +2044,6 @@ textarea:focus {
   display: none;
 }
 
-.night-transition-debug {
-  position: fixed;
-  left: max(12px, env(safe-area-inset-left));
-  bottom: max(12px, env(safe-area-inset-bottom));
-  z-index: 30;
-  max-width: min(520px, calc(100vw - 24px));
-  padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.34);
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.72);
-  color: #d8f5df;
-  font-family: Consolas, "Cascadia Mono", monospace;
-  font-size: clamp(0.63rem, 1.8vw, 0.82rem);
-  line-height: 1.42;
-  text-align: left;
-  white-space: pre-wrap;
-  pointer-events: none;
-}
-
 .attack-result-view {
   position: relative;
   min-height: 680px;
