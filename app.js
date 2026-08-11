@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.23.5";
+const APP_VERSION = "v1.23.6";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 5;
@@ -860,7 +860,12 @@ function playNightTransitionSound() {
   if (!sound) return;
   stopNightTransitionSound();
   sound.currentTime = 0;
-  const playback = sound.play();
+  let playback;
+  try {
+    playback = sound.play();
+  } catch {
+    return;
+  }
   nightTransitionSoundPlaying = true;
   playback?.catch(() => {
     nightTransitionSoundPlaying = false;
@@ -871,7 +876,13 @@ function unlockNightTransitionSound() {
   const sound = els.nightTransitionSound;
   if (!sound || sound.dataset.unlocked === "true") return;
   sound.muted = true;
-  const unlock = sound.play();
+  let unlock;
+  try {
+    unlock = sound.play();
+  } catch {
+    sound.muted = false;
+    return;
+  }
   if (!unlock?.then) return;
   unlock
     .then(() => {
