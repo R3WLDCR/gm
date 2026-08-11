@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.24.2";
+const APP_VERSION = "v1.24.3";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -151,6 +151,7 @@ let actionGateTimerId = null;
 let actionBlockedTimerId = null;
 let victoryBackTimerId = null;
 let victoryRevealTimerId = null;
+let victorySoundPlayed = false;
 let actionRenderKey = "";
 let largeStateDbPromise = null;
 let largeStateSaveQueue = Promise.resolve();
@@ -2011,6 +2012,10 @@ function renderVictoryBanner() {
   els.victoryBanner?.classList.toggle("victory-reveal-announcement", visible && revealStage === "announcement");
   els.victoryBanner?.classList.toggle("victory-reveal-prompt", visible && revealStage === "prompt");
   els.victoryBanner?.classList.toggle("victory-reveal-winner", visible && revealStage === "winner");
+  if (visible && revealStage === "winner" && state.gameWinner === "人狼陣営" && !victorySoundPlayed) {
+    victorySoundPlayed = true;
+    window.requestAnimationFrame(playNightTransitionSound);
+  }
   if (els.victoryLeadText) {
     els.victoryLeadText.textContent = !visible ? "" : revealStage === "announcement" ? "ゲーム終了" : revealStage === "prompt" ? "勝利したのは" : "";
   }
@@ -3415,7 +3420,7 @@ function setGameWinner(winner) {
   state.victoryRevealStage = "announcement";
   state.victoryRevealSeconds = VICTORY_REVEAL_STEP_SECONDS;
   state.victoryDismissed = false;
-  if (winner === "人狼陣営") playNightTransitionSound();
+  victorySoundPlayed = false;
   startVictoryRevealTimer();
 }
 
@@ -3426,6 +3431,7 @@ function clearGameWinner() {
   state.victoryRevealStage = "announcement";
   state.victoryRevealSeconds = VICTORY_REVEAL_STEP_SECONDS;
   state.victoryDismissed = false;
+  victorySoundPlayed = false;
 }
 
 function dismissVictoryFullscreen() {
