@@ -2155,11 +2155,15 @@ textarea:focus {
 }
 
 .attack-result-content strong {
+  width: min(92vw, 100%);
+  min-width: 0;
   max-width: 92vw;
+  display: block;
   font-size: clamp(4.2rem, 13vw, 10rem);
   font-weight: 900;
   line-height: 1;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  white-space: nowrap;
   text-shadow:
     0 2px 0 rgba(255, 255, 255, 0.64),
     0 20px 46px rgba(148, 163, 184, 0.32);

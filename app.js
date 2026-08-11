@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.24.1";
+const APP_VERSION = "v1.24.2";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -2053,7 +2053,7 @@ function getVictoryMessage(winner) {
 }
 
 function fitSingleLineNames() {
-  document.querySelectorAll(".player-row strong, .round-seat strong, .seat-name, .medium-result-card strong, .dialog-name").forEach((element) => {
+  document.querySelectorAll(".player-row strong, .round-seat strong, .seat-name, .medium-result-card strong, .dialog-name, #attackResultName").forEach((element) => {
     element.style.fontSize = "";
     let currentSize = Number.parseFloat(getComputedStyle(element).fontSize);
     const maxWidth = element.clientWidth;
