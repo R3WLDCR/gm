@@ -947,8 +947,12 @@ textarea:focus {
 }
 
 .player-row {
-  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
   padding: 8px;
+}
+
+.player-edit-button {
+  color: var(--accent-strong);
 }
 
 .player-row.manual-sort {

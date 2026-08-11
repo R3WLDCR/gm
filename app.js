@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.23.4";
+const APP_VERSION = "v1.23.5";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 5;
@@ -648,6 +648,19 @@ function startRoleDeal() {
   state.screen = "deal";
   addLog("配役を開始");
   markLatestLogRestorable();
+  renderAndStore();
+}
+
+function editPlayerName(id) {
+  const player = findPlayer(id);
+  if (!player) return;
+  const name = prompt("参加者名を修正", player.name);
+  if (name === null) return;
+  const nextName = name.trim();
+  if (!nextName || nextName === player.name) return;
+  const previousName = player.name;
+  player.name = nextName;
+  addLog(`${previousName} の名前を ${nextName} に変更`);
   renderAndStore();
 }
 
@@ -2114,6 +2127,7 @@ function renderPlayers() {
       </label>
       <strong>${escapeHtml(player.name)}</strong>
       <span class="participation-stats">今日 ${todayCount} / 累計 ${player.totalParticipations || 0}</span>
+      <button class="mini-button player-edit-button" data-action="edit" title="名前を編集" aria-label="${escapeHtml(player.name)}の名前を編集">✎</button>
       <div class="player-order-actions" aria-label="${escapeHtml(player.name)}の並び替え" ${manualMode ? "" : "hidden"}>
         <button class="mini-button" data-action="move-up" title="上へ" aria-label="${escapeHtml(player.name)}を上へ" ${index === 0 ? "disabled" : ""}>↑</button>
         <button class="mini-button" data-action="move-down" title="下へ" aria-label="${escapeHtml(player.name)}を下へ" ${index === state.players.length - 1 ? "disabled" : ""}>↓</button>
@@ -2125,6 +2139,7 @@ function renderPlayers() {
       </button>
     `;
     row.querySelector('[data-action="participation"]').addEventListener("change", () => toggleParticipation(player.id));
+    row.querySelector('[data-action="edit"]').addEventListener("click", () => editPlayerName(player.id));
     row.querySelector('[data-action="move-up"]')?.addEventListener("click", () => movePlayer(player.id, -1));
     row.querySelector('[data-action="move-down"]')?.addEventListener("click", () => movePlayer(player.id, 1));
     row.querySelector('[data-action="remove"]').addEventListener("click", () => confirmRemovePlayer(player.id));
