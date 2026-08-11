@@ -19,7 +19,11 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.23.8";
+const APP_VERSION = "v1.24.0";
+const LARGE_STATE_DB_NAME = "werewolf-gm-data";
+const LARGE_STATE_DB_VERSION = 1;
+const LARGE_STATE_STORE_NAME = "state";
+const LARGE_STATE_KEY = "large-state";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 5;
@@ -151,6 +155,12 @@ let actionRenderKey = "";
 let nightTransitionLastStep = "待機";
 let nightTransitionLastTickAt = 0;
 let nightTransitionLastError = "";
+let largeStateDbPromise = null;
+let largeStateSaveQueue = Promise.resolve();
+let largeStateError = "";
+let largeStateDirty = true;
+let largeStateAvailable = true;
+let legacyLargeStatePendingMigration = false;
 let syncTimer = null;
 let supabaseClient = null;
 let syncUser = null;
@@ -161,7 +171,7 @@ let hadLocalDataAtStartup = Boolean(localStorage.getItem(STORAGE_KEY));
 let syncMeta = restoreSyncMeta();
 const deviceId = getOrCreateDeviceId();
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   [
     "saveBtn",
     "resetBtn",
@@ -279,6 +289,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   restore();
+  await restoreLargeState();
+  const largeStateSaved = await saveLargeStateNow();
+  if (largeStateSaved || !legacyLargeStatePendingMigration) store({ markDirty: false });
   bindEvents();
   render();
   resumeNightTransitionTimer();
@@ -483,6 +496,7 @@ function beginNewMatch({ createId = true } = {}) {
   state.currentMatchStartedAt = createId ? Date.now() : 0;
   state.currentMatchArchived = false;
   state.selectedLogMatchId = "current";
+  markLargeStateDirty();
 }
 
 function archiveCurrentMatch() {
@@ -498,6 +512,7 @@ function archiveCurrentMatch() {
     logs: state.logs.map((log) => ({ ...log })),
   });
   state.currentMatchArchived = true;
+  markLargeStateDirty();
   return true;
 }
 
@@ -1684,9 +1699,10 @@ function pushUndoSnapshot(label) {
   state.undoHistory.unshift({
     label,
     savedAt: Date.now(),
-    payload: cloneStatePayload(getStatePayload({ includeUndoHistory: false, includeLogRestorePoints: false })),
+    payload: cloneStatePayload(getStatePayload({ includeUndoHistory: false, includeLogRestorePoints: false, includeMatchHistory: false })),
   });
   state.undoHistory = state.undoHistory.slice(0, DEBUG_HISTORY_LIMIT);
+  markLargeStateDirty();
 }
 
 function cloneStatePayload(payload) {
@@ -1699,6 +1715,7 @@ function undoLastStep() {
   const [snapshot, ...rest] = state.undoHistory;
   applyRestoredPayload(snapshot.payload);
   state.undoHistory = rest;
+  markLargeStateDirty();
   renderAndStore();
   resumeVictoryRevealTimer();
 }
@@ -1710,8 +1727,9 @@ function markLatestLogRestorable() {
 
 function markLogRestorable(logId) {
   if (!logId) return;
-  state.logRestorePoints[logId] = cloneStatePayload(getStatePayload({ includeUndoHistory: false, includeLogRestorePoints: false }));
+  state.logRestorePoints[logId] = cloneStatePayload(getStatePayload({ includeUndoHistory: false, includeLogRestorePoints: false, includeMatchHistory: false }));
   pruneLogRestorePoints();
+  markLargeStateDirty();
 }
 
 function restoreToLogPoint(logId) {
@@ -1726,8 +1744,12 @@ function restoreToLogPoint(logId) {
 
 function applyRestoredPayload(payload) {
   const restorePoints = state.logRestorePoints;
+  const matchHistory = state.matchHistory;
+  const selectedLogMatchId = state.selectedLogMatchId;
   stopAllLiveTimers();
   applySavedState(payload, { resetActionScreen: false });
+  state.matchHistory = matchHistory;
+  state.selectedLogMatchId = state.matchHistory.some((match) => match.id === selectedLogMatchId) ? selectedLogMatchId : "current";
   state.logRestorePoints = restorePoints;
   pruneLogRestorePoints();
   stopAllLiveTimers();
@@ -3814,6 +3836,7 @@ function deleteSavedMatch(matchId) {
   if (!match || !confirm("この試合のログを削除しますか？")) return;
   state.matchHistory = state.matchHistory.filter((item) => item.id !== matchId);
   state.selectedLogMatchId = "current";
+  markLargeStateDirty();
   renderAndStore();
 }
 
@@ -4184,10 +4207,13 @@ async function downloadPendingCloudState() {
 async function applyCloudRecord(record) {
   if (!record?.payload) return;
   applyingCloudState = true;
-  stopAllLiveTimers();
-  applySavedState(record.payload, { resetActionScreen: true });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(getStatePayload()));
-  applyingCloudState = false;
+  try {
+    stopAllLiveTimers();
+    applySavedState(record.payload, { resetActionScreen: true });
+    store({ markDirty: false });
+  } finally {
+    applyingCloudState = false;
+  }
   pendingCloudRecord = null;
   hadLocalDataAtStartup = true;
   syncMeta.dirty = false;
@@ -4306,7 +4332,11 @@ function restoreSyncMeta() {
 }
 
 function saveSyncMeta() {
-  localStorage.setItem(SYNC_META_KEY, JSON.stringify(syncMeta));
+  try {
+    localStorage.setItem(SYNC_META_KEY, JSON.stringify(syncMeta));
+  } catch (error) {
+    largeStateError = `同期状態の保存に失敗: ${getErrorMessage(error)}`;
+  }
 }
 
 function getOrCreateDeviceId() {
@@ -4397,12 +4427,19 @@ function formatSyncTime(value) {
   }).format(date);
 }
 
-function store() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(getStatePayload()));
-  if (!applyingCloudState) markLocalDirty();
+function store({ markDirty = true } = {}) {
+  try {
+    const payload = largeStateAvailable ? getLocalStatePayload() : getStatePayload();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    largeStateError = `端末保存に失敗: ${getErrorMessage(error)}`;
+    if (state.showNightTransition) recordNightTransitionDiagnostic("端末保存に失敗", error);
+  }
+  queueLargeStateStore();
+  if (markDirty && !applyingCloudState) markLocalDirty();
 }
 
-function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = true } = {}) {
+function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = true, includeMatchHistory = true } = {}) {
   const payload = {
     players: state.players,
     roles: state.roles,
@@ -4452,7 +4489,6 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     attackResultRevealSeconds: state.attackResultRevealSeconds,
     attackResultOkSeconds: state.attackResultOkSeconds,
     logs: state.logs,
-    matchHistory: state.matchHistory,
     currentMatchId: state.currentMatchId,
     currentMatchStartedAt: state.currentMatchStartedAt,
     currentMatchArchived: state.currentMatchArchived,
@@ -4486,6 +4522,9 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
   if (includeUndoHistory) {
     payload.undoHistory = state.undoHistory.slice(0, DEBUG_HISTORY_LIMIT);
   }
+  if (includeMatchHistory) {
+    payload.matchHistory = state.matchHistory;
+  }
   if (includeLogRestorePoints) {
     payload.logRestorePoints = state.logRestorePoints;
     payload.nextLogId = state.nextLogId;
@@ -4493,15 +4532,120 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
   return payload;
 }
 
+function getLocalStatePayload() {
+  return getStatePayload({ includeUndoHistory: false, includeLogRestorePoints: false, includeMatchHistory: false });
+}
+
 function getCloudStatePayload() {
   return getStatePayload({ includeUndoHistory: false, includeLogRestorePoints: false });
+}
+
+function getLargeStatePayload() {
+  return {
+    id: LARGE_STATE_KEY,
+    savedAt: Date.now(),
+    currentMatchId: state.currentMatchId,
+    selectedLogMatchId: state.selectedLogMatchId,
+    matchHistory: state.matchHistory,
+    undoHistory: state.undoHistory.slice(0, DEBUG_HISTORY_LIMIT),
+    logRestorePoints: state.logRestorePoints,
+    nextLogId: state.nextLogId,
+  };
+}
+
+function openLargeStateDatabase() {
+  if (largeStateDbPromise) return largeStateDbPromise;
+  largeStateDbPromise = new Promise((resolve, reject) => {
+    if (!window.indexedDB) {
+      reject(new Error("IndexedDBを利用できません"));
+      return;
+    }
+    const request = window.indexedDB.open(LARGE_STATE_DB_NAME, LARGE_STATE_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(LARGE_STATE_STORE_NAME)) database.createObjectStore(LARGE_STATE_STORE_NAME, { keyPath: "id" });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("IndexedDBを開けません"));
+  });
+  return largeStateDbPromise;
+}
+
+function readLargeState() {
+  return openLargeStateDatabase().then((database) => new Promise((resolve, reject) => {
+    const request = database.transaction(LARGE_STATE_STORE_NAME, "readonly").objectStore(LARGE_STATE_STORE_NAME).get(LARGE_STATE_KEY);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error || new Error("保存データを読み込めません"));
+  }));
+}
+
+function writeLargeState(payload) {
+  return openLargeStateDatabase().then((database) => new Promise((resolve, reject) => {
+    const request = database.transaction(LARGE_STATE_STORE_NAME, "readwrite").objectStore(LARGE_STATE_STORE_NAME).put(payload);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error || new Error("保存データを書き込めません"));
+  }));
+}
+
+function queueLargeStateStore() {
+  if (!largeStateAvailable) return;
+  if (!largeStateDirty) return;
+  largeStateDirty = false;
+  const payload = getLargeStatePayload();
+  largeStateSaveQueue = largeStateSaveQueue
+    .catch(() => undefined)
+    .then(() => writeLargeState(payload))
+    .catch((error) => {
+      largeStateError = `履歴保存に失敗: ${getErrorMessage(error)}`;
+      largeStateDirty = true;
+      largeStateAvailable = false;
+      if (state.showNightTransition) recordNightTransitionDiagnostic("履歴保存に失敗", error);
+    });
+}
+
+function markLargeStateDirty() {
+  largeStateDirty = true;
+}
+
+async function saveLargeStateNow() {
+  if (!largeStateAvailable) return false;
+  try {
+    await writeLargeState(getLargeStatePayload());
+    largeStateDirty = false;
+    return true;
+  } catch (error) {
+    largeStateError = `履歴保存に失敗: ${getErrorMessage(error)}`;
+    largeStateAvailable = false;
+    return false;
+  }
+}
+
+async function restoreLargeState() {
+  try {
+    const saved = await readLargeState();
+    if (!saved || typeof saved !== "object") return;
+    state.matchHistory = mergeMatchHistory(state.matchHistory, saved.matchHistory);
+    state.selectedLogMatchId = state.matchHistory.some((match) => match.id === saved.selectedLogMatchId) ? saved.selectedLogMatchId : "current";
+    if (saved.currentMatchId === state.currentMatchId) {
+      state.undoHistory = Array.isArray(saved.undoHistory) ? saved.undoHistory.slice(0, DEBUG_HISTORY_LIMIT) : state.undoHistory;
+      state.logRestorePoints = saved.logRestorePoints && typeof saved.logRestorePoints === "object" ? saved.logRestorePoints : state.logRestorePoints;
+      state.nextLogId = Number.isInteger(saved.nextLogId) ? Math.max(state.nextLogId, saved.nextLogId) : state.nextLogId;
+      pruneLogRestorePoints();
+    }
+    markLargeStateDirty();
+  } catch (error) {
+    largeStateError = `履歴を読み込めません: ${getErrorMessage(error)}`;
+    largeStateAvailable = false;
+  }
 }
 
 function restore() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return;
   try {
-    applySavedState(JSON.parse(raw), { resetActionScreen: true });
+    const saved = JSON.parse(raw);
+    legacyLargeStatePendingMigration = Boolean(saved.matchHistory || saved.undoHistory || saved.logRestorePoints);
+    applySavedState(saved, { resetActionScreen: true });
   } catch {
     localStorage.removeItem(STORAGE_KEY);
   }
@@ -4658,6 +4802,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
       : VICTORY_REVEAL_STEP_SECONDS;
   state.victoryDismissed = saved.victoryDismissed === true;
   state.undoHistory = Array.isArray(saved.undoHistory) ? saved.undoHistory.slice(0, DEBUG_HISTORY_LIMIT) : [];
+  markLargeStateDirty();
   if (resetActionScreen && state.screen === "action") {
     const savedNightStartGuardedPlayerId = saved.nightStartGuardedPlayerId || "";
     state.actionRoleIndex = 0;
@@ -4710,6 +4855,17 @@ function normalizeMatchHistory(history) {
       logs: normalizeLogs(Array.isArray(match.logs) ? match.logs : []),
     }))
     .sort((a, b) => b.savedAt - a.savedAt);
+}
+
+function mergeMatchHistory(...histories) {
+  const matchesById = new Map();
+  histories.flat().forEach((match) => {
+    const normalized = normalizeMatchHistory([match])[0];
+    if (!normalized) return;
+    const existing = matchesById.get(normalized.id);
+    if (!existing || normalized.savedAt >= existing.savedAt) matchesById.set(normalized.id, normalized);
+  });
+  return normalizeMatchHistory([...matchesById.values()]);
 }
 
 function normalizeVillageTeam(team) {
