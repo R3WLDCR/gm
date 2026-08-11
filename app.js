@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.23.7";
+const APP_VERSION = "v1.23.8";
 const MEDIUM_GATE_MIN_SECONDS = 5;
 const MEDIUM_GATE_MAX_SECONDS = 12;
 const ACTION_GATE_MIN_SECONDS = 5;
@@ -148,6 +148,9 @@ let actionBlockedTimerId = null;
 let victoryBackTimerId = null;
 let victoryRevealTimerId = null;
 let actionRenderKey = "";
+let nightTransitionLastStep = "待機";
+let nightTransitionLastTickAt = 0;
+let nightTransitionLastError = "";
 let syncTimer = null;
 let supabaseClient = null;
 let syncUser = null;
@@ -223,6 +226,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "nightTransitionLead",
     "nightTransitionTitle",
     "nightTransitionSeconds",
+    "nightTransitionDebug",
     "nightTransitionOkBtn",
     "attackResultView",
     "attackResultLead",
@@ -376,7 +380,14 @@ function bindEvents() {
   window.addEventListener("resize", fitSingleLineNames);
   window.addEventListener("orientationchange", () => window.setTimeout(fitSingleLineNames, 120));
   document.addEventListener("visibilitychange", () => {
+    recordNightTransitionDiagnostic(`画面状態: ${document.visibilityState}`);
     if (document.visibilityState === "visible") synchronizeNow();
+  });
+  window.addEventListener("error", (event) => {
+    if (state.showNightTransition) recordNightTransitionDiagnostic("JavaScript例外", event.error || event.message);
+  });
+  window.addEventListener("unhandledrejection", (event) => {
+    if (state.showNightTransition) recordNightTransitionDiagnostic("未処理Promise例外", event.reason);
   });
 }
 
@@ -864,12 +875,14 @@ function playNightTransitionSound() {
   try {
     sound.currentTime = 0;
     playback = sound.play();
-  } catch {
+  } catch (error) {
+    recordNightTransitionDiagnostic("夜の音声開始に失敗", error);
     return;
   }
   nightTransitionSoundPlaying = true;
-  playback?.catch(() => {
+  playback?.catch((error) => {
     nightTransitionSoundPlaying = false;
+    recordNightTransitionDiagnostic("夜の音声再生に失敗", error);
   });
 }
 
@@ -1006,6 +1019,9 @@ function resetRevotePleaTimerState() {
 
 function startNightTransition(result) {
   stopAllLiveTimers();
+  nightTransitionLastTickAt = 0;
+  nightTransitionLastError = "";
+  recordNightTransitionDiagnostic("追放後の判定画面を開始");
   els.nightTransitionTitle?.removeAttribute("data-typewriter-text");
   state.showNightTransition = true;
   state.nightTransitionSeconds = getNightTransitionDelaySeconds(result);
@@ -1021,6 +1037,33 @@ function startNightTransition(result) {
   startNightTransitionTimer();
 }
 
+function recordNightTransitionDiagnostic(step, error) {
+  nightTransitionLastStep = step;
+  if (error) {
+    const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    nightTransitionLastError = message.slice(0, 220);
+  }
+  renderNightTransitionDebug();
+}
+
+function renderNightTransitionDebug() {
+  const debug = els.nightTransitionDebug;
+  if (!debug) return;
+  debug.hidden = !state.showNightTransition;
+  if (!state.showNightTransition) return;
+  const tickAge = nightTransitionLastTickAt
+    ? `${Math.max(0, Math.floor((Date.now() - nightTransitionLastTickAt) / 1000))}秒前`
+    : "未実行";
+  debug.textContent = [
+    `診断 ${APP_VERSION}`,
+    `暗転待機: ${state.nightTransitionSeconds}秒 / OK待機: ${state.nightTransitionOkSeconds}秒`,
+    `主タイマー: ${nightTransitionTimerId ? "稼働" : "停止"} / 予備: ${nightTransitionFallbackTimerId ? "稼働" : "停止"}`,
+    `画面: ${document.visibilityState} / 最終tick: ${tickAge}`,
+    `直近: ${nightTransitionLastStep}`,
+    nightTransitionLastError ? `例外: ${nightTransitionLastError}` : "例外: なし",
+  ].join("\n");
+}
+
 function resumeNightTransitionTimer() {
   if (!state.showNightTransition) return;
   startNightTransitionTimer();
@@ -1030,28 +1073,40 @@ function startNightTransitionTimer() {
   if (!state.showNightTransition) return;
   stopNightTransitionTimer();
   startNightTransitionFallback();
+  recordNightTransitionDiagnostic("夜の判定タイマーを開始");
   if (state.nightTransitionSeconds === 0 && state.nightTransitionOutcome === "victory" && state.nightTransitionWinner) {
+    recordNightTransitionDiagnostic("勝利画面へ遷移");
     finishVictoryNightTransition(state.nightTransitionWinner);
     return;
   }
   nightTransitionTimerId = window.setInterval(() => {
-    if (state.nightTransitionSeconds > 0) {
-      state.nightTransitionSeconds = Math.max(0, state.nightTransitionSeconds - 1);
-      if (state.nightTransitionSeconds === 0 && state.nightTransitionOutcome === "victory" && state.nightTransitionWinner) {
-        finishVictoryNightTransition(state.nightTransitionWinner);
-        return;
+    try {
+      nightTransitionLastTickAt = Date.now();
+      if (state.nightTransitionSeconds > 0) {
+        state.nightTransitionSeconds = Math.max(0, state.nightTransitionSeconds - 1);
+        recordNightTransitionDiagnostic(`暗転待機を更新: ${state.nightTransitionSeconds}秒`);
+        if (state.nightTransitionSeconds === 0 && state.nightTransitionOutcome === "victory" && state.nightTransitionWinner) {
+          recordNightTransitionDiagnostic("勝利画面へ遷移");
+          finishVictoryNightTransition(state.nightTransitionWinner);
+          return;
+        }
+        if (state.nightTransitionSeconds === 0 && state.nightTransitionOutcome === "night") {
+          recordNightTransitionDiagnostic("夜の表示を開始");
+          playNightTransitionSound();
+        }
+        if (state.nightTransitionSeconds === 0) stopNightTransitionFallback();
+      } else {
+        state.nightTransitionOkSeconds = Math.max(0, state.nightTransitionOkSeconds - 1);
+        recordNightTransitionDiagnostic(`OK待機を更新: ${state.nightTransitionOkSeconds}秒`);
       }
-      if (state.nightTransitionSeconds === 0 && state.nightTransitionOutcome === "night") {
-        playNightTransitionSound();
+      if (state.nightTransitionSeconds === 0 && state.nightTransitionOkSeconds === 0) {
+        recordNightTransitionDiagnostic("OK待機が完了");
+        stopNightTransitionTimer();
       }
-      if (state.nightTransitionSeconds === 0) stopNightTransitionFallback();
-    } else {
-      state.nightTransitionOkSeconds = Math.max(0, state.nightTransitionOkSeconds - 1);
+      renderAndStore();
+    } catch (error) {
+      recordNightTransitionDiagnostic("夜の判定タイマーで例外", error);
     }
-    if (state.nightTransitionSeconds === 0 && state.nightTransitionOkSeconds === 0) {
-      stopNightTransitionTimer();
-    }
-    renderAndStore();
   }, 1000);
 }
 
@@ -1094,10 +1149,15 @@ function stopNightTransitionTimer() {
 function startNightTransitionFallback() {
   stopNightTransitionFallback();
   nightTransitionFallbackTimerId = window.setTimeout(() => {
-    if (!state.showNightTransition || state.nightTransitionSeconds === 0) return;
-    state.nightTransitionSeconds = 0;
-    if (state.nightTransitionOutcome === "night") playNightTransitionSound();
-    renderAndStore();
+    try {
+      if (!state.showNightTransition || state.nightTransitionSeconds === 0) return;
+      state.nightTransitionSeconds = 0;
+      recordNightTransitionDiagnostic("予備タイマーで夜の表示を開始");
+      if (state.nightTransitionOutcome === "night") playNightTransitionSound();
+      renderAndStore();
+    } catch (error) {
+      recordNightTransitionDiagnostic("予備タイマーで例外", error);
+    }
   }, (NIGHT_TRANSITION_MAX_SECONDS + 2) * 1000);
 }
 
@@ -2400,6 +2460,7 @@ function renderVoteRecordList() {
 function renderNightTransitionView() {
   if (!els.nightTransitionView) return;
   els.nightTransitionView.hidden = !state.showNightTransition;
+  renderNightTransitionDebug();
   els.nightTransitionView.classList.toggle("night-transition-waiting", state.nightTransitionSeconds > 0);
   els.nightTransitionView.classList.toggle("night-transition-victory", state.nightTransitionOutcome === "victory");
   els.nightTransitionView.classList.toggle("night-transition-werewolf-victory", state.nightTransitionOutcome === "victory" && state.nightTransitionWinner === "人狼陣営");
