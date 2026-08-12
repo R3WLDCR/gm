@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.24.4";
+const APP_VERSION = "v1.24.5";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -2504,7 +2504,7 @@ function renderAttackResultView() {
     els.attackResultLead.hidden = !nightCompleteVisible && state.attackResultStage !== ATTACK_RESULT_STAGE_DAWN;
   }
   if (els.attackResultName) {
-    els.attackResultName.textContent = name;
+    els.attackResultName.textContent = nameVisible ? name : "";
     els.attackResultName.hidden = !nameVisible;
     els.attackResultName.classList.toggle("no-victim", !state.attackResultSucceeded);
   }
