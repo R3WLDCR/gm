@@ -1,4 +1,4 @@
-const CACHE_NAME = "werewolf-gm-v1.24.3";
+const CACHE_NAME = "werewolf-gm-v1.24.4";
 const APP_SHELL = [
   "./",
   "./index.html",

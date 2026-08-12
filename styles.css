@@ -2124,6 +2124,10 @@ textarea:focus {
   display: none;
 }
 
+.attack-result-content > [hidden] {
+  display: none !important;
+}
+
 .attack-result-content {
   position: relative;
   z-index: 1;
