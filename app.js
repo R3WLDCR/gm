@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.24.5";
+const APP_VERSION = "v1.25.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -195,6 +195,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "phaseOrb",
     "timerMinus",
     "timerPlus",
+    "randomTimerPresetBtn",
     "timerDisplay",
     "voteTransitionMessage",
     "timerEndSound",
@@ -367,6 +368,7 @@ function bindEvents() {
   document.querySelectorAll(".timerPresetBtn").forEach((button) => {
     button.addEventListener("click", () => setTimerMinutes(Number(button.dataset.minutes)));
   });
+  els.randomTimerPresetBtn?.addEventListener("click", () => setTimerMinutes(Math.floor(Math.random() * 9) + 1));
   document.querySelectorAll(".noteBtn").forEach((button) => {
     button.addEventListener("click", () => addSelectedNote(button.dataset.note));
   });
