@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.27.0";
+const APP_VERSION = "v1.27.1";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -1585,15 +1585,12 @@ function advanceRevoteAssignment() {
 function finalizeRevoteAssignment() {
   const lastTargetId = getLastRevoteTargetId();
   if (!lastTargetId) return;
-  getLivingPlayers().forEach((player) => {
+  getVoteVoterPlayers().forEach((player) => {
     if (state.voteRecords.some((record) => record.voterId === player.id)) return;
-    const fallbackTargetId = getFirstRevoteTargetIdExcept(player.id);
-    const targetId = player.id === lastTargetId ? fallbackTargetId : lastTargetId;
-    if (!targetId) return;
     state.voteRecords.push({
       order: state.voteRecords.length + 1,
       voterId: player.id,
-      targetId,
+      targetId: lastTargetId,
     });
   });
   syncVoteCountsFromRecords();
@@ -1661,8 +1658,8 @@ function getFirstRevoteTargetIdExcept(voterId) {
 function getVoteVoterPlayers() {
   const editIndex = getEditingVoteRecordIndex();
   const votedIds = new Set(state.voteRecords.filter((_, index) => index !== editIndex).map((record) => record.voterId));
-  const currentRevoteTargetId = isRevoteAssignmentMode() && !isRevoteTargetSelectMode() ? getCurrentRevoteTargetId() : "";
-  return getLivingPlayers().filter((player) => !votedIds.has(player.id) && player.id !== currentRevoteTargetId);
+  const revoteCandidateIds = isRevoteAssignmentMode() ? new Set(state.revoteCandidateIds) : new Set();
+  return getLivingPlayers().filter((player) => !votedIds.has(player.id) && !revoteCandidateIds.has(player.id));
 }
 
 function getEditingVoteRecordIndex() {
@@ -2353,8 +2350,8 @@ function renderVoteRoundTable() {
     renderRoundTableInto(els.voteRoundTable, { hideRoles: false });
     return;
   }
-  const currentRevoteTargetId = isRevoteAssignmentMode() && !isRevoteTargetSelectMode() ? getCurrentRevoteTargetId() : "";
-  const players = isRevoteTargetSelectMode() ? getRevoteCandidatePlayers() : getLivingPlayers().filter((player) => player.id !== currentRevoteTargetId);
+  const revoteCandidateIds = isRevoteAssignmentMode() ? new Set(state.revoteCandidateIds) : new Set();
+  const players = isRevoteTargetSelectMode() ? getRevoteCandidatePlayers() : getLivingPlayers().filter((player) => !revoteCandidateIds.has(player.id));
   renderRoundTableInto(els.voteRoundTable, { hideRoles: true, voteMode: true, players });
 }
 
@@ -2371,7 +2368,7 @@ function renderVoteControls() {
   targets = getVoteTargetPlayers();
   document.querySelector(".vote-input-grid")?.toggleAttribute("hidden", revoteMode);
   if (els.voteRemainingText) {
-    const remaining = Math.max(0, getVoteVoterPlayers().length - state.voteRecords.length);
+    const remaining = getVoteVoterPlayers().length;
     els.voteRemainingText.textContent = `残り投票者 ${remaining}人`;
   }
   renderPlayerSelect(els.voteVoterSelect, voters, state.voteVoterId, "投票者を選択");
@@ -2420,7 +2417,7 @@ function renderRevoteAssist() {
   const currentTarget = findPlayer(getCurrentRevoteTargetId());
   const lastTarget = findPlayer(getLastRevoteTargetId());
   const assignedCount = state.voteRecords.filter((record) => record.targetId === currentTarget?.id).length;
-  const remainingCount = getLivingPlayers().filter((player) => !state.voteRecords.some((record) => record.voterId === player.id)).length;
+  const remainingCount = getVoteVoterPlayers().length;
   if (els.revoteFixedTargetName) {
     els.revoteFixedTargetName.textContent = currentTarget ? `${currentTarget.name} に投票` : "投票先";
   }
@@ -2983,7 +2980,7 @@ function toggleRevoteVoter(voterId) {
   const voter = findPlayer(voterId);
   const targetId = getCurrentRevoteTargetId();
   if (!voter || !voter.alive || !targetId) return;
-  if (voter.id === targetId) return;
+  if (state.revoteCandidateIds.includes(voter.id)) return;
   const existingIndex = state.voteRecords.findIndex((record) => record.voterId === voter.id);
   if (existingIndex >= 0 && state.voteRecords[existingIndex].targetId === targetId) {
     state.voteRecords.splice(existingIndex, 1);
