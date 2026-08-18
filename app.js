@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.26.0";
+const APP_VERSION = "v1.26.1";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -2806,6 +2806,15 @@ function renderWerewolfResult() {
   els.actionRoundTable.querySelector(".werewolf-ok-button")?.addEventListener("click", handleWerewolfOk);
 }
 
+function getWerewolfSkipActionHtml() {
+  const gateReady = isActionGateReady("werewolf");
+  return `
+    <div class="werewolf-skip-action">
+      <button class="secondary-button werewolf-skip-button" type="button" ${gateReady ? "" : "disabled"}>${gateReady ? "襲撃なし" : state.actionGateSeconds}</button>
+    </div>
+  `;
+}
+
 function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMode = false, dealMode = false, players = getActivePlayers() }) {
   const revoteTargetSelectMode = voteMode && isRevoteTargetSelectMode();
   const topVotedIds = voteMode && !isRevoteAssignmentMode() && !state.pendingRevotePleaCandidateIds.length ? getTopVotedPlayerIds() : [];
@@ -2832,12 +2841,17 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
 
   const tableCore = document.createElement("div");
   tableCore.className = "table-core";
-  tableCore.innerHTML = dealMode && !hideRoles ? getRoleDealCenterHtml() : "";
+  tableCore.innerHTML = dealMode && !hideRoles
+    ? getRoleDealCenterHtml()
+    : actionMode && getCurrentActionRoleId() === "werewolf"
+      ? getWerewolfSkipActionHtml()
+      : "";
   container.appendChild(tableCore);
   const okButton = tableCore.querySelector('[data-action="role-ok"]');
   const backButton = tableCore.querySelector('[data-action="role-back"]');
   okButton?.addEventListener("click", confirmCurrentRole);
   backButton?.addEventListener("click", backRoleDeal);
+  tableCore.querySelector(".werewolf-skip-button")?.addEventListener("click", handleWerewolfSkip);
 
   const gmSeat = document.createElement("div");
   gmSeat.className = "gm-seat";
@@ -3243,10 +3257,18 @@ function handleWerewolfOk() {
   resolveNightAttack(player);
 }
 
-function resolveNightAttack(player) {
+function handleWerewolfSkip() {
+  if (!isActionGateReady("werewolf")) return;
+  pushUndoSnapshot("襲撃なし");
+  resolveNightAttack();
+}
+
+function resolveNightAttack(player = null) {
   const actorNames = getActionActorNames("werewolf");
-  const attackSucceeded = state.guardedPlayerId !== player.id;
-  if (state.guardedPlayerId === player.id) {
+  const attackSucceeded = Boolean(player) && state.guardedPlayerId !== player.id;
+  if (!player) {
+    addLog(`襲撃なし: ${actorNames}`);
+  } else if (state.guardedPlayerId === player.id) {
     addLog(`襲撃失敗: ${actorNames} → ${player.name}`);
   } else {
     player.alive = false;
@@ -3259,7 +3281,7 @@ function resolveNightAttack(player) {
   state.actionRoleIndex += 1;
   resetActionSelection();
   advanceActionRole();
-  finishNightActions({ attackResult: { targetId: player.id, succeeded: attackSucceeded } });
+  finishNightActions({ attackResult: { targetId: player?.id || "", succeeded: attackSucceeded } });
   markLatestLogRestorable();
   renderAndStore();
 }
