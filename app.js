@@ -7,6 +7,8 @@
   { id: "villager", name: "市民", team: "市民陣営", count: 0 },
 ];
 
+const RULE_SELECTABLE_ROLE_IDS = ["werewolf", "madman", "seer", "medium", "knight"];
+const DEFAULT_ENABLED_ROLE_IDS = ["werewolf", "madman", "seer", "medium", "knight", "villager"];
 const STANDARD_ROLE_ORDER = ["werewolf", "seer", "medium", "knight", "madman"];
 const ACTION_ROLE_ORDER = ["medium", "knight", "seer", "werewolf"];
 const ACTION_ROLE_LABELS = {
@@ -19,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.26.1";
+const APP_VERSION = "v1.27.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -48,6 +50,9 @@ const DEBUG_HISTORY_LIMIT = 10;
 const state = {
   players: [],
   roles: DEFAULT_ROLES.map((role) => ({ ...role })),
+  enabledRoleIds: [...DEFAULT_ENABLED_ROLE_IDS],
+  allowWerewolfSelfAttack: false,
+  allowWerewolfSkipAttack: true,
   screen: "setup",
   phase: "setup",
   day: 0,
@@ -182,6 +187,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     "tournamentNameInput",
     "tournamentDateInput",
     "matchNumberInput",
+    "allowWerewolfSelfAttackInput",
+    "allowWerewolfSkipAttackInput",
     "progressBadge",
     "playerList",
     "startBtn",
@@ -312,6 +319,12 @@ function bindEvents() {
   });
   [els.tournamentNameInput, els.tournamentDateInput, els.matchNumberInput].forEach((input) => {
     input?.addEventListener("change", updateCurrentMatchInfo);
+  });
+  document.querySelectorAll("[data-role-rule]").forEach((input) => {
+    input.addEventListener("change", updateGameRules);
+  });
+  [els.allowWerewolfSelfAttackInput, els.allowWerewolfSkipAttackInput].forEach((input) => {
+    input?.addEventListener("change", updateGameRules);
   });
   els.presetBtn?.addEventListener("click", applyPreset);
   els.assignBtn?.addEventListener("click", assignRoles);
@@ -496,6 +509,14 @@ function updateCurrentMatchInfo() {
   renderAndStore();
 }
 
+function updateGameRules() {
+  const enabledRoleIds = Array.from(document.querySelectorAll("[data-role-rule]:checked"), (input) => input.dataset.roleRule);
+  state.enabledRoleIds = normalizeEnabledRoleIds(enabledRoleIds);
+  state.allowWerewolfSelfAttack = els.allowWerewolfSelfAttackInput?.checked === true;
+  state.allowWerewolfSkipAttack = els.allowWerewolfSkipAttackInput?.checked !== false;
+  renderAndStore();
+}
+
 function beginNewMatch({ createId = true } = {}) {
   state.logs = [];
   state.logRestorePoints = {};
@@ -660,9 +681,11 @@ function applyPreset() {
 
 function getStandardRoleCounts(count) {
   const next = Object.fromEntries(DEFAULT_ROLES.map((role) => [role.id, 0]));
-  STANDARD_ROLE_ORDER.slice(0, count).forEach((id) => {
+  const enabled = new Set(normalizeEnabledRoleIds(state.enabledRoleIds));
+  STANDARD_ROLE_ORDER.filter((id) => enabled.has(id)).slice(0, count).forEach((id) => {
     next[id] = 1;
   });
+  next.villager = Math.max(0, count - Object.values(next).reduce((total, roleCount) => total + roleCount, 0));
   return next;
 }
 
@@ -1872,6 +1895,9 @@ function resetGame() {
   stopBlockedRoleCountdown();
   state.players = [];
   state.roles = DEFAULT_ROLES.map((role) => ({ ...role }));
+  state.enabledRoleIds = [...DEFAULT_ENABLED_ROLE_IDS];
+  state.allowWerewolfSelfAttack = false;
+  state.allowWerewolfSkipAttack = true;
   state.screen = "setup";
   state.phase = "setup";
   state.day = 0;
@@ -1965,6 +1991,7 @@ function render() {
   renderVictoryBanner();
   renderHeader();
   renderMatchInfoInputs();
+  renderGameRuleInputs();
   renderPlayers();
   renderRoles();
   renderRoundTable();
@@ -1985,6 +2012,16 @@ function renderMatchInfoInputs() {
   if (els.tournamentNameInput) els.tournamentNameInput.value = state.tournamentName;
   if (els.tournamentDateInput) els.tournamentDateInput.value = state.tournamentDate;
   if (els.matchNumberInput) els.matchNumberInput.value = state.matchNumber ? String(state.matchNumber) : "";
+}
+
+function renderGameRuleInputs() {
+  const enabledRoleIds = new Set(normalizeEnabledRoleIds(state.enabledRoleIds));
+  document.querySelectorAll("[data-role-rule]").forEach((input) => {
+    input.checked = enabledRoleIds.has(input.dataset.roleRule);
+    input.disabled = input.dataset.roleRule === "werewolf";
+  });
+  if (els.allowWerewolfSelfAttackInput) els.allowWerewolfSelfAttackInput.checked = state.allowWerewolfSelfAttack;
+  if (els.allowWerewolfSkipAttackInput) els.allowWerewolfSkipAttackInput.checked = state.allowWerewolfSkipAttack;
 }
 
 function renderParticipantViewMode() {
@@ -2807,6 +2844,7 @@ function renderWerewolfResult() {
 }
 
 function getWerewolfSkipActionHtml() {
+  if (!state.allowWerewolfSkipAttack) return "";
   const gateReady = isActionGateReady("werewolf");
   return `
     <div class="werewolf-skip-action">
@@ -3242,6 +3280,7 @@ function canSelectActionTarget(roleId, player) {
   if (roleId === "seer" && player.roleId === "seer") return false;
   if (roleId === "knight" && player.roleId === "knight") return false;
   if (roleId === "knight" && player.id === state.nightStartGuardedPlayerId) return false;
+  if (roleId === "werewolf" && !state.allowWerewolfSelfAttack && player.roleId === "werewolf") return false;
   return true;
 }
 
@@ -4469,6 +4508,9 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
   const payload = {
     players: state.players,
     roles: state.roles,
+    enabledRoleIds: state.enabledRoleIds,
+    allowWerewolfSelfAttack: state.allowWerewolfSelfAttack,
+    allowWerewolfSkipAttack: state.allowWerewolfSkipAttack,
     screen: state.screen,
     phase: state.phase,
     day: state.day,
@@ -4679,6 +4721,9 @@ function restore() {
 function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.players = normalizePlayers(saved.players || []);
   state.roles = mergeRoles(saved.roles || []);
+  state.enabledRoleIds = normalizeEnabledRoleIds(saved.enabledRoleIds);
+  state.allowWerewolfSelfAttack = saved.allowWerewolfSelfAttack === true;
+  state.allowWerewolfSkipAttack = saved.allowWerewolfSkipAttack !== false;
   state.screen = saved.screen || "setup";
   state.phase = saved.phase || "setup";
   state.day = saved.day || 0;
@@ -4931,6 +4976,13 @@ function mergeRoles(savedRoles) {
     const saved = savedRoles.find((item) => item.id === role.id);
     return saved ? { ...role, count: saved.count } : { ...role };
   });
+}
+
+function normalizeEnabledRoleIds(roleIds) {
+  const selectable = new Set(RULE_SELECTABLE_ROLE_IDS);
+  const normalized = Array.isArray(roleIds) ? roleIds.filter((id) => selectable.has(id)) : [...RULE_SELECTABLE_ROLE_IDS];
+  if (!normalized.includes("werewolf")) normalized.unshift("werewolf");
+  return [...new Set([...normalized, "villager"])];
 }
 
 function renderAndStore() {

@@ -17,7 +17,7 @@
       <header class="topbar">
         <div class="title-row">
           <p class="eyebrow">Werewolf Game Master</p>
-          <span id="appVersionBadge" class="version-badge">v1.26.1</span>
+          <span id="appVersionBadge" class="version-badge">v1.27.0</span>
           <span id="progressBadge" class="progress-badge">準備中</span>
         </div>
         <div class="top-actions">
@@ -97,6 +97,21 @@
             <label>開催日<input id="tournamentDateInput" type="date" /></label>
             <label>第何試合<input id="matchNumberInput" type="number" min="1" max="999" inputmode="numeric" /></label>
           </div>
+
+          <fieldset class="game-rule-settings">
+            <legend>ゲームルール</legend>
+            <div class="role-rule-options" aria-label="使用役職">
+              <label><input data-role-rule="werewolf" type="checkbox" checked />人狼</label>
+              <label><input data-role-rule="madman" type="checkbox" checked />裏切り者</label>
+              <label><input data-role-rule="seer" type="checkbox" checked />預言者</label>
+              <label><input data-role-rule="medium" type="checkbox" checked />霊媒師</label>
+              <label><input data-role-rule="knight" type="checkbox" checked />ボディガード</label>
+            </div>
+            <div class="attack-rule-options">
+              <label><input id="allowWerewolfSelfAttackInput" type="checkbox" />人狼の自噛みを許可</label>
+              <label><input id="allowWerewolfSkipAttackInput" type="checkbox" checked />襲撃なしを許可</label>
+            </div>
+          </fieldset>
 
           <div class="field-row">
             <label for="playerName">参加者</label>

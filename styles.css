@@ -757,6 +757,48 @@ body.village-victory-view .victory-banner.victory-village.victory-reveal-winner 
   gap: 7px;
 }
 
+.game-rule-settings {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(244, 240, 232, 0.58);
+}
+
+.game-rule-settings legend {
+  padding: 0 5px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.role-rule-options,
+.attack-rule-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.role-rule-options label,
+.attack-rule-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.role-rule-options input,
+.attack-rule-options input {
+  width: 18px;
+  min-height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 @media (max-width: 640px) {
   .match-info-fields {
     grid-template-columns: 1fr 1fr;
