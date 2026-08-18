@@ -19,7 +19,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.25.0";
+const APP_VERSION = "v1.26.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -99,6 +99,9 @@ const state = {
   currentMatchId: "",
   currentMatchStartedAt: 0,
   currentMatchArchived: false,
+  tournamentName: "",
+  tournamentDate: "",
+  matchNumber: 0,
   selectedLogMatchId: "current",
   roleDealQueue: [],
   roleDealIndex: 0,
@@ -176,6 +179,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     "undoStepBtn",
     "playerName",
     "addPlayerBtn",
+    "tournamentNameInput",
+    "tournamentDateInput",
+    "matchNumberInput",
     "progressBadge",
     "playerList",
     "startBtn",
@@ -303,6 +309,9 @@ function bindEvents() {
   els.startBtn.addEventListener("click", startRoundTable);
   els.playerName.addEventListener("keydown", (event) => {
     if (event.key === "Enter") addPlayer();
+  });
+  [els.tournamentNameInput, els.tournamentDateInput, els.matchNumberInput].forEach((input) => {
+    input?.addEventListener("change", updateCurrentMatchInfo);
   });
   els.presetBtn?.addEventListener("click", applyPreset);
   els.assignBtn?.addEventListener("click", assignRoles);
@@ -479,6 +488,14 @@ function startProgress() {
   renderAndStore();
 }
 
+function updateCurrentMatchInfo() {
+  state.tournamentName = els.tournamentNameInput?.value.trim().slice(0, 80) || "";
+  state.tournamentDate = els.tournamentDateInput?.value || "";
+  const number = Number(els.matchNumberInput?.value);
+  state.matchNumber = Number.isInteger(number) && number > 0 ? Math.min(number, 999) : 0;
+  renderAndStore();
+}
+
 function beginNewMatch({ createId = true } = {}) {
   state.logs = [];
   state.logRestorePoints = {};
@@ -499,6 +516,9 @@ function archiveCurrentMatch() {
     savedAt: Date.now(),
     status: winner ? "finished" : "interrupted",
     winner,
+    tournamentName: state.tournamentName,
+    tournamentDate: state.tournamentDate,
+    matchNumber: state.matchNumber,
     playerNames: getActivePlayers().map((player) => player.name),
     logs: state.logs.map((log) => ({ ...log })),
   });
@@ -1832,7 +1852,7 @@ function nextDay() {
 
 async function copyLog() {
   const match = getSelectedLogMatch();
-  const text = formatGameLogForCopy(match.logs, match.winner);
+  const text = formatGameLogForCopy(match.logs, match.winner, match);
   try {
     await navigator.clipboard.writeText(text);
     if (match.id === "current") addLog("ログをコピーした");
@@ -1862,6 +1882,9 @@ function resetGame() {
   state.timerEndRevealSeconds = 0;
   state.timerResetCount = 0;
   state.votes = {};
+  state.tournamentName = "";
+  state.tournamentDate = "";
+  state.matchNumber = 0;
   beginNewMatch({ createId: false });
   state.roleDealQueue = [];
   state.roleDealIndex = 0;
@@ -1941,6 +1964,7 @@ function render() {
   renderParticipantViewMode();
   renderVictoryBanner();
   renderHeader();
+  renderMatchInfoInputs();
   renderPlayers();
   renderRoles();
   renderRoundTable();
@@ -1955,6 +1979,12 @@ function render() {
   renderSyncStatus();
   fitSingleLineNames();
   window.requestAnimationFrame(fitSingleLineNames);
+}
+
+function renderMatchInfoInputs() {
+  if (els.tournamentNameInput) els.tournamentNameInput.value = state.tournamentName;
+  if (els.tournamentDateInput) els.tournamentDateInput.value = state.tournamentDate;
+  if (els.matchNumberInput) els.matchNumberInput.value = state.matchNumber ? String(state.matchNumber) : "";
 }
 
 function renderParticipantViewMode() {
@@ -3710,7 +3740,7 @@ function renderLog() {
   selectors.className = "match-log-selector";
   selectors.innerHTML = `
     <p class="match-log-heading">現在の試合</p>
-    ${getMatchLogSelectorHtml({ id: "current", status: state.currentMatchArchived ? "finished" : "current", winner: state.gameWinner, playerNames: getActivePlayers().map((player) => player.name), savedAt: state.currentMatchStartedAt }, selectedMatch.id === "current")}
+    ${getMatchLogSelectorHtml({ id: "current", status: state.currentMatchArchived ? "finished" : "current", winner: state.gameWinner, tournamentName: state.tournamentName, tournamentDate: state.tournamentDate, matchNumber: state.matchNumber, playerNames: getActivePlayers().map((player) => player.name), savedAt: state.currentMatchStartedAt }, selectedMatch.id === "current")}
     <p class="match-log-heading">保存済み試合</p>
     ${visibleHistory.length ? visibleHistory.map((match) => getMatchLogSelectorHtml(match, selectedMatch.id === match.id)).join("") : '<p class="match-log-empty">保存済みの試合はありません</p>'}
   `;
@@ -3766,9 +3796,20 @@ function getMatchLogSummary(match) {
   const savedAt = match.savedAt || match.startedAt;
   const date = savedAt ? formatSyncTime(savedAt) : "日時不明";
   const people = Array.isArray(match.playerNames) ? `${match.playerNames.length}人` : "";
-  if (match.status === "current") return { title: "進行中", meta: people || "新しい試合" };
-  if (match.status === "interrupted") return { title: "中断した試合", meta: [date, people].filter(Boolean).join("・") };
-  return { title: match.winner ? `${match.winner}の勝利` : "終了した試合", meta: [date, people].filter(Boolean).join("・") };
+  const matchLabel = getMatchNumberLabel(match);
+  const meta = [match.tournamentName, formatMatchDate(match.tournamentDate), match.status === "current" ? "" : date, people].filter(Boolean).join("・");
+  if (match.status === "current") return { title: [matchLabel, "進行中"].filter(Boolean).join("・"), meta: meta || "新しい試合" };
+  if (match.status === "interrupted") return { title: [matchLabel, "中断した試合"].filter(Boolean).join("・"), meta };
+  return { title: [matchLabel, match.winner ? `${match.winner}の勝利` : "終了した試合"].filter(Boolean).join("・"), meta };
+}
+
+function getMatchNumberLabel(match) {
+  const number = Number(match.matchNumber);
+  return Number.isInteger(number) && number > 0 ? `第${number}試合` : "";
+}
+
+function formatMatchDate(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value || "") ? value.replaceAll("-", "/") : "";
 }
 
 function getSelectedLogMatch() {
@@ -3780,6 +3821,9 @@ function getSelectedLogMatch() {
     id: "current",
     status: state.currentMatchArchived ? "finished" : "current",
     winner: state.gameWinner,
+    tournamentName: state.tournamentName,
+    tournamentDate: state.tournamentDate,
+    matchNumber: state.matchNumber,
     playerNames: getActivePlayers().map((player) => player.name),
     logs: state.logs,
   };
@@ -3985,15 +4029,22 @@ async function handleSignup(event) {
 }
 
 function formatCurrentGameLogForCopy() {
-  return formatGameLogForCopy(state.logs, state.gameWinner);
+  return formatGameLogForCopy(state.logs, state.gameWinner, {
+    tournamentName: state.tournamentName,
+    tournamentDate: state.tournamentDate,
+    matchNumber: state.matchNumber,
+  });
 }
 
-function formatGameLogForCopy(logs, fallbackWinner = "") {
+function formatGameLogForCopy(logs, fallbackWinner = "", match = {}) {
   const copyExcludedTexts = new Set(["ログをコピーした", "コピーできなかった", "保存した"]);
   const latestStartIndex = logs.findIndex((log) => log.text === "配役完了。1日目の夜へ");
   const sourceLogs = latestStartIndex >= 0 ? logs.slice(0, latestStartIndex + 1) : logs;
   const entries = sourceLogs.filter((log) => !copyExcludedTexts.has(log.text)).reverse();
   const lines = ["【人狼GMログ】"];
+  if (match.tournamentName) lines.push(`大会: ${match.tournamentName}`);
+  if (formatMatchDate(match.tournamentDate)) lines.push(`開催日: ${formatMatchDate(match.tournamentDate)}`);
+  if (getMatchNumberLabel(match)) lines.push(getMatchNumberLabel(match));
   const winner = getWinnerFromLogs(entries, fallbackWinner);
 
   if (winner) {
@@ -4445,6 +4496,9 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     currentMatchId: state.currentMatchId,
     currentMatchStartedAt: state.currentMatchStartedAt,
     currentMatchArchived: state.currentMatchArchived,
+    tournamentName: state.tournamentName,
+    tournamentDate: state.tournamentDate,
+    matchNumber: state.matchNumber,
     selectedLogMatchId: state.selectedLogMatchId,
     roleDealQueue: state.roleDealQueue,
     roleDealIndex: state.roleDealIndex,
@@ -4719,6 +4773,9 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.currentMatchId = saved.currentMatchId || (state.logs.length ? `match-${crypto.randomUUID()}` : "");
   state.currentMatchStartedAt = Number.isFinite(Number(saved.currentMatchStartedAt)) ? Number(saved.currentMatchStartedAt) : state.logs.length ? Date.now() : 0;
   state.currentMatchArchived = saved.currentMatchArchived === true;
+  state.tournamentName = String(saved.tournamentName || "").trim().slice(0, 80);
+  state.tournamentDate = /^\d{4}-\d{2}-\d{2}$/.test(saved.tournamentDate || "") ? saved.tournamentDate : "";
+  state.matchNumber = Number.isInteger(Number(saved.matchNumber)) && Number(saved.matchNumber) > 0 ? Math.min(Number(saved.matchNumber), 999) : 0;
   state.selectedLogMatchId = state.matchHistory.some((match) => match.id === saved.selectedLogMatchId) ? saved.selectedLogMatchId : "current";
   pruneLogRestorePoints();
   state.roleDealQueue = saved.roleDealQueue || [];
@@ -4800,6 +4857,9 @@ function normalizeMatchHistory(history) {
       savedAt: Number(match.savedAt) || 0,
       status: match.status === "interrupted" ? "interrupted" : "finished",
       winner: normalizeVillageTeam(match.winner || ""),
+      tournamentName: String(match.tournamentName || "").trim().slice(0, 80),
+      tournamentDate: /^\d{4}-\d{2}-\d{2}$/.test(match.tournamentDate || "") ? match.tournamentDate : "",
+      matchNumber: Number.isInteger(Number(match.matchNumber)) && Number(match.matchNumber) > 0 ? Math.min(Number(match.matchNumber), 999) : 0,
       playerNames: Array.isArray(match.playerNames) ? match.playerNames.map((name) => String(name)) : [],
       logs: normalizeLogs(Array.isArray(match.logs) ? match.logs : []),
     }))

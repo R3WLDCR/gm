@@ -678,6 +678,7 @@ body.village-victory-view .victory-banner.victory-village.victory-reveal-winner 
 }
 
 .setup-panel .field-row,
+.match-info-fields,
 .setup-panel .player-list,
 .player-sort-tabs,
 .setup-actions {
@@ -743,6 +744,27 @@ body.village-victory-view .victory-banner.victory-village.victory-reveal-winner 
   display: grid;
   gap: 7px;
   margin-bottom: 12px;
+}
+
+.match-info-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.56fr) minmax(96px, 0.34fr);
+  gap: 10px;
+}
+
+.match-info-fields label {
+  display: grid;
+  gap: 7px;
+}
+
+@media (max-width: 640px) {
+  .match-info-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .match-info-fields label:first-child {
+    grid-column: 1 / -1;
+  }
 }
 
 label,
