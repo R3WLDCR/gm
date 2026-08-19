@@ -709,6 +709,16 @@ body.village-victory-view .victory-banner.victory-village.victory-reveal-winner 
   gap: 8px;
 }
 
+.victory-review-actions[hidden] {
+  display: none;
+}
+
+.victory-review-actions .primary-button,
+.victory-review-actions .secondary-button {
+  min-height: 46px;
+  white-space: nowrap;
+}
+
 .table-heading {
   position: relative;
   z-index: 1;

@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.27.2";
+const APP_VERSION = "v1.28.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -294,6 +294,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     "victoryWinnerText",
     "victoryMessageText",
     "victoryBackBtn",
+    "victoryReviewActions",
+    "prepareNextMatchBtn",
   ].forEach((id) => {
     els[id] = document.getElementById(id);
   });
@@ -400,6 +402,7 @@ function bindEvents() {
   els.nextDayBtn.addEventListener("click", nextDay);
   els.copyLogBtn.addEventListener("click", copyLog);
   els.victoryBackBtn?.addEventListener("click", dismissVictoryFullscreen);
+  els.prepareNextMatchBtn?.addEventListener("click", prepareNextMatch);
   els.progressStartBtn.addEventListener("click", startProgress);
   els.startRoleDealBtn.addEventListener("click", startRoleDeal);
   els.shuffleSeatsBtn.addEventListener("click", shuffleSeats);
@@ -2197,6 +2200,7 @@ function renderHeader() {
   document.querySelector(".table-panel")?.classList.toggle("timer-focus", state.timerFocus);
   document.querySelector(".table-panel")?.classList.toggle("vote-table-mode", state.showVoteTable);
   document.querySelector(".table-panel")?.classList.toggle("victory-round-table-mode", isVictoryRoundTableView());
+  els.victoryReviewActions?.toggleAttribute("hidden", !isVictoryRoundTableView());
   document.querySelector(".table-panel")?.classList.toggle("plea-timer-mode", state.showPleaTimer);
   document.querySelector(".table-panel")?.classList.toggle("revote-plea-timer-mode", state.showRevotePleaTimer);
   document.querySelector(".vote-table-actions")?.toggleAttribute("hidden", !state.showVoteTable);
@@ -3571,6 +3575,62 @@ function dismissVictoryFullscreen() {
   state.timerEndRevealSeconds = 0;
   stopTimer();
   stopTimerEndRevealCountdown();
+  renderAndStore();
+}
+
+function prepareNextMatch() {
+  if (!state.gameWinner) return;
+  if (!confirm("振り返りを終了して、次の試合を準備しますか？")) return;
+
+  archiveCurrentMatch();
+  stopAllLiveTimers();
+  resetNightTransitionState();
+  resetAttackResultState();
+  resetPleaTimerState();
+  resetVoteSession();
+  const nextMatchNumber = state.matchNumber > 0 ? Math.min(999, state.matchNumber + 1) : 0;
+
+  beginNewMatch({ createId: false });
+  clearGameWinner();
+  state.screen = "setup";
+  state.phase = "setup";
+  state.day = 0;
+  state.matchNumber = nextMatchNumber;
+  state.timerSeconds = 300;
+  state.timerBase = 300;
+  state.timerRunning = false;
+  state.timerFocus = false;
+  state.timerEndRevealSeconds = 0;
+  state.timerResetCount = 0;
+  state.showVoteTable = false;
+  state.voteSelectedPlayerId = "";
+  state.exiledPlayerIds = [];
+  state.attackedPlayerIds = [];
+  state.exiledPlayerDays = {};
+  state.attackedPlayerDays = {};
+  state.roleDealQueue = [];
+  state.roleDealIndex = 0;
+  state.roleDealSelectedPlayerIds = [];
+  state.seerBlinkPlayerId = "";
+  state.seerCheckResults = {};
+  state.actionRoleIndex = ACTION_ROLE_ORDER.length;
+  state.actionComplete = false;
+  state.actionIntroRoleId = "";
+  state.actionGateRoleId = "";
+  state.actionGateSeconds = 0;
+  state.actionGateBaseSeconds = 0;
+  state.actionBlockedRoleId = "";
+  state.actionBlockedSeconds = 0;
+  state.guardedPlayerId = "";
+  state.lastGuardedPlayerId = "";
+  state.nightStartGuardedPlayerId = "";
+  state.participationCountedForDeal = false;
+  state.undoHistory = [];
+  state.players.forEach((player) => {
+    player.roleId = "";
+    player.alive = true;
+  });
+  resetActionSelection();
   renderAndStore();
 }
 
