@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.27.1";
+const APP_VERSION = "v1.27.2";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -3058,7 +3058,7 @@ function confirmSelectedPlayerExile() {
   if (player) player.alive = false;
   addLog(player ? `${player.name} を追放` : "追放");
   state.voteSelectedPlayerId = "";
-  const result = getGameResult();
+  const result = getGameResultAfterExile();
   startNightTransition(result);
   markLatestLogRestorable();
   renderAndStore();
@@ -3501,6 +3501,42 @@ function getGameResult() {
   if (werewolfCount >= villageCount) {
     return { ended: true, winner: "人狼陣営" };
   }
+  return { ended: false, winner: "" };
+}
+
+function getGameResultAfterExile() {
+  const result = getGameResult();
+  if (result.ended || !isForcedWerewolfWinNextNight()) return result;
+  return { ended: true, winner: "人狼陣営" };
+}
+
+function isForcedWerewolfWinNextNight() {
+  if (state.allowWerewolfSkipAttack || state.allowWerewolfSelfAttack) return false;
+
+  const livingPlayers = getLivingPlayers();
+  const attackTargets = livingPlayers.filter((player) => player.roleId !== "werewolf");
+  if (!attackTargets.length) return false;
+
+  const hasLivingKnight = livingPlayers.some((player) => player.roleId === "knight");
+  const guardTargets = hasLivingKnight
+    ? livingPlayers.filter((player) => player.roleId !== "knight" && player.id !== state.lastGuardedPlayerId)
+    : [null];
+  const possibleGuardTargets = guardTargets.length ? guardTargets : [null];
+
+  return attackTargets.every((attackTarget) =>
+    possibleGuardTargets.every((guardTarget) => {
+      if (guardTarget?.id === attackTarget.id) return false;
+      return getGameResultAfterHypotheticalDeath(livingPlayers, attackTarget.id).winner === "人狼陣営";
+    }),
+  );
+}
+
+function getGameResultAfterHypotheticalDeath(livingPlayers, playerId) {
+  const survivors = livingPlayers.filter((player) => player.id !== playerId);
+  const werewolfCount = survivors.filter((player) => player.roleId === "werewolf").length;
+  const villageCount = survivors.length - werewolfCount;
+  if (werewolfCount === 0) return { ended: true, winner: "市民陣営" };
+  if (werewolfCount >= villageCount) return { ended: true, winner: "人狼陣営" };
   return { ended: false, winner: "" };
 }
 
