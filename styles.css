@@ -709,6 +709,11 @@ body.village-victory-view .victory-banner.victory-village.victory-reveal-winner 
   gap: 8px;
 }
 
+.victory-review-actions {
+  display: flex;
+  align-items: center;
+}
+
 .victory-review-actions[hidden] {
   display: none;
 }

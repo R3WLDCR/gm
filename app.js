@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.28.0";
+const APP_VERSION = "v1.28.1";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -2053,7 +2053,7 @@ function isTimerFullscreenView() {
 }
 
 function isVictoryRoundTableView() {
-  return state.screen === "table" && state.victoryDismissed && Boolean(state.gameWinner);
+  return state.screen === "deal" && state.victoryDismissed && Boolean(state.gameWinner);
 }
 
 function isPleaFullscreenView() {
@@ -3567,7 +3567,7 @@ function clearGameWinner() {
 function dismissVictoryFullscreen() {
   stopVictoryRevealTimer();
   state.victoryDismissed = true;
-  state.screen = "table";
+  state.screen = "deal";
   state.phase = "day";
   state.showVoteTable = false;
   state.timerRunning = false;
