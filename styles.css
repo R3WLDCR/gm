@@ -1007,15 +1007,30 @@ textarea:focus {
   text-align: left;
 }
 
-.match-log-select strong,
-.match-log-select span {
+.match-log-select span,
+.match-log-select small {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.match-log-select span,
+.match-log-primary {
+  min-width: 0;
+  color: var(--ink);
+  font-size: clamp(1.14rem, 2.4vw, 1.5rem);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.match-log-status {
+  color: #7a4c00;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.match-log-meta,
 .match-log-empty {
   color: var(--muted);
   font-size: 0.84rem;

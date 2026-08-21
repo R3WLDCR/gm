@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.28.2";
+const APP_VERSION = "v1.28.3";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -3957,7 +3957,7 @@ function renderLog() {
 function getMatchLogSelectorHtml(match, selected) {
   const summary = getMatchLogSummary(match);
   const deleteButton = match.id === "current" ? "" : `<button class="icon-button match-log-delete" type="button" data-delete-log-match="${escapeHtml(match.id)}" aria-label="この試合を削除" title="削除">×</button>`;
-  return `<div class="match-log-row ${selected ? "selected" : ""}"><button class="match-log-select" type="button" data-select-log-match="${escapeHtml(match.id)}"><strong>${escapeHtml(summary.title)}</strong><span>${escapeHtml(summary.meta)}</span></button>${deleteButton}</div>`;
+  return `<div class="match-log-row ${selected ? "selected" : ""}"><button class="match-log-select" type="button" data-select-log-match="${escapeHtml(match.id)}"><strong class="match-log-primary">${escapeHtml(summary.title)}</strong>${summary.status ? `<span class="match-log-status">${escapeHtml(summary.status)}</span>` : ""}${summary.meta ? `<small class="match-log-meta">${escapeHtml(summary.meta)}</small>` : ""}</button>${deleteButton}</div>`;
 }
 
 function getMatchLogSummary(match) {
@@ -3965,10 +3965,16 @@ function getMatchLogSummary(match) {
   const date = savedAt ? formatSyncTime(savedAt) : "日時不明";
   const people = Array.isArray(match.playerNames) ? `${match.playerNames.length}人` : "";
   const matchLabel = getMatchNumberLabel(match);
-  const meta = [match.tournamentName, formatMatchDate(match.tournamentDate), match.status === "current" ? "" : date, people].filter(Boolean).join("・");
-  if (match.status === "current") return { title: [matchLabel, "進行中"].filter(Boolean).join("・"), meta: meta || "新しい試合" };
-  if (match.status === "interrupted") return { title: [matchLabel, "中断した試合"].filter(Boolean).join("・"), meta };
-  return { title: [matchLabel, match.winner ? `${match.winner}の勝利` : "終了した試合"].filter(Boolean).join("・"), meta };
+  const status = match.status === "current"
+    ? "進行中"
+    : match.status === "interrupted"
+      ? "中断した試合"
+      : match.winner
+        ? `${match.winner}の勝利`
+        : "終了した試合";
+  const title = [match.tournamentName, matchLabel].filter(Boolean).join("　") || status;
+  const meta = [formatMatchDate(match.tournamentDate), match.status === "current" ? "" : date, people].filter(Boolean).join("・");
+  return { title, status: title === status ? "" : status, meta: meta || (match.status === "current" ? "新しい試合" : "") };
 }
 
 function getMatchNumberLabel(match) {
