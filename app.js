@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.29.2";
+const APP_VERSION = "v1.29.3";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -1851,11 +1851,15 @@ function getVoteOutcomeDecisionId() {
   if (topIds.length !== 1) return "";
   const topId = topIds[0];
   const topCount = state.votes[topId] || 0;
-  const otherMax = getLivingPlayers()
+  const recordedVoterIds = new Set(state.voteRecords.map((record) => record.voterId));
+  const remainingVoters = getLivingPlayers().filter((player) => isActivePlayer(player) && !recordedVoterIds.has(player.id));
+  const otherMaxReachable = getLivingPlayers()
     .filter((player) => player.id !== topId && isActivePlayer(player))
-    .reduce((max, player) => Math.max(max, state.votes[player.id] || 0), 0);
-  const remainingVotes = Math.max(0, getVoteVoterPlayers().length - state.voteRecords.length);
-  return topCount > otherMax + remainingVotes ? topId : "";
+    .reduce((max, player) => {
+      const possibleAdditionalVotes = remainingVoters.filter((voter) => voter.id !== player.id).length;
+      return Math.max(max, (state.votes[player.id] || 0) + possibleAdditionalVotes);
+    }, 0);
+  return topCount > otherMaxReachable ? topId : "";
 }
 
 function nextDay() {
@@ -2895,8 +2899,6 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
   const revoteTargetSelectMode = voteMode && isRevoteTargetSelectMode();
   const topVotedIds = voteMode && !isRevoteAssignmentMode() && !state.pendingRevotePleaCandidateIds.length ? getTopVotedPlayerIds() : [];
   const topVotedIdSet = new Set(topVotedIds);
-  const topVoteFinalized = voteMode && topVotedIds.length > 0 && state.voteRecords.length >= getLivingPlayers().length;
-  const earlyDecisionId = voteMode && state.voteSelectedPlayerId && !isRevoteAssignmentMode() ? state.voteSelectedPlayerId : "";
   const voteOutcomeDecisionId = voteMode ? getVoteOutcomeDecisionId() : "";
   if (container === els.roundTable) {
     els.dealPlayerCount.textContent = `${players.length}人`;
@@ -2947,8 +2949,8 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
     const actionDisabled = actionMode && !canSelectActionTarget(getCurrentActionRoleId(), player);
     const voteAssignment = voteMode ? getVoteAssignmentForVoter(player.id) : null;
     const voteSelfDisabled = voteMode && !revoteTargetSelectMode && isRevoteAssignmentMode() && player.id === getCurrentRevoteTargetId();
-    const isTopVoted = voteMode && (topVotedIdSet.has(player.id) || player.id === earlyDecisionId || player.id === voteOutcomeDecisionId);
-    const isVoteDecision = player.id === earlyDecisionId || player.id === voteOutcomeDecisionId || (topVoteFinalized && topVotedIds.length === 1 && topVotedIds[0] === player.id);
+    const isTopVoted = voteMode && (topVotedIdSet.has(player.id) || player.id === voteOutcomeDecisionId);
+    const isVoteDecision = player.id === voteOutcomeDecisionId;
     const voteCount = voteMode ? state.votes[player.id] || 0 : 0;
     const seat = document.createElement("button");
     seat.type = "button";
@@ -2961,7 +2963,7 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
     seat.style.setProperty("--seat-x", `${x}%`);
     seat.style.setProperty("--seat-y", `${y}%`);
     seat.innerHTML = `
-      ${isTopVoted ? `<span class="vote-leader-badge">${isVoteDecision ? "決定" : topVoteFinalized ? "最多" : "暫定"} ${voteCount}票</span>` : ""}
+      ${isTopVoted ? `<span class="vote-leader-badge">${isVoteDecision ? "決定 " : ""}${voteCount}票</span>` : ""}
       <strong>${escapeHtml(player.name)}</strong>
       <small>${role ? escapeHtml(role.name) : revoteTargetSelectMode ? "決戦候補" : voteAssignment ? `→ ${escapeHtml(voteAssignment.targetName)}` : hideRoles ? "" : "未配役"}</small>
       ${status ? `<span class="seat-status-badge">${status.label}</span>` : ""}
