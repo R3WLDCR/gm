@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.29.0";
+const APP_VERSION = "v1.29.1";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -2178,7 +2178,8 @@ function renderHeader() {
     els.undoStepBtn.title = state.undoHistory.length ? `戻す: ${state.undoHistory[0].label}` : "戻せる進行操作はありません";
   }
   const activePlayerCount = getActivePlayers().length;
-  els.balanceBadge.textContent = `${activePlayerCount} / ${state.players.length}`;
+  els.balanceBadge.textContent = `${activePlayerCount}人選択中`;
+  els.balanceBadge.setAttribute("aria-label", `名簿${state.players.length}人中、${activePlayerCount}人を選択中`);
   els.balanceBadge.style.background = activePlayerCount ? "#edf5f2" : "#fae8ea";
 
   const phase = phaseLabels[state.phase];
