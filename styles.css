@@ -281,6 +281,11 @@ h2 {
   color: white;
 }
 
+.screen-tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
 .victory-banner {
   position: relative;
   display: grid;

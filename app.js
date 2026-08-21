@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.29.1";
+const APP_VERSION = "v1.29.2";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -799,6 +799,7 @@ function setPhase(phase) {
 }
 
 function setScreen(screen) {
+  if (isScreenTabDisabled(screen)) return;
   const previousScreen = state.screen;
   state.screen = screen;
   if (screen === "action" && previousScreen !== "action" && state.phase === "night" && !state.actionComplete) {
@@ -2152,11 +2153,25 @@ function fitSingleLineNames() {
 
 function renderScreen() {
   document.querySelectorAll(".screen-tab").forEach((button) => {
+    const disabled = isScreenTabDisabled(button.dataset.screen);
     button.classList.toggle("active", button.dataset.screen === state.screen);
+    button.disabled = disabled;
+    button.title = disabled
+      ? button.dataset.screen === "action"
+        ? "昼進行中は夜タブを開けません"
+        : "夜進行中は昼タブを開けません"
+      : "";
   });
   document.querySelectorAll(".screen-panel").forEach((panel) => {
     panel.classList.toggle("active", panel.dataset.screenPanel === state.screen);
   });
+}
+
+function isScreenTabDisabled(screen) {
+  if (state.gameWinner) return false;
+  if (screen === "action") return state.phase === "day" || state.phase === "vote";
+  if (screen === "table") return state.phase === "night";
+  return false;
 }
 
 function renderHeader() {
