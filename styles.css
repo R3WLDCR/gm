@@ -60,6 +60,39 @@ button {
   min-width: 0;
 }
 
+.header-identity {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.header-match-info {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  min-width: 0;
+}
+
+.header-match-info[hidden] {
+  display: none;
+}
+
+.header-match-info strong {
+  max-width: min(62vw, 720px);
+  color: var(--ink);
+  font-size: clamp(1.05rem, 2.2vw, 1.45rem);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.header-match-info span {
+  flex: 0 0 auto;
+  color: #7a4c00;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
 .eyebrow,
 .section-kicker {
   margin: 0 0 4px;
@@ -3942,6 +3975,11 @@ body.participant-action-view .action-confirm-actions {
     align-items: center;
     flex-direction: row;
     gap: 6px;
+  }
+
+  .header-match-info strong {
+    max-width: 100%;
+    font-size: 1rem;
   }
 
   .eyebrow {

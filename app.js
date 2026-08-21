@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.28.1";
+const APP_VERSION = "v1.28.2";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -288,6 +288,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     "uploadLocalBtn",
     "logoutBtn",
     "appVersionBadge",
+    "headerMatchInfo",
+    "headerTournamentName",
+    "headerMatchNumber",
     "victoryBanner",
     "victoryLeadText",
     "victoryVisualMark",
@@ -2152,6 +2155,17 @@ function renderScreen() {
 function renderHeader() {
   if (els.appVersionBadge) els.appVersionBadge.textContent = APP_VERSION;
   if (els.progressBadge) els.progressBadge.textContent = getProgressBadgeText();
+  const tournamentName = state.tournamentName.trim();
+  const matchNumber = state.matchNumber > 0 ? `第${state.matchNumber}試合` : "";
+  if (els.headerMatchInfo) els.headerMatchInfo.hidden = !tournamentName && !matchNumber;
+  if (els.headerTournamentName) {
+    els.headerTournamentName.textContent = tournamentName;
+    els.headerTournamentName.hidden = !tournamentName;
+  }
+  if (els.headerMatchNumber) {
+    els.headerMatchNumber.textContent = matchNumber;
+    els.headerMatchNumber.hidden = !matchNumber;
+  }
   if (els.undoStepBtn) {
     els.undoStepBtn.disabled = !state.undoHistory.length;
     els.undoStepBtn.title = state.undoHistory.length ? `戻す: ${state.undoHistory[0].label}` : "戻せる進行操作はありません";
