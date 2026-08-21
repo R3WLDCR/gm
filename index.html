@@ -18,7 +18,7 @@
         <div class="header-identity">
           <div class="title-row">
             <p class="eyebrow">Werewolf Game Master</p>
-            <span id="appVersionBadge" class="version-badge">v1.28.3</span>
+            <span id="appVersionBadge" class="version-badge">v1.29.0</span>
             <span id="progressBadge" class="progress-badge">準備中</span>
           </div>
           <div id="headerMatchInfo" class="header-match-info" hidden>
@@ -100,8 +100,9 @@
 
           <div class="match-info-fields">
             <label>大会名<input id="tournamentNameInput" type="text" maxlength="80" autocomplete="off" /></label>
-            <label>開催日<input id="tournamentDateInput" type="date" /></label>
+            <label>第何回<input id="tournamentEditionInput" type="number" min="1" max="999" inputmode="numeric" /></label>
             <label>第何試合<input id="matchNumberInput" type="number" min="1" max="999" inputmode="numeric" /></label>
+            <label>開催日<input id="tournamentDateInput" type="date" /></label>
           </div>
 
           <fieldset class="game-rule-settings">
