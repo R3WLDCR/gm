@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.29.3";
+const APP_VERSION = "v1.30.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -51,6 +51,7 @@ const state = {
   players: [],
   roles: DEFAULT_ROLES.map((role) => ({ ...role })),
   enabledRoleIds: [...DEFAULT_ENABLED_ROLE_IDS],
+  seerInitialWhiteEnabled: true,
   allowWerewolfSelfAttack: false,
   allowWerewolfSkipAttack: true,
   screen: "setup",
@@ -330,7 +331,7 @@ function bindEvents() {
   document.querySelectorAll("[data-role-rule]").forEach((input) => {
     input.addEventListener("change", updateGameRules);
   });
-  [els.allowWerewolfSelfAttackInput, els.allowWerewolfSkipAttackInput].forEach((input) => {
+  [els.allowWerewolfSelfAttackInput, els.allowWerewolfSkipAttackInput, ...document.querySelectorAll("[data-seer-white-rule]")].forEach((input) => {
     input?.addEventListener("change", updateGameRules);
   });
   els.presetBtn?.addEventListener("click", applyPreset);
@@ -522,6 +523,7 @@ function updateCurrentMatchInfo() {
 function updateGameRules() {
   const enabledRoleIds = Array.from(document.querySelectorAll("[data-role-rule]:checked"), (input) => input.dataset.roleRule);
   state.enabledRoleIds = normalizeEnabledRoleIds(enabledRoleIds);
+  state.seerInitialWhiteEnabled = document.querySelector("[data-seer-white-rule]:checked")?.value !== "none";
   state.allowWerewolfSelfAttack = els.allowWerewolfSelfAttackInput?.checked === true;
   state.allowWerewolfSkipAttack = els.allowWerewolfSkipAttackInput?.checked !== false;
   renderAndStore();
@@ -1909,6 +1911,7 @@ function resetGame() {
   state.players = [];
   state.roles = DEFAULT_ROLES.map((role) => ({ ...role }));
   state.enabledRoleIds = [...DEFAULT_ENABLED_ROLE_IDS];
+  state.seerInitialWhiteEnabled = true;
   state.allowWerewolfSelfAttack = false;
   state.allowWerewolfSkipAttack = true;
   state.screen = "setup";
@@ -2034,6 +2037,9 @@ function renderGameRuleInputs() {
   document.querySelectorAll("[data-role-rule]").forEach((input) => {
     input.checked = enabledRoleIds.has(input.dataset.roleRule);
     input.disabled = input.dataset.roleRule === "werewolf";
+  });
+  document.querySelectorAll("[data-seer-white-rule]").forEach((input) => {
+    input.checked = input.value === (state.seerInitialWhiteEnabled ? "white" : "none");
   });
   if (els.allowWerewolfSelfAttackInput) els.allowWerewolfSelfAttackInput.checked = state.allowWerewolfSelfAttack;
   if (els.allowWerewolfSkipAttackInput) els.allowWerewolfSkipAttackInput.checked = state.allowWerewolfSkipAttack;
@@ -2967,7 +2973,7 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
       <strong>${escapeHtml(player.name)}</strong>
       <small>${role ? escapeHtml(role.name) : revoteTargetSelectMode ? "決戦候補" : voteAssignment ? `→ ${escapeHtml(voteAssignment.targetName)}` : hideRoles ? "" : "未配役"}</small>
       ${status ? `<span class="seat-status-badge">${status.label}</span>` : ""}
-      ${seerRandomWhite ? '<span class="seat-status-badge seer-white-badge">ランダム白</span>' : ""}
+      ${seerRandomWhite ? '<span class="seat-status-badge seer-white-badge">初日白</span>' : ""}
     `;
     if (actionMode) {
       seat.addEventListener("click", () => handleActionTarget(player));
@@ -3703,7 +3709,7 @@ function shouldBlinkSeerTarget(player) {
 
 function isSeerRandomWhiteTarget(player) {
   const roleId = state.roleDealQueue[state.roleDealIndex];
-  return roleId === "seer" && state.roleDealSelectedPlayerIds.length > 0 && player.id === getSeerBlinkPlayerId();
+  return state.seerInitialWhiteEnabled && roleId === "seer" && state.roleDealSelectedPlayerIds.length > 0 && player.id === getSeerBlinkPlayerId();
 }
 
 function isRoleDealComplete() {
@@ -3723,6 +3729,12 @@ function assignCurrentRole(player) {
   if (!roleId) return;
   if (player.roleId && player.roleId !== roleId) return;
   const role = getRole(roleId);
+  if (roleId === "seer" && state.seerInitialWhiteEnabled && state.roleDealSelectedPlayerIds.length && !state.roleDealSelectedPlayerIds.includes(player.id)) {
+    state.seerBlinkPlayerId = player.id;
+    addLog(`${player.name}: 初日白に変更`);
+    renderAndStore();
+    return;
+  }
   if (state.roleDealSelectedPlayerIds.includes(player.id)) {
     player.roleId = "";
     state.roleDealSelectedPlayerIds = state.roleDealSelectedPlayerIds.filter((id) => id !== player.id);
@@ -3777,6 +3789,7 @@ function backRoleDeal() {
 }
 
 function getSeerBlinkPlayerId() {
+  if (!state.seerInitialWhiteEnabled) return "";
   const current = findPlayer(state.seerBlinkPlayerId);
   if (current && isActivePlayer(current) && current.roleId !== "werewolf" && current.roleId !== "seer") return current.id;
   const candidates = getActivePlayers().filter((player) => player.roleId !== "werewolf" && player.roleId !== "seer");
@@ -4656,6 +4669,7 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     players: state.players,
     roles: state.roles,
     enabledRoleIds: state.enabledRoleIds,
+    seerInitialWhiteEnabled: state.seerInitialWhiteEnabled,
     allowWerewolfSelfAttack: state.allowWerewolfSelfAttack,
     allowWerewolfSkipAttack: state.allowWerewolfSkipAttack,
     screen: state.screen,
@@ -4870,6 +4884,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.players = normalizePlayers(saved.players || []);
   state.roles = mergeRoles(saved.roles || []);
   state.enabledRoleIds = normalizeEnabledRoleIds(saved.enabledRoleIds);
+  state.seerInitialWhiteEnabled = saved.seerInitialWhiteEnabled !== false;
   state.allowWerewolfSelfAttack = saved.allowWerewolfSelfAttack === true;
   state.allowWerewolfSkipAttack = saved.allowWerewolfSkipAttack !== false;
   state.screen = saved.screen || "setup";
