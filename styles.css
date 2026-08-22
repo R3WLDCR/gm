@@ -829,6 +829,7 @@ body.village-victory-view .victory-banner.victory-village.victory-reveal-winner 
 
 .role-rule-options,
 .seer-white-rule-options,
+.guard-repeat-rule-options,
 .attack-rule-options {
   display: flex;
   flex-wrap: wrap;
@@ -837,6 +838,7 @@ body.village-victory-view .victory-banner.victory-village.victory-reveal-winner 
 
 .role-rule-options label,
 .seer-white-rule-options label,
+.guard-repeat-rule-options label,
 .attack-rule-options label {
   display: inline-flex;
   align-items: center;
@@ -848,6 +850,7 @@ body.village-victory-view .victory-banner.victory-village.victory-reveal-winner 
 
 .role-rule-options input,
 .seer-white-rule-options input,
+.guard-repeat-rule-options input,
 .attack-rule-options input {
   width: 18px;
   min-height: 18px;
@@ -855,7 +858,8 @@ body.village-victory-view .victory-banner.victory-village.victory-reveal-winner 
   accent-color: var(--accent);
 }
 
-.seer-white-rule-options > span {
+.seer-white-rule-options > span,
+.guard-repeat-rule-options > span {
   color: var(--muted);
   font-size: 0.9rem;
   font-weight: 900;
