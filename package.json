@@ -1,0 +1,7 @@
+{
+  "name": "werewolf-gm",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/game-rules.test.js"
+  }
+}

@@ -40,3 +40,9 @@ window.SYNC_CONFIG = {
 ```
 
 `service_role` キーは絶対に入れないでください。
+
+## 開発時の確認
+
+- ゲームルールの正本: [`GAME_RULES.md`](GAME_RULES.md)
+- 変更手順: [`AGENTS.md`](AGENTS.md)
+- ルールテスト: `npm test`
