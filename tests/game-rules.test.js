@@ -113,3 +113,16 @@ test("残り票で追いつけない場合だけ投票結果を決定する", ()
     "",
   );
 });
+
+test("画面スリープ防止は議論タイマーの動作中だけ必要とする", () => {
+  const isRequired = (timerRunning, timerSeconds) =>
+    runFunctions(
+      ["shouldHoldScreenWakeLock"],
+      { state: { timerRunning, timerSeconds } },
+      "shouldHoldScreenWakeLock()",
+    );
+
+  assert.equal(isRequired(true, 300), true);
+  assert.equal(isRequired(false, 300), false);
+  assert.equal(isRequired(true, 0), false);
+});

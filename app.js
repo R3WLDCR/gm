@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.31.1";
+const APP_VERSION = "v1.31.2";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -150,6 +150,9 @@ const phaseLabels = {
 
 const els = {};
 let timerId = null;
+let screenWakeLock = null;
+let screenWakeLockRequestPending = false;
+let screenWakeLockRequestFailed = false;
 let timerEndRevealTimerId = null;
 let timerEndSoundPlaying = false;
 let nightTransitionSoundPlaying = false;
@@ -426,8 +429,16 @@ function bindEvents() {
   window.addEventListener("online", () => synchronizeNow());
   window.addEventListener("resize", fitSingleLineNames);
   window.addEventListener("orientationchange", () => window.setTimeout(fitSingleLineNames, 120));
+  window.addEventListener("pagehide", () => {
+    void releaseScreenWakeLock();
+  });
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") synchronizeNow();
+    if (document.visibilityState === "visible") {
+      void syncScreenWakeLock({ retry: true });
+      synchronizeNow();
+    } else {
+      void releaseScreenWakeLock();
+    }
   });
 }
 
@@ -870,6 +881,7 @@ function toggleTimer() {
   } else {
     stopTimer();
   }
+  void syncScreenWakeLock({ retry: state.timerRunning });
   renderAndStore();
 }
 
@@ -892,6 +904,49 @@ function startTimer() {
 function stopTimer() {
   if (timerId) window.clearInterval(timerId);
   timerId = null;
+}
+
+function shouldHoldScreenWakeLock() {
+  return state.timerRunning && state.timerSeconds > 0;
+}
+
+async function syncScreenWakeLock({ retry = false } = {}) {
+  if (!("wakeLock" in navigator)) return;
+  if (retry) screenWakeLockRequestFailed = false;
+  if (!shouldHoldScreenWakeLock() || document.visibilityState !== "visible") {
+    screenWakeLockRequestFailed = false;
+    await releaseScreenWakeLock();
+    return;
+  }
+  if ((screenWakeLock && !screenWakeLock.released) || screenWakeLockRequestPending || screenWakeLockRequestFailed) return;
+
+  screenWakeLockRequestPending = true;
+  try {
+    const wakeLock = await navigator.wakeLock.request("screen");
+    if (!shouldHoldScreenWakeLock() || document.visibilityState !== "visible") {
+      await wakeLock.release();
+      return;
+    }
+    screenWakeLock = wakeLock;
+    wakeLock.addEventListener("release", () => {
+      if (screenWakeLock === wakeLock) screenWakeLock = null;
+    });
+  } catch {
+    screenWakeLockRequestFailed = true;
+  } finally {
+    screenWakeLockRequestPending = false;
+  }
+}
+
+async function releaseScreenWakeLock() {
+  const wakeLock = screenWakeLock;
+  screenWakeLock = null;
+  if (!wakeLock || wakeLock.released) return;
+  try {
+    await wakeLock.release();
+  } catch {
+    // Wake lock failures must not interrupt timer operation.
+  }
 }
 
 function unlockTimerEndSound() {
@@ -2030,6 +2085,7 @@ function render() {
   renderSyncStatus();
   fitSingleLineNames();
   window.requestAnimationFrame(fitSingleLineNames);
+  void syncScreenWakeLock();
 }
 
 function renderMatchInfoInputs() {
