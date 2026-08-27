@@ -136,3 +136,14 @@ test("大会回数と試合番号は1から999の整数に収める", () => {
   assert.equal(normalize(0), 0);
   assert.equal(normalize("未設定"), 0);
 });
+
+test("昼タイマーは参加人数かける40秒に最も近い分数をすすめる", () => {
+  const recommend = (playerCount) =>
+    runFunctions(["getRecommendedTimerMinutes"], {}, `getRecommendedTimerMinutes(${JSON.stringify(playerCount)})`);
+
+  assert.equal(recommend(0), 0);
+  assert.equal(recommend(5), 3);
+  assert.equal(recommend(6), 4);
+  assert.equal(recommend(7), 5);
+  assert.equal(recommend(20), 9);
+});

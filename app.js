@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.32.0";
+const APP_VERSION = "v1.33.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -929,6 +929,26 @@ function toggleTimer() {
   }
   void syncScreenWakeLock({ retry: state.timerRunning });
   renderAndStore();
+}
+
+function getRecommendedTimerMinutes(playerCount) {
+  const count = Number(playerCount);
+  if (!Number.isInteger(count) || count <= 0) return 0;
+  return Math.max(1, Math.min(9, Math.round((count * 40) / 60)));
+}
+
+function renderRecommendedTimerPreset() {
+  const recommendedMinutes = getRecommendedTimerMinutes(getActivePlayers().length);
+  document.querySelectorAll(".timerPresetBtn").forEach((button) => {
+    const minutes = Number(button.dataset.minutes);
+    const isRecommended = minutes === recommendedMinutes;
+    button.classList.toggle("timer-recommended", isRecommended);
+    if (isRecommended) {
+      button.setAttribute("aria-label", `${minutes}分、参加人数からのおすすめ`);
+    } else {
+      button.removeAttribute("aria-label");
+    }
+  });
 }
 
 function startTimer() {
@@ -2115,6 +2135,7 @@ function render() {
   renderParticipantViewMode();
   renderVictoryBanner();
   renderHeader();
+  renderRecommendedTimerPreset();
   renderMatchInfoInputs();
   renderGameRuleInputs();
   renderPlayers();
