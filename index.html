@@ -18,7 +18,7 @@
         <div class="header-identity">
           <div class="title-row">
             <p class="eyebrow">Werewolf Game Master</p>
-            <span id="appVersionBadge" class="version-badge">v1.31.2</span>
+            <span id="appVersionBadge" class="version-badge">v1.32.0</span>
             <span id="progressBadge" class="progress-badge">準備中</span>
           </div>
           <div id="headerMatchInfo" class="header-match-info" hidden>
@@ -100,8 +100,30 @@
 
           <div class="match-info-fields">
             <label>大会名<input id="tournamentNameInput" type="text" maxlength="80" autocomplete="off" /></label>
-            <label>第何回<input id="tournamentEditionInput" type="number" min="1" max="999" inputmode="numeric" /></label>
-            <label>第何試合<input id="matchNumberInput" type="number" min="1" max="999" inputmode="numeric" /></label>
+            <div class="match-number-field">
+              <span id="tournamentEditionLabel" class="match-number-label">第何回</span>
+              <div class="match-number-control" role="group" aria-labelledby="tournamentEditionLabel">
+                <button id="tournamentEditionMinus" class="match-number-step" type="button" aria-label="回数を1減らす">−</button>
+                <label class="match-number-value">
+                  <span aria-hidden="true">第</span>
+                  <input id="tournamentEditionInput" type="number" min="1" max="999" inputmode="numeric" aria-label="大会の回数" />
+                  <span aria-hidden="true">回</span>
+                </label>
+                <button id="tournamentEditionPlus" class="match-number-step" type="button" aria-label="回数を1増やす">＋</button>
+              </div>
+            </div>
+            <div class="match-number-field">
+              <span id="matchNumberLabel" class="match-number-label">第何試合</span>
+              <div class="match-number-control match-number-dial" role="group" aria-labelledby="matchNumberLabel">
+                <button id="matchNumberPrevious" class="match-number-step" type="button" aria-label="前の試合番号">‹</button>
+                <label class="match-number-value">
+                  <span aria-hidden="true">第</span>
+                  <input id="matchNumberInput" type="number" min="1" max="999" inputmode="numeric" aria-label="試合番号" />
+                  <span aria-hidden="true">試合</span>
+                </label>
+                <button id="matchNumberNext" class="match-number-step" type="button" aria-label="次の試合番号">›</button>
+              </div>
+            </div>
             <label>開催日<input id="tournamentDateInput" type="date" /></label>
           </div>
 

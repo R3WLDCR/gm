@@ -801,13 +801,98 @@ body.village-victory-view .victory-banner.victory-village.victory-reveal-winner 
 
 .match-info-fields {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(96px, 0.3fr) minmax(96px, 0.3fr) minmax(150px, 0.5fr);
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.42fr) minmax(190px, 0.42fr) minmax(150px, 0.5fr);
   gap: 10px;
 }
 
-.match-info-fields label {
+.match-info-fields > label,
+.match-number-field {
   display: grid;
   gap: 7px;
+}
+
+.match-number-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.match-number-control {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  align-items: stretch;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--paper);
+}
+
+.match-number-control:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(12, 122, 103, 0.15);
+}
+
+.match-number-step {
+  display: grid;
+  place-items: center;
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0;
+  background: #edf2ee;
+  color: var(--ink);
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.match-number-step:active {
+  background: #dcebe5;
+  color: var(--accent-strong);
+}
+
+.match-number-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.match-number-value input {
+  width: 3ch;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  text-align: center;
+  appearance: textfield;
+}
+
+.match-number-value input::-webkit-inner-spin-button,
+.match-number-value input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.match-number-value input:focus {
+  box-shadow: none;
+}
+
+.match-number-dial .match-number-step {
+  font-size: 1.8rem;
 }
 
 .game-rule-settings {
@@ -870,11 +955,11 @@ body.village-victory-view .victory-banner.victory-village.victory-reveal-winner 
     grid-template-columns: 1fr 1fr;
   }
 
-  .match-info-fields label:first-child {
+  .match-info-fields > label:first-child {
     grid-column: 1 / -1;
   }
 
-  .match-info-fields label:last-child {
+  .match-info-fields > label:last-child {
     grid-column: 1 / -1;
   }
 }

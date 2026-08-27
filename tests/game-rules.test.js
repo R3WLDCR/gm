@@ -126,3 +126,13 @@ test("画面スリープ防止は議論タイマーの動作中だけ必要と�
   assert.equal(isRequired(false, 300), false);
   assert.equal(isRequired(true, 0), false);
 });
+
+test("大会回数と試合番号は1から999の整数に収める", () => {
+  const normalize = (value) => runFunctions(["normalizeMatchInfoNumber"], {}, `normalizeMatchInfoNumber(${JSON.stringify(value)})`);
+
+  assert.equal(normalize(1), 1);
+  assert.equal(normalize(123), 123);
+  assert.equal(normalize(1000), 999);
+  assert.equal(normalize(0), 0);
+  assert.equal(normalize("未設定"), 0);
+});

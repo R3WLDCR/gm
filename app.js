@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.31.2";
+const APP_VERSION = "v1.32.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -192,8 +192,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     "addPlayerBtn",
     "tournamentNameInput",
     "tournamentEditionInput",
+    "tournamentEditionMinus",
+    "tournamentEditionPlus",
     "tournamentDateInput",
     "matchNumberInput",
+    "matchNumberPrevious",
+    "matchNumberNext",
     "allowWerewolfSelfAttackInput",
     "allowWerewolfSkipAttackInput",
     "progressBadge",
@@ -332,6 +336,10 @@ function bindEvents() {
   [els.tournamentNameInput, els.tournamentEditionInput, els.tournamentDateInput, els.matchNumberInput].forEach((input) => {
     input?.addEventListener("change", updateCurrentMatchInfo);
   });
+  bindMatchNumberStepper(els.tournamentEditionMinus, els.tournamentEditionInput, -1);
+  bindMatchNumberStepper(els.tournamentEditionPlus, els.tournamentEditionInput, 1);
+  bindMatchNumberStepper(els.matchNumberPrevious, els.matchNumberInput, -1);
+  bindMatchNumberStepper(els.matchNumberNext, els.matchNumberInput, 1);
   document.querySelectorAll("[data-role-rule]").forEach((input) => {
     input.addEventListener("change", updateGameRules);
   });
@@ -528,12 +536,50 @@ function startProgress() {
 
 function updateCurrentMatchInfo() {
   state.tournamentName = els.tournamentNameInput?.value.trim().slice(0, 80) || "";
-  const edition = Number(els.tournamentEditionInput?.value);
-  state.tournamentEdition = Number.isInteger(edition) && edition > 0 ? Math.min(edition, 999) : 0;
+  state.tournamentEdition = normalizeMatchInfoNumber(els.tournamentEditionInput?.value);
   state.tournamentDate = els.tournamentDateInput?.value || "";
-  const number = Number(els.matchNumberInput?.value);
-  state.matchNumber = Number.isInteger(number) && number > 0 ? Math.min(number, 999) : 0;
+  state.matchNumber = normalizeMatchInfoNumber(els.matchNumberInput?.value);
   renderAndStore();
+}
+
+function normalizeMatchInfoNumber(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? Math.min(number, 999) : 0;
+}
+
+function bindMatchNumberStepper(button, input, delta) {
+  if (!button || !input) return;
+  let repeatDelayId = null;
+  let repeatIntervalId = null;
+
+  const stopRepeating = () => {
+    window.clearTimeout(repeatDelayId);
+    window.clearInterval(repeatIntervalId);
+    repeatDelayId = null;
+    repeatIntervalId = null;
+  };
+  const step = () => {
+    const current = normalizeMatchInfoNumber(input.value);
+    const base = current || (delta > 0 ? 0 : 2);
+    input.value = String(Math.max(1, Math.min(999, base + delta)));
+    updateCurrentMatchInfo();
+  };
+
+  button.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    button.setPointerCapture?.(event.pointerId);
+    step();
+    repeatDelayId = window.setTimeout(() => {
+      repeatIntervalId = window.setInterval(step, 110);
+    }, 480);
+  });
+  ["pointerup", "pointercancel", "lostpointercapture"].forEach((eventName) => {
+    button.addEventListener(eventName, stopRepeating);
+  });
+  button.addEventListener("click", (event) => {
+    if (event.detail === 0) step();
+  });
 }
 
 function updateGameRules() {
@@ -5074,9 +5120,9 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.currentMatchStartedAt = Number.isFinite(Number(saved.currentMatchStartedAt)) ? Number(saved.currentMatchStartedAt) : state.logs.length ? Date.now() : 0;
   state.currentMatchArchived = saved.currentMatchArchived === true;
   state.tournamentName = String(saved.tournamentName || "").trim().slice(0, 80);
-  state.tournamentEdition = Number.isInteger(Number(saved.tournamentEdition)) && Number(saved.tournamentEdition) > 0 ? Math.min(Number(saved.tournamentEdition), 999) : 0;
+  state.tournamentEdition = normalizeMatchInfoNumber(saved.tournamentEdition);
   state.tournamentDate = /^\d{4}-\d{2}-\d{2}$/.test(saved.tournamentDate || "") ? saved.tournamentDate : "";
-  state.matchNumber = Number.isInteger(Number(saved.matchNumber)) && Number(saved.matchNumber) > 0 ? Math.min(Number(saved.matchNumber), 999) : 0;
+  state.matchNumber = normalizeMatchInfoNumber(saved.matchNumber);
   state.selectedLogMatchId = state.matchHistory.some((match) => match.id === saved.selectedLogMatchId) ? saved.selectedLogMatchId : "current";
   pruneLogRestorePoints();
   state.roleDealQueue = saved.roleDealQueue || [];
@@ -5159,9 +5205,9 @@ function normalizeMatchHistory(history) {
       status: match.status === "interrupted" ? "interrupted" : "finished",
       winner: normalizeVillageTeam(match.winner || ""),
       tournamentName: String(match.tournamentName || "").trim().slice(0, 80),
-      tournamentEdition: Number.isInteger(Number(match.tournamentEdition)) && Number(match.tournamentEdition) > 0 ? Math.min(Number(match.tournamentEdition), 999) : 0,
+      tournamentEdition: normalizeMatchInfoNumber(match.tournamentEdition),
       tournamentDate: /^\d{4}-\d{2}-\d{2}$/.test(match.tournamentDate || "") ? match.tournamentDate : "",
-      matchNumber: Number.isInteger(Number(match.matchNumber)) && Number(match.matchNumber) > 0 ? Math.min(Number(match.matchNumber), 999) : 0,
+      matchNumber: normalizeMatchInfoNumber(match.matchNumber),
       playerNames: Array.isArray(match.playerNames) ? match.playerNames.map((name) => String(name)) : [],
       logs: normalizeLogs(Array.isArray(match.logs) ? match.logs : []),
     }))
