@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.34.0";
+const APP_VERSION = "v1.34.1";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -970,8 +970,12 @@ function getRecommendedTimerMinutes(playerCount) {
   return Math.max(1, Math.min(9, Math.round((count * 40) / 60)));
 }
 
+function getDayTimerPlayerCount() {
+  return state.day > 0 && state.phase !== "setup" ? getLivingPlayers().length : getActivePlayers().length;
+}
+
 function renderRecommendedTimerPreset() {
-  const recommendedMinutes = getRecommendedTimerMinutes(getActivePlayers().length);
+  const recommendedMinutes = getRecommendedTimerMinutes(getDayTimerPlayerCount());
   document.querySelectorAll(".timerPresetBtn").forEach((button) => {
     const minutes = Number(button.dataset.minutes);
     const isRecommended = minutes === recommendedMinutes;

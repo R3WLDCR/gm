@@ -148,6 +148,18 @@ test("昼タイマーは参加人数かける40秒に最も近い分数をすす
   assert.equal(recommend(20), 9);
 });
 
+test("昼タイマーのおすすめ人数は試合途中だけ生存者数を使う", () => {
+  const playerCount = (state, activeCount, livingCount) =>
+    runFunctions(
+      ["getDayTimerPlayerCount"],
+      { state, getActivePlayers: () => Array(activeCount), getLivingPlayers: () => Array(livingCount) },
+      "getDayTimerPlayerCount()",
+    );
+
+  assert.equal(playerCount({ day: 0, phase: "setup" }, 8, 5), 8);
+  assert.equal(playerCount({ day: 3, phase: "day" }, 8, 5), 5);
+});
+
 test("昼タイマーの毎日マイナス1分は前日の設定を下限1分まで短縮する", () => {
   const nextMinutes = (mode, previousMinutes) =>
     runFunctions(
