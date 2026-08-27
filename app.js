@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.33.0";
+const APP_VERSION = "v1.34.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -64,6 +64,8 @@ const state = {
   timerFocus: false,
   timerEndRevealSeconds: 0,
   timerResetCount: 0,
+  dayTimerMode: "manual",
+  lastDayTimerMinutes: 0,
   showVoteTable: false,
   voteSelectedPlayerId: "",
   showPleaTimer: false,
@@ -414,6 +416,9 @@ function bindEvents() {
   document.querySelectorAll(".timerPresetBtn").forEach((button) => {
     button.addEventListener("click", () => setTimerMinutes(Number(button.dataset.minutes)));
   });
+  document.querySelectorAll(".dayTimerModeBtn").forEach((button) => {
+    button.addEventListener("click", () => setDayTimerMode(button.dataset.dayTimerMode));
+  });
   els.randomTimerPresetBtn?.addEventListener("click", () => setTimerMinutes(Math.floor(Math.random() * 9) + 1));
   document.querySelectorAll(".noteBtn").forEach((button) => {
     button.addEventListener("click", () => addSelectedNote(button.dataset.note));
@@ -491,6 +496,7 @@ function startRoundTable() {
   state.screen = "deal";
   state.phase = "setup";
   state.day = 0;
+  state.lastDayTimerMinutes = 0;
   state.participationCountedForDeal = false;
   state.roleDealQueue = [];
   state.roleDealIndex = 0;
@@ -902,6 +908,7 @@ function restartNightActions() {
 
 function shiftTimer(delta) {
   resetTimerValue(Math.max(60, state.timerBase + delta));
+  rememberDayTimerMinutes(state.timerBase);
   renderAndStore();
 }
 
@@ -914,7 +921,33 @@ function setTimerMinutes(minutes) {
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
   state.exiledPlayerIds = [];
+  rememberDayTimerMinutes(state.timerBase);
   renderAndStore();
+}
+
+function setDayTimerMode(mode) {
+  if (!["manual", "shorten"].includes(mode)) return;
+  state.dayTimerMode = mode;
+  renderAndStore();
+}
+
+function rememberDayTimerMinutes(seconds) {
+  if (state.phase !== "day") return;
+  state.lastDayTimerMinutes = Math.max(1, Math.min(9, Math.round(Number(seconds) / 60)));
+}
+
+function getNextDayTimerMinutes(mode, previousMinutes) {
+  const minutes = Number(previousMinutes);
+  if (mode !== "shorten" || !Number.isInteger(minutes) || minutes <= 0) return 0;
+  return Math.max(1, Math.min(9, minutes - 1));
+}
+
+function prepareDayTimerForEntry() {
+  const nextMinutes = getNextDayTimerMinutes(state.dayTimerMode, state.lastDayTimerMinutes);
+  resetTimerValue((nextMinutes || 5) * 60);
+  if (!nextMinutes) return;
+  state.lastDayTimerMinutes = nextMinutes;
+  state.timerFocus = true;
 }
 
 function toggleTimer() {
@@ -948,6 +981,14 @@ function renderRecommendedTimerPreset() {
     } else {
       button.removeAttribute("aria-label");
     }
+  });
+}
+
+function renderDayTimerMode() {
+  document.querySelectorAll(".dayTimerModeBtn").forEach((button) => {
+    const isActive = button.dataset.dayTimerMode === state.dayTimerMode;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
   });
 }
 
@@ -2051,6 +2092,8 @@ function resetGame() {
   state.timerFocus = false;
   state.timerEndRevealSeconds = 0;
   state.timerResetCount = 0;
+  state.dayTimerMode = "manual";
+  state.lastDayTimerMinutes = 0;
   state.votes = {};
   state.tournamentName = "";
   state.tournamentEdition = 0;
@@ -2120,6 +2163,7 @@ function resetToFirstNight() {
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
   state.seerCheckResults = {};
+  state.lastDayTimerMinutes = 0;
   getActivePlayers().forEach((player) => {
     player.alive = true;
   });
@@ -2136,6 +2180,7 @@ function render() {
   renderVictoryBanner();
   renderHeader();
   renderRecommendedTimerPreset();
+  renderDayTimerMode();
   renderMatchInfoInputs();
   renderGameRuleInputs();
   renderPlayers();
@@ -3565,7 +3610,7 @@ function enterDayAfterNight() {
   state.day += 1;
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
-  resetTimerValue(300);
+  prepareDayTimerForEntry();
   addLog(`${state.day}日目の昼へ`);
   markLatestLogRestorable();
 }
@@ -3782,6 +3827,7 @@ function prepareNextMatch() {
   state.timerFocus = false;
   state.timerEndRevealSeconds = 0;
   state.timerResetCount = 0;
+  state.lastDayTimerMinutes = 0;
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
   state.exiledPlayerIds = [];
@@ -4816,6 +4862,8 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     timerFocus: state.timerFocus,
     timerEndRevealSeconds: state.timerEndRevealSeconds,
     timerResetCount: state.timerResetCount,
+    dayTimerMode: state.dayTimerMode,
+    lastDayTimerMinutes: state.lastDayTimerMinutes,
     showVoteTable: state.showVoteTable,
     voteSelectedPlayerId: state.voteSelectedPlayerId,
     showPleaTimer: state.showPleaTimer,
@@ -5034,6 +5082,10 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     ? Math.max(0, Math.min(VOTE_START_DELAY_SECONDS, Number(saved.timerEndRevealSeconds)))
     : 0;
   state.timerResetCount = saved.timerResetCount || 0;
+  state.dayTimerMode = saved.dayTimerMode === "shorten" ? "shorten" : "manual";
+  state.lastDayTimerMinutes = Number.isInteger(Number(saved.lastDayTimerMinutes))
+    ? Math.max(0, Math.min(9, Number(saved.lastDayTimerMinutes)))
+    : 0;
   state.showVoteTable = saved.showVoteTable || false;
   state.voteSelectedPlayerId = saved.voteSelectedPlayerId || "";
   state.showPleaTimer = saved.showPleaTimer === true;

@@ -18,7 +18,7 @@
         <div class="header-identity">
           <div class="title-row">
             <p class="eyebrow">Werewolf Game Master</p>
-            <span id="appVersionBadge" class="version-badge">v1.33.0</span>
+            <span id="appVersionBadge" class="version-badge">v1.34.0</span>
             <span id="progressBadge" class="progress-badge">準備中</span>
           </div>
           <div id="headerMatchInfo" class="header-match-info" hidden>
@@ -228,6 +228,10 @@
               <button id="skipToVoteBtn" class="skip-vote-button" type="button">skip</button>
             </div>
             <div class="timer-keypad" aria-label="タイマー分数">
+              <div class="day-timer-mode-control" role="group" aria-label="昼タイマーの設定方法">
+                <button class="dayTimerModeBtn day-timer-mode-button" data-day-timer-mode="manual" type="button">手動</button>
+                <button class="dayTimerModeBtn day-timer-mode-button" data-day-timer-mode="shorten" type="button">毎日 −1分</button>
+              </div>
               <button class="timerPresetBtn" data-minutes="7">7</button>
               <button class="timerPresetBtn" data-minutes="8">8</button>
               <button class="timerPresetBtn" data-minutes="9">9</button>

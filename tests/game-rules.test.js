@@ -147,3 +147,44 @@ test("昼タイマーは参加人数かける40秒に最も近い分数をすす
   assert.equal(recommend(7), 5);
   assert.equal(recommend(20), 9);
 });
+
+test("昼タイマーの毎日マイナス1分は前日の設定を下限1分まで短縮する", () => {
+  const nextMinutes = (mode, previousMinutes) =>
+    runFunctions(
+      ["getNextDayTimerMinutes"],
+      {},
+      `getNextDayTimerMinutes(${JSON.stringify(mode)}, ${JSON.stringify(previousMinutes)})`,
+    );
+
+  assert.equal(nextMinutes("manual", 5), 0);
+  assert.equal(nextMinutes("shorten", 5), 4);
+  assert.equal(nextMinutes("shorten", 1), 1);
+  assert.equal(nextMinutes("shorten", 0), 0);
+});
+
+test("昼移行時は短縮モードだけ次の分数を準備済みにする", () => {
+  const prepare = (mode, previousMinutes) => {
+    const state = { dayTimerMode: mode, lastDayTimerMinutes: previousMinutes, timerBase: 0, timerFocus: false };
+    return runFunctions(
+      ["getNextDayTimerMinutes", "prepareDayTimerForEntry"],
+      {
+        state,
+        resetTimerValue: (seconds) => {
+          state.timerBase = seconds;
+          state.timerFocus = false;
+        },
+      },
+      "(prepareDayTimerForEntry(), ({ timerBase: state.timerBase, timerFocus: state.timerFocus, lastDayTimerMinutes: state.lastDayTimerMinutes }))",
+    );
+  };
+
+  const shortened = prepare("shorten", 5);
+  assert.equal(shortened.timerBase, 240);
+  assert.equal(shortened.timerFocus, true);
+  assert.equal(shortened.lastDayTimerMinutes, 4);
+
+  const manual = prepare("manual", 5);
+  assert.equal(manual.timerBase, 300);
+  assert.equal(manual.timerFocus, false);
+  assert.equal(manual.lastDayTimerMinutes, 5);
+});
