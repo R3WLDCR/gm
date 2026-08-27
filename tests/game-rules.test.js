@@ -151,7 +151,7 @@ test("昼タイマーは参加人数かける40秒に最も近い分数をすす
 test("昼タイマーのおすすめ人数は試合途中だけ生存者数を使う", () => {
   const playerCount = (state, activeCount, livingCount) =>
     runFunctions(
-      ["getDayTimerPlayerCount"],
+      ["shouldUseLivingPlayerCountForDayTimer", "getDayTimerPlayerCount"],
       { state, getActivePlayers: () => Array(activeCount), getLivingPlayers: () => Array(livingCount) },
       "getDayTimerPlayerCount()",
     );
@@ -174,13 +174,61 @@ test("昼タイマーの毎日マイナス1分は前日の設定を下限1分ま
   assert.equal(nextMinutes("shorten", 0), 0);
 });
 
+test("短縮モードを選んだ日は生存者数から次回用の基準だけを決める", () => {
+  const baseline = (mode, playerCount) =>
+    runFunctions(
+      ["getRecommendedTimerMinutes", "getDayTimerBaselineMinutes"],
+      {},
+      `getDayTimerBaselineMinutes(${JSON.stringify(mode)}, ${JSON.stringify(playerCount)})`,
+    );
+
+  assert.equal(baseline("manual", 7), 0);
+  assert.equal(baseline("shorten", 5), 3);
+  assert.equal(baseline("shorten", 7), 5);
+});
+
+test("短縮モードへの切り替えでは当日のタイマーを変更しない", () => {
+  const state = {
+    dayTimerMode: "manual",
+    lastDayTimerMinutes: 0,
+    phase: "day",
+    timerBase: 420,
+    timerSeconds: 275,
+    timerFocus: false,
+  };
+  const result = runFunctions(
+    ["setDayTimerMode"],
+    {
+      state,
+      getDayTimerBaselineMinutes: () => 3,
+      getDayTimerPlayerCount: () => 5,
+      renderAndStore: () => {},
+    },
+    "(setDayTimerMode('shorten'), ({ timerBase: state.timerBase, timerSeconds: state.timerSeconds, timerFocus: state.timerFocus, baseline: state.lastDayTimerMinutes }))",
+  );
+
+  assert.equal(result.timerBase, 420);
+  assert.equal(result.timerSeconds, 275);
+  assert.equal(result.timerFocus, false);
+  assert.equal(result.baseline, 3);
+});
+
 test("昼移行時は短縮モードだけ次の分数を準備済みにする", () => {
   const prepare = (mode, previousMinutes) => {
-    const state = { dayTimerMode: mode, lastDayTimerMinutes: previousMinutes, timerBase: 0, timerFocus: false };
+    const state = { dayTimerMode: mode, lastDayTimerMinutes: previousMinutes, timerBase: 0, timerFocus: false, day: 2, phase: "day" };
     return runFunctions(
-      ["getNextDayTimerMinutes", "prepareDayTimerForEntry"],
+      [
+        "getRecommendedTimerMinutes",
+        "shouldUseLivingPlayerCountForDayTimer",
+        "getDayTimerPlayerCount",
+        "getDayTimerBaselineMinutes",
+        "getNextDayTimerMinutes",
+        "prepareDayTimerForEntry",
+      ],
       {
         state,
+        getActivePlayers: () => Array(8),
+        getLivingPlayers: () => Array(5),
         resetTimerValue: (seconds) => {
           state.timerBase = seconds;
           state.timerFocus = false;
@@ -194,6 +242,11 @@ test("昼移行時は短縮モードだけ次の分数を準備済みにする",
   assert.equal(shortened.timerBase, 240);
   assert.equal(shortened.timerFocus, true);
   assert.equal(shortened.lastDayTimerMinutes, 4);
+
+  const firstShortenedDay = prepare("shorten", 0);
+  assert.equal(firstShortenedDay.timerBase, 300);
+  assert.equal(firstShortenedDay.timerFocus, false);
+  assert.equal(firstShortenedDay.lastDayTimerMinutes, 3);
 
   const manual = prepare("manual", 5);
   assert.equal(manual.timerBase, 300);

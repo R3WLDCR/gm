@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.34.1";
+const APP_VERSION = "v1.34.2";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -927,7 +927,11 @@ function setTimerMinutes(minutes) {
 
 function setDayTimerMode(mode) {
   if (!["manual", "shorten"].includes(mode)) return;
+  const modeChanged = state.dayTimerMode !== mode;
   state.dayTimerMode = mode;
+  if (modeChanged && mode === "shorten" && state.phase === "day") {
+    state.lastDayTimerMinutes = getDayTimerBaselineMinutes(mode, getDayTimerPlayerCount());
+  }
   renderAndStore();
 }
 
@@ -942,10 +946,19 @@ function getNextDayTimerMinutes(mode, previousMinutes) {
   return Math.max(1, Math.min(9, minutes - 1));
 }
 
+function getDayTimerBaselineMinutes(mode, playerCount) {
+  return mode === "shorten" ? getRecommendedTimerMinutes(playerCount) : 0;
+}
+
 function prepareDayTimerForEntry() {
   const nextMinutes = getNextDayTimerMinutes(state.dayTimerMode, state.lastDayTimerMinutes);
   resetTimerValue((nextMinutes || 5) * 60);
-  if (!nextMinutes) return;
+  if (!nextMinutes) {
+    if (state.dayTimerMode === "shorten") {
+      state.lastDayTimerMinutes = getDayTimerBaselineMinutes(state.dayTimerMode, getDayTimerPlayerCount());
+    }
+    return;
+  }
   state.lastDayTimerMinutes = nextMinutes;
   state.timerFocus = true;
 }
@@ -970,18 +983,23 @@ function getRecommendedTimerMinutes(playerCount) {
   return Math.max(1, Math.min(9, Math.round((count * 40) / 60)));
 }
 
+function shouldUseLivingPlayerCountForDayTimer() {
+  return state.day > 0 && state.phase !== "setup";
+}
+
 function getDayTimerPlayerCount() {
-  return state.day > 0 && state.phase !== "setup" ? getLivingPlayers().length : getActivePlayers().length;
+  return shouldUseLivingPlayerCountForDayTimer() ? getLivingPlayers().length : getActivePlayers().length;
 }
 
 function renderRecommendedTimerPreset() {
   const recommendedMinutes = getRecommendedTimerMinutes(getDayTimerPlayerCount());
+  const recommendationBasis = shouldUseLivingPlayerCountForDayTimer() ? "生存者数" : "参加人数";
   document.querySelectorAll(".timerPresetBtn").forEach((button) => {
     const minutes = Number(button.dataset.minutes);
     const isRecommended = minutes === recommendedMinutes;
     button.classList.toggle("timer-recommended", isRecommended);
     if (isRecommended) {
-      button.setAttribute("aria-label", `${minutes}分、参加人数からのおすすめ`);
+      button.setAttribute("aria-label", `${minutes}分、${recommendationBasis}からのおすすめ`);
     } else {
       button.removeAttribute("aria-label");
     }
