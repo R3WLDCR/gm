@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.34.9";
+const APP_VERSION = "v1.35.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -4172,7 +4172,7 @@ function renderLog() {
   const logContent = document.createElement("div");
   logContent.className = "match-log-content";
   const visibleLogs = selectedMatch.logs.filter((log) => !isHiddenPreparationLog(log.text));
-  const groups = groupLogsByDay(visibleLogs.slice(0, 80));
+  const groups = filterPreparationLogGroups(groupLogsByDay(visibleLogs.slice(0, 80)));
   const currentMatchSelected = selectedMatch.id === "current";
   const hasRestorableLog = currentMatchSelected && visibleLogs.slice(0, 80).some((log) => state.logRestorePoints?.[log.id]);
   if (currentMatchSelected && state.logs.length && !hasRestorableLog) {
@@ -4221,6 +4221,18 @@ function getRoleAssignmentLogTexts(players, roles = state.roles) {
 
 function addRoleAssignmentLogs() {
   getRoleAssignmentLogTexts(getActivePlayers()).forEach(addLog);
+}
+
+function isRoleAssignmentSummaryLog(text) {
+  return state.roles.some((role) => text.startsWith(`${role.name}: `));
+}
+
+function filterPreparationLogGroups(groups) {
+  return groups
+    .map((group) => group.label === "準備"
+      ? { ...group, logs: group.logs.filter((log) => isRoleAssignmentSummaryLog(log.text)) }
+      : group)
+    .filter((group) => group.logs.length);
 }
 
 function getMatchLogSelectorHtml(match, selected) {
@@ -4325,6 +4337,7 @@ function groupLogsByDay(logs) {
 }
 
 function getExplicitLogDayLabel(text) {
+  if (text === "進行開始") return "1日目";
   const dayMatch = text.match(/(\d+)日目/);
   if (dayMatch) return `${dayMatch[1]}日目`;
   if (text.includes("初日")) return "1日目";
@@ -4523,8 +4536,7 @@ function formatCurrentGameLogForCopy() {
 
 function formatGameLogForCopy(logs, fallbackWinner = "", match = {}) {
   const copyExcludedTexts = new Set(["ログをコピーした", "コピーできなかった", "保存した"]);
-  const latestStartIndex = logs.findIndex((log) => log.text === "配役完了。1日目の夜へ");
-  const sourceLogs = latestStartIndex >= 0 ? logs.slice(0, latestStartIndex + 1) : logs;
+  const sourceLogs = getCurrentMatchSourceLogs(logs);
   const entries = sourceLogs
     .filter((log) => !copyExcludedTexts.has(log.text) && !isHiddenPreparationLog(log.text))
     .reverse();
@@ -4560,6 +4572,16 @@ function formatGameLogForCopy(logs, fallbackWinner = "", match = {}) {
   });
 
   return lines.join("\n").trim();
+}
+
+function getCurrentMatchSourceLogs(logs) {
+  const startIndex = logs.findIndex((log) => log.text === "配役完了。1日目の夜へ" || log.text === "進行開始");
+  if (startIndex < 0) return logs;
+  let endIndex = startIndex;
+  while (endIndex + 1 < logs.length && isRoleAssignmentSummaryLog(logs[endIndex + 1].text)) {
+    endIndex += 1;
+  }
+  return logs.slice(0, endIndex + 1);
 }
 
 function getWinnerFromLogs(entries, fallbackWinner = "") {

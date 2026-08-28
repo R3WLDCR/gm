@@ -385,6 +385,52 @@ test("準備ログでは役職選択中の操作を隠す", () => {
   assert.equal(hidden("人狼: しんたろー"), false);
 });
 
+test("準備の日別ブロックは最終配役だけを残す", () => {
+  const state = { roles: [{ id: "werewolf", name: "人狼" }, { id: "seer", name: "預言者" }] };
+  const groups = [
+    {
+      label: "準備",
+      logs: [
+        { text: "しんたろー の名前を シンタロー に変更" },
+        { text: "人狼: シンタロー" },
+        { text: "預言者: 預言者A" },
+      ],
+    },
+    { label: "1日目", logs: [{ text: "進行開始" }] },
+  ];
+  const filtered = runFunctions(
+    ["isRoleAssignmentSummaryLog", "filterPreparationLogGroups"],
+    { state },
+    `filterPreparationLogGroups(${JSON.stringify(groups)})`,
+  );
+
+  assert.deepEqual(Array.from(filtered[0].logs, (log) => log.text), ["人狼: シンタロー", "預言者: 預言者A"]);
+  assert.equal(filtered[1].logs[0].text, "進行開始");
+});
+
+test("ログコピーは進行前の最終配役を残す", () => {
+  const state = { roles: [{ id: "werewolf", name: "人狼" }, { id: "villager", name: "市民" }] };
+  const logs = [
+    { text: "2日目の昼へ" },
+    { text: "進行開始" },
+    { text: "市民: 市民A、市民B" },
+    { text: "人狼: しんたろー" },
+    { text: "しんたろー: 人狼 を選択" },
+  ];
+  const source = runFunctions(
+    ["isRoleAssignmentSummaryLog", "getCurrentMatchSourceLogs"],
+    { state },
+    `getCurrentMatchSourceLogs(${JSON.stringify(logs)})`,
+  );
+
+  assert.deepEqual(Array.from(source, (log) => log.text), [
+    "2日目の昼へ",
+    "進行開始",
+    "市民: 市民A、市民B",
+    "人狼: しんたろー",
+  ]);
+});
+
 test("ログの日別ブロックは準備の次を1日目にする", () => {
   const logs = [
     { text: "2日目の昼へ" },
@@ -399,6 +445,7 @@ test("ログの日別ブロックは準備の次を1日目にする", () => {
   );
 
   assert.deepEqual(Array.from(groups, (group) => group.label), ["準備", "1日目", "2日目"]);
+  assert.equal(runFunctions(["getExplicitLogDayLabel"], {}, 'getExplicitLogDayLabel("進行開始")'), "1日目");
 });
 
 test("初回の襲撃結果は2日目の朝として扱う", () => {

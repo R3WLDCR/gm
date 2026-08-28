@@ -21,6 +21,7 @@
 - 襲撃なしは設定で許可でき、初期値は許可とする。
 - 準備ログには参加者ごとの参加・休み、配役開始、役職選択中の操作を表示しない。
 - 配役ログは最終配役だけを「役職名: 名前、名前」の形式で役職ごとに表示する。
+- 準備の日別ブロックには最終配役だけを表示し、進行開始から1日目のログとして扱う。
 - ログの日別ブロックは「準備、1日目、2日目…」の順に表示する。
 
 ## 試合情報
@@ -91,7 +92,7 @@
 | 昼タイマーの自動短縮 | `getNextDayTimerMinutes()` | 分数選択、昼移行、手動モード、保存・同期・復元 |
 | 画面スリープ防止 | `shouldHoldScreenWakeLock()` | タイマー開始・停止・終了、画面復帰、非対応端末 |
 | 死亡済み役職の待機 | `isBlockedRoleCountdownReady()` | ランダムカウント、OK表示、次役職への進行、復元 |
-| 準備ログ | `getRoleAssignmentLogTexts()` / `isHiddenPreparationLog()` / `groupLogsByDay()` | 参加・休み、配役開始、役職の選択・解除・戻る、最終配役、現在ログ、保存済みログ、ログコピー、日別ブロック順 |
+| 準備ログ | `getRoleAssignmentLogTexts()` / `filterPreparationLogGroups()` / `getCurrentMatchSourceLogs()` | 参加・休み、配役開始、役職の選択・解除・戻る、最終配役、進行開始、現在ログ、保存済みログ、ログコピー、日別ブロック順 |
 | 占い・霊媒結果 | `getDivinationResult()` / `getMediumResult()` | 結果画面、円卓状態、ログ、復元 |
 | 護衛対象 | `canSelectActionTarget()` | 円卓表示、護衛確定、復元、詰み判定 |
 | 襲撃対象 | `canSelectActionTarget()` / `getAttackResultDay()` | 襲撃なし、自噛み、襲撃結果、襲撃日の円卓表示、日別ログ、勝敗判定 |
