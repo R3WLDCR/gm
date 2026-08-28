@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.34.6";
+const APP_VERSION = "v1.34.7";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -468,7 +468,6 @@ function addPlayer() {
     dailyParticipations: {},
   });
   els.playerName.value = "";
-  addLog(`${name} が参加`);
   renderAndStore();
 }
 
@@ -481,7 +480,6 @@ function toggleParticipation(id) {
     player.alive = true;
     delete state.votes[id];
   }
-  addLog(`${player.name} は ${player.active ? "参加" : "休み"}`);
   renderAndStore();
 }
 
@@ -4177,7 +4175,7 @@ function renderLog() {
 
   const logContent = document.createElement("div");
   logContent.className = "match-log-content";
-  const visibleLogs = selectedMatch.logs.filter((log) => !isPreparationRoleDecisionLog(log.text));
+  const visibleLogs = selectedMatch.logs.filter((log) => !isHiddenPreparationLog(log.text));
   const groups = groupLogsByDay(visibleLogs.slice(0, 80));
   const currentMatchSelected = selectedMatch.id === "current";
   const hasRestorableLog = currentMatchSelected && visibleLogs.slice(0, 80).some((log) => state.logRestorePoints?.[log.id]);
@@ -4342,6 +4340,14 @@ function isPreparationRoleDecisionLog(text) {
   return state.roles.some((role) => text === `${role.name} を決定`);
 }
 
+function isPreparationParticipationLog(text) {
+  return /^.+ が参加$/.test(text) || /^.+ は (?:参加|休み)$/.test(text);
+}
+
+function isHiddenPreparationLog(text) {
+  return isPreparationRoleDecisionLog(text) || isPreparationParticipationLog(text);
+}
+
 function revealRole(player) {
   const role = getRole(player.roleId);
   els.roleDialogName.textContent = player.name;
@@ -4496,7 +4502,7 @@ function formatGameLogForCopy(logs, fallbackWinner = "", match = {}) {
   const latestStartIndex = logs.findIndex((log) => log.text === "配役完了。1日目の夜へ");
   const sourceLogs = latestStartIndex >= 0 ? logs.slice(0, latestStartIndex + 1) : logs;
   const entries = sourceLogs
-    .filter((log) => !copyExcludedTexts.has(log.text) && !isPreparationRoleDecisionLog(log.text))
+    .filter((log) => !copyExcludedTexts.has(log.text) && !isHiddenPreparationLog(log.text))
     .reverse();
   const lines = ["【人狼GMログ】"];
   const tournamentTitle = [getTournamentEditionLabel(match), match.tournamentName].filter(Boolean).join(" ");

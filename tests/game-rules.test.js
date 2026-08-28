@@ -322,6 +322,21 @@ test("準備ログでは個別役職の決定だけを隠す", () => {
   assert.equal(hidden("ボディガードを護衛"), false);
 });
 
+test("準備ログでは参加者ごとの参加と休みを隠す", () => {
+  const hidden = (text) =>
+    runFunctions(
+      ["isPreparationParticipationLog"],
+      {},
+      `isPreparationParticipationLog(${JSON.stringify(text)})`,
+    );
+
+  assert.equal(hidden("市民A が参加"), true);
+  assert.equal(hidden("市民A は 参加"), true);
+  assert.equal(hidden("市民A は 休み"), true);
+  assert.equal(hidden("市民A の名前を 市民B に変更"), false);
+  assert.equal(hidden("配役完了。1日目の夜へ"), false);
+});
+
 test("ログの日別ブロックは準備の次を1日目にする", () => {
   const logs = [
     { text: "2日目の昼へ" },
