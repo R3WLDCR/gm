@@ -2977,6 +2977,12 @@ textarea:focus {
   font-weight: 900;
 }
 
+.blocked-role-ok-button {
+  min-width: min(280px, 72vw);
+  min-height: 58px;
+  font-size: clamp(1.2rem, 3vw, 1.8rem);
+}
+
 .medium-result-card span {
   color: var(--muted);
   font-size: clamp(1.2rem, 3vw, 2rem);

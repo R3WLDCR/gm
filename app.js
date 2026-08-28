@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.34.2";
+const APP_VERSION = "v1.34.3";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -2935,14 +2935,34 @@ function renderActionRoundTable() {
 }
 
 function renderBlockedRoleCountdown(roleName) {
+  const roleId = getCurrentActionRoleId();
+  const ready = isBlockedRoleCountdownReady(roleId);
   els.actionRoleTitle.textContent = roleName;
-  els.actionHelp.textContent = "役職者が死亡しているため結果は表示しません";
+  els.actionHelp.textContent = ready ? "OKを押して次の役職へ進んでください" : "役職者が死亡しているため結果は表示しません";
   els.actionRoundTable.innerHTML = `
     <div class="blocked-role-card">
-      <span>${roleName}</span>
-      <strong>${state.actionBlockedSeconds}</strong>
+      <span>${escapeHtml(roleName)}</span>
+      ${ready ? '<button class="primary-button blocked-role-ok-button" type="button">OK</button>' : `<strong>${state.actionBlockedSeconds}</strong>`}
     </div>
   `;
+  els.actionRoundTable.querySelector(".blocked-role-ok-button")?.addEventListener("click", confirmBlockedRoleCountdown);
+}
+
+function isBlockedRoleCountdownReady(roleId) {
+  return Boolean(roleId) && state.actionBlockedRoleId === roleId && state.actionBlockedSeconds === 0;
+}
+
+function confirmBlockedRoleCountdown() {
+  const roleId = getCurrentActionRoleId();
+  if (!isBlockedRoleCountdownReady(roleId)) return;
+  stopBlockedRoleCountdown();
+  state.actionRoleIndex += 1;
+  state.actionBlockedRoleId = "";
+  state.actionBlockedSeconds = 0;
+  state.actionIntroRoleId = "";
+  resetActionSelection();
+  advanceActionRole();
+  renderAndStore();
 }
 
 function renderActionRoleIntro(roleName) {
@@ -3450,11 +3470,6 @@ function startBlockedRoleCountdown(roleId) {
     state.actionBlockedSeconds = Math.max(0, state.actionBlockedSeconds - 1);
     if (state.actionBlockedSeconds === 0) {
       stopBlockedRoleCountdown();
-      state.actionRoleIndex += 1;
-      state.actionBlockedRoleId = "";
-      state.actionBlockedSeconds = 0;
-      resetActionSelection();
-      advanceActionRole();
     }
     renderAndStore();
   }, 1000);

@@ -55,6 +55,8 @@
 
 - 夜行動の順番は、霊媒師、ボディガード、預言者、人狼とする。
 - 死亡済みの役職者の行動結果は表示しない。
+- 死亡済みの役職はランダムカウントを表示し、0秒で自動進行せずOKを表示する。
+- 死亡済み役職のOKをGMが押した後に、次の役職へ進む。
 - 霊媒師は直近の追放者を判定する。
 - 預言者は生存者から自分以外を占う。
 - ボディガードは生存者から自分以外を護衛する。
@@ -84,6 +86,7 @@
 | 昼タイマーのおすすめ | `getRecommendedTimerMinutes()` / `getDayTimerPlayerCount()` | 参加人数、生存者数、1〜9分プリセット、名簿の参加選択 |
 | 昼タイマーの自動短縮 | `getNextDayTimerMinutes()` | 分数選択、昼移行、手動モード、保存・同期・復元 |
 | 画面スリープ防止 | `shouldHoldScreenWakeLock()` | タイマー開始・停止・終了、画面復帰、非対応端末 |
+| 死亡済み役職の待機 | `isBlockedRoleCountdownReady()` | ランダムカウント、OK表示、次役職への進行、復元 |
 | 占い・霊媒結果 | `getDivinationResult()` / `getMediumResult()` | 結果画面、円卓状態、ログ、復元 |
 | 護衛対象 | `canSelectActionTarget()` | 円卓表示、護衛確定、復元、詰み判定 |
 | 襲撃対象 | `canSelectActionTarget()` | 襲撃なし、自噛み、襲撃結果、勝敗判定 |

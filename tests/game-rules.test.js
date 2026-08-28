@@ -253,3 +253,51 @@ test("昼移行時は短縮モードだけ次の分数を準備済みにする",
   assert.equal(manual.timerFocus, false);
   assert.equal(manual.lastDayTimerMinutes, 5);
 });
+
+test("死亡済み役職はカウント0かつ同じ役職のときだけOKへ進める", () => {
+  const ready = (currentRoleId, blockedRoleId, seconds) =>
+    runFunctions(
+      ["isBlockedRoleCountdownReady"],
+      { state: { actionBlockedRoleId: blockedRoleId, actionBlockedSeconds: seconds } },
+      `isBlockedRoleCountdownReady(${JSON.stringify(currentRoleId)})`,
+    );
+
+  assert.equal(ready("medium", "medium", 1), false);
+  assert.equal(ready("medium", "medium", 0), true);
+  assert.equal(ready("seer", "medium", 0), false);
+  assert.equal(ready("", "medium", 0), false);
+});
+
+test("死亡済み役職のOKで次の役職へ進む", () => {
+  const state = {
+    actionRoleIndex: 1,
+    actionBlockedRoleId: "knight",
+    actionBlockedSeconds: 0,
+    actionIntroRoleId: "",
+    actionSelectedTargetId: "",
+    actionResultVisible: false,
+  };
+  let advanced = 0;
+  runFunctions(
+    ["isBlockedRoleCountdownReady", "confirmBlockedRoleCountdown"],
+    {
+      state,
+      getCurrentActionRoleId: () => "knight",
+      stopBlockedRoleCountdown: () => {},
+      resetActionSelection: () => {
+        state.actionSelectedTargetId = "";
+        state.actionResultVisible = false;
+      },
+      advanceActionRole: () => {
+        advanced += 1;
+      },
+      renderAndStore: () => {},
+    },
+    "confirmBlockedRoleCountdown()",
+  );
+
+  assert.equal(state.actionRoleIndex, 2);
+  assert.equal(state.actionBlockedRoleId, "");
+  assert.equal(state.actionBlockedSeconds, 0);
+  assert.equal(advanced, 1);
+});
