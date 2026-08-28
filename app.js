@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.34.3";
+const APP_VERSION = "v1.34.4";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -3984,7 +3984,6 @@ function confirmCurrentRole() {
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
   if (state.roleDealIndex >= state.roleDealQueue.length) assignRemainingVillagers();
-  addLog(`${getRole(roleId)?.name || "未配役"} を決定`);
   renderAndStore();
 }
 
@@ -4172,9 +4171,10 @@ function renderLog() {
 
   const logContent = document.createElement("div");
   logContent.className = "match-log-content";
-  const groups = groupLogsByDay(selectedMatch.logs.slice(0, 80));
+  const visibleLogs = selectedMatch.logs.filter((log) => !isPreparationRoleDecisionLog(log.text));
+  const groups = groupLogsByDay(visibleLogs.slice(0, 80));
   const currentMatchSelected = selectedMatch.id === "current";
-  const hasRestorableLog = currentMatchSelected && state.logs.slice(0, 80).some((log) => state.logRestorePoints?.[log.id]);
+  const hasRestorableLog = currentMatchSelected && visibleLogs.slice(0, 80).some((log) => state.logRestorePoints?.[log.id]);
   if (currentMatchSelected && state.logs.length && !hasRestorableLog) {
     const notice = document.createElement("div");
     notice.className = "log-restore-notice";
@@ -4323,6 +4323,10 @@ function getNextLogDayLabel(label) {
 
 function isExileLogText(text) {
   return text === "追放" || / を追放$/.test(text);
+}
+
+function isPreparationRoleDecisionLog(text) {
+  return state.roles.some((role) => text === `${role.name} を決定`);
 }
 
 function revealRole(player) {
@@ -4478,7 +4482,9 @@ function formatGameLogForCopy(logs, fallbackWinner = "", match = {}) {
   const copyExcludedTexts = new Set(["ログをコピーした", "コピーできなかった", "保存した"]);
   const latestStartIndex = logs.findIndex((log) => log.text === "配役完了。1日目の夜へ");
   const sourceLogs = latestStartIndex >= 0 ? logs.slice(0, latestStartIndex + 1) : logs;
-  const entries = sourceLogs.filter((log) => !copyExcludedTexts.has(log.text)).reverse();
+  const entries = sourceLogs
+    .filter((log) => !copyExcludedTexts.has(log.text) && !isPreparationRoleDecisionLog(log.text))
+    .reverse();
   const lines = ["【人狼GMログ】"];
   const tournamentTitle = [getTournamentEditionLabel(match), match.tournamentName].filter(Boolean).join(" ");
   if (tournamentTitle) lines.push(`大会: ${tournamentTitle}`);

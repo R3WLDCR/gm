@@ -301,3 +301,23 @@ test("死亡済み役職のOKで次の役職へ進む", () => {
   assert.equal(state.actionBlockedSeconds, 0);
   assert.equal(advanced, 1);
 });
+
+test("準備ログでは個別役職の決定だけを隠す", () => {
+  const state = {
+    roles: [
+      { id: "werewolf", name: "人狼" },
+      { id: "knight", name: "ボディガード" },
+    ],
+  };
+  const hidden = (text) =>
+    runFunctions(
+      ["isPreparationRoleDecisionLog"],
+      { state },
+      `isPreparationRoleDecisionLog(${JSON.stringify(text)})`,
+    );
+
+  assert.equal(hidden("ボディガード を決定"), true);
+  assert.equal(hidden("人狼 を決定"), true);
+  assert.equal(hidden("配役完了。1日目の夜へ"), false);
+  assert.equal(hidden("ボディガードを護衛"), false);
+});
