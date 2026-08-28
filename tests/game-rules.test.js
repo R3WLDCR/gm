@@ -349,6 +349,42 @@ test("準備ログでは配役開始を隠す", () => {
   assert.equal(hidden("配役完了。1日目の夜へ"), false);
 });
 
+test("最終配役ログは役職ごとに名前をまとめる", () => {
+  const roles = [
+    { id: "werewolf", name: "人狼" },
+    { id: "seer", name: "預言者" },
+    { id: "villager", name: "市民" },
+  ];
+  const players = [
+    { name: "しんたろー", roleId: "werewolf" },
+    { name: "人狼B", roleId: "werewolf" },
+    { name: "預言者A", roleId: "seer" },
+    { name: "市民A", roleId: "villager" },
+  ];
+  const logs = runFunctions(
+    ["getRoleAssignmentLogTexts"],
+    {},
+    `getRoleAssignmentLogTexts(${JSON.stringify(players)}, ${JSON.stringify(roles)})`,
+  );
+
+  assert.deepEqual(Array.from(logs), ["人狼: しんたろー、人狼B", "預言者: 預言者A", "市民: 市民A"]);
+});
+
+test("準備ログでは役職選択中の操作を隠す", () => {
+  const state = { roles: [{ id: "werewolf", name: "人狼" }] };
+  const hidden = (text) =>
+    runFunctions(
+      ["isPreparationRoleSelectionLog"],
+      { state },
+      `isPreparationRoleSelectionLog(${JSON.stringify(text)})`,
+    );
+
+  assert.equal(hidden("しんたろー: 人狼 を選択"), true);
+  assert.equal(hidden("しんたろー: 人狼 を解除"), true);
+  assert.equal(hidden("人狼へ戻る"), true);
+  assert.equal(hidden("人狼: しんたろー"), false);
+});
+
 test("ログの日別ブロックは準備の次を1日目にする", () => {
   const logs = [
     { text: "2日目の昼へ" },

@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.34.8";
+const APP_VERSION = "v1.34.9";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -533,6 +533,7 @@ function startProgress() {
   state.guardedPlayerId = "";
   state.seerCheckResults = {};
   resetTimerValue(240);
+  addRoleAssignmentLogs();
   addLog("進行開始");
   markLatestLogRestorable();
   renderAndStore();
@@ -839,6 +840,7 @@ function assignRoles() {
   state.votes = {};
   clearGameWinner();
   resetTimerValue(240);
+  addRoleAssignmentLogs();
   addLog("配役完了。1日目の夜へ");
   markLatestLogRestorable();
   renderAndStore();
@@ -3948,7 +3950,6 @@ function assignCurrentRole(player) {
   const roleId = state.roleDealQueue[state.roleDealIndex];
   if (!roleId) return;
   if (player.roleId && player.roleId !== roleId) return;
-  const role = getRole(roleId);
   if (roleId === "seer" && state.seerInitialWhiteEnabled && state.roleDealSelectedPlayerIds.length && !state.roleDealSelectedPlayerIds.includes(player.id)) {
     state.seerBlinkPlayerId = player.id;
     addLog(`${player.name}: 初日白に変更`);
@@ -3959,7 +3960,6 @@ function assignCurrentRole(player) {
     player.roleId = "";
     state.roleDealSelectedPlayerIds = state.roleDealSelectedPlayerIds.filter((id) => id !== player.id);
     if (roleId === "seer") state.seerBlinkPlayerId = "";
-    addLog(`${player.name}: ${role ? role.name : "未配役"} を解除`);
     renderAndStore();
     return;
   }
@@ -3975,7 +3975,6 @@ function assignCurrentRole(player) {
     state.roleDealSelectedPlayerIds.push(player.id);
   }
   if (roleId === "seer") state.seerBlinkPlayerId = "";
-  addLog(`${player.name}: ${role ? role.name : "未配役"} を選択`);
   renderAndStore();
 }
 
@@ -4003,7 +4002,6 @@ function backRoleDeal() {
   getActivePlayers().forEach((player) => {
     if (player.roleId === previousRoleId) player.roleId = "";
   });
-  addLog(`${getRole(previousRoleId)?.name || "前の役職"}へ戻る`);
   renderAndStore();
 }
 
@@ -4212,6 +4210,19 @@ function renderLog() {
   });
 }
 
+function getRoleAssignmentLogTexts(players, roles = state.roles) {
+  return roles
+    .map((role) => {
+      const names = players.filter((player) => player.roleId === role.id).map((player) => player.name);
+      return names.length ? `${role.name}: ${names.join("、")}` : "";
+    })
+    .filter(Boolean);
+}
+
+function addRoleAssignmentLogs() {
+  getRoleAssignmentLogTexts(getActivePlayers()).forEach(addLog);
+}
+
 function getMatchLogSelectorHtml(match, selected) {
   const summary = getMatchLogSummary(match);
   const deleteButton = match.id === "current" ? "" : `<button class="icon-button match-log-delete" type="button" data-delete-log-match="${escapeHtml(match.id)}" aria-label="この試合を削除" title="削除">×</button>`;
@@ -4346,8 +4357,19 @@ function isPreparationProgressLog(text) {
   return text === "配役を開始";
 }
 
+function isPreparationRoleSelectionLog(text) {
+  return state.roles.some((role) =>
+    text.endsWith(`: ${role.name} を選択`) ||
+    text.endsWith(`: ${role.name} を解除`) ||
+    text === `${role.name}へ戻る`,
+  );
+}
+
 function isHiddenPreparationLog(text) {
-  return isPreparationRoleDecisionLog(text) || isPreparationParticipationLog(text) || isPreparationProgressLog(text);
+  return isPreparationRoleDecisionLog(text) ||
+    isPreparationParticipationLog(text) ||
+    isPreparationProgressLog(text) ||
+    isPreparationRoleSelectionLog(text);
 }
 
 function revealRole(player) {
