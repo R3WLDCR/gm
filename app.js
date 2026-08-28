@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.34.5";
+const APP_VERSION = "v1.34.6";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -3566,17 +3566,19 @@ function handleWerewolfSkip() {
 function resolveNightAttack(player = null) {
   const actorNames = getActionActorNames("werewolf");
   const attackSucceeded = Boolean(player) && state.guardedPlayerId !== player.id;
+  const attackDay = getAttackResultDay(state.day);
+  const attackLogPrefix = `${attackDay}日目の朝`;
   if (!player) {
-    addLog(`襲撃なし: ${actorNames}`);
+    addLog(`${attackLogPrefix} 襲撃なし: ${actorNames}`);
   } else if (state.guardedPlayerId === player.id) {
-    addLog(`襲撃失敗: ${actorNames} → ${player.name}`);
+    addLog(`${attackLogPrefix} 襲撃失敗: ${actorNames} → ${player.name}`);
   } else {
     player.alive = false;
     if (!state.attackedPlayerIds.includes(player.id)) {
       state.attackedPlayerIds.push(player.id);
     }
-    state.attackedPlayerDays[player.id] = state.day || 1;
-    addLog(`襲撃成功: ${actorNames} → ${player.name}`);
+    state.attackedPlayerDays[player.id] = attackDay;
+    addLog(`${attackLogPrefix} 襲撃成功: ${actorNames} → ${player.name}`);
   }
   state.actionRoleIndex += 1;
   resetActionSelection();
@@ -3584,6 +3586,10 @@ function resolveNightAttack(player = null) {
   finishNightActions({ attackResult: { targetId: player?.id || "", succeeded: attackSucceeded } });
   markLatestLogRestorable();
   renderAndStore();
+}
+
+function getAttackResultDay(nightDay) {
+  return Math.max(2, Number(nightDay || 1) + 1);
 }
 
 function finishNightActions({ attackResult = null } = {}) {
@@ -4292,7 +4298,10 @@ function groupLogsByDay(logs) {
     .reverse()
     .forEach((log) => {
       const explicitLabel = getExplicitLogDayLabel(log.text);
-      const label = explicitLabel || pendingLabel;
+      const inferredAttackLabel = !explicitLabel && !pendingLabel && isAttackResultLogText(log.text)
+        ? getNextLogDayLabel(currentGroup.label)
+        : "";
+      const label = explicitLabel || pendingLabel || inferredAttackLabel;
       if (label && label !== currentGroup.label) {
         if (currentGroup.logs.length) groups.push(currentGroup);
         currentGroup = { label, logs: [] };
@@ -4323,6 +4332,10 @@ function getNextLogDayLabel(label) {
 
 function isExileLogText(text) {
   return text === "追放" || / を追放$/.test(text);
+}
+
+function isAttackResultLogText(text) {
+  return /^(?:\d+日目の朝 )?襲撃(?:成功|失敗|なし):/.test(text);
 }
 
 function isPreparationRoleDecisionLog(text) {
@@ -4500,7 +4513,10 @@ function formatGameLogForCopy(logs, fallbackWinner = "", match = {}) {
   let pendingSection = "";
   entries.forEach((log) => {
     const explicitSection = getExplicitLogSection(log.text, currentSection);
-    const section = explicitSection || pendingSection || currentSection;
+    const inferredAttackSection = !explicitSection && !pendingSection && isAttackResultLogText(log.text)
+      ? getNextMorningLogSection(currentSection)
+      : "";
+    const section = explicitSection || pendingSection || inferredAttackSection || currentSection;
     if (section && section !== currentSection) {
       lines.push("", `■ ${section}`);
       currentSection = section;
@@ -4531,6 +4547,9 @@ function getExplicitLogSection(text, currentSection) {
   match = text.match(/^(\d+)日目の昼へ$/);
   if (match) return `${match[1]}日目 昼`;
 
+  match = text.match(/^(\d+)日目の朝 /);
+  if (match) return `${match[1]}日目 朝`;
+
   if (text === "進行開始") return currentSection || "1日目 夜";
   return "";
 }
@@ -4539,6 +4558,12 @@ function getNextNightLogSection(section) {
   const match = String(section).match(/(\d+)日目/);
   if (!match) return "";
   return `${Number(match[1]) + 1}日目 夜`;
+}
+
+function getNextMorningLogSection(section) {
+  const match = String(section).match(/(\d+)日目/);
+  if (!match) return "";
+  return `${Number(match[1]) + 1}日目 朝`;
 }
 
 async function handleLogout() {

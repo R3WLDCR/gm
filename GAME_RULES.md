@@ -67,6 +67,7 @@
 - 自噛み不許可の場合、人狼は人狼を襲撃対象にできない。
 - 襲撃なしが許可されている場合、人狼は対象を選ばず夜行動を終えられる。
 - 襲撃先と護衛先が同じ場合、襲撃は失敗し死亡者は出ない。
+- 襲撃結果の日付は夜の翌朝とし、最初の襲撃結果は2日目の朝とする。
 
 ## 勝敗判定
 
@@ -92,7 +93,7 @@
 | 準備ログ | `isPreparationRoleDecisionLog()` / `groupLogsByDay()` | 現在ログ、保存済みログ、ログコピー、配役完了ログ、日別ブロック順 |
 | 占い・霊媒結果 | `getDivinationResult()` / `getMediumResult()` | 結果画面、円卓状態、ログ、復元 |
 | 護衛対象 | `canSelectActionTarget()` | 円卓表示、護衛確定、復元、詰み判定 |
-| 襲撃対象 | `canSelectActionTarget()` | 襲撃なし、自噛み、襲撃結果、勝敗判定 |
+| 襲撃対象 | `canSelectActionTarget()` / `getAttackResultDay()` | 襲撃なし、自噛み、襲撃結果、襲撃日の円卓表示、日別ログ、勝敗判定 |
 | 通常勝敗 | `getGameResult()` | 追放後、襲撃後、勝利画面、ログ |
 | 追放後の詰み | `isForcedWerewolfWinNextNight()` | 襲撃・護衛ルール、勝利画面、ログ |
 

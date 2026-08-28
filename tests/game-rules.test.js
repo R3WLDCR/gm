@@ -330,10 +330,32 @@ test("ログの日別ブロックは準備の次を1日目にする", () => {
     { text: "配役を開始" },
   ];
   const groups = runFunctions(
-    ["groupLogsByDay", "getExplicitLogDayLabel", "getNextLogDayLabel", "isExileLogText"],
+    ["groupLogsByDay", "getExplicitLogDayLabel", "getNextLogDayLabel", "isExileLogText", "isAttackResultLogText"],
     {},
     `groupLogsByDay(${JSON.stringify(logs)})`,
   );
 
   assert.deepEqual(Array.from(groups, (group) => group.label), ["準備", "1日目", "2日目"]);
+});
+
+test("初回の襲撃結果は2日目の朝として扱う", () => {
+  assert.equal(runFunctions(["getAttackResultDay"], {}, "getAttackResultDay(1)"), 2);
+  assert.equal(runFunctions(["getAttackResultDay"], {}, "getAttackResultDay(4)"), 5);
+
+  const logs = [
+    { text: "2日目の昼へ" },
+    { text: "襲撃成功: 人狼A → 市民A" },
+    { text: "占い: 預言者A → 市民A = 市民" },
+    { text: "配役完了。1日目の夜へ" },
+    { text: "配役を開始" },
+  ];
+  const groups = runFunctions(
+    ["groupLogsByDay", "getExplicitLogDayLabel", "getNextLogDayLabel", "isExileLogText", "isAttackResultLogText"],
+    {},
+    `groupLogsByDay(${JSON.stringify(logs)})`,
+  );
+  const dayTwo = groups.find((group) => group.label === "2日目");
+
+  assert.ok(dayTwo);
+  assert.equal(dayTwo.logs.some((log) => log.text.startsWith("襲撃成功:")), true);
 });
