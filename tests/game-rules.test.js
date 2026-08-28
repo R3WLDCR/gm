@@ -321,3 +321,19 @@ test("準備ログでは個別役職の決定だけを隠す", () => {
   assert.equal(hidden("配役完了。1日目の夜へ"), false);
   assert.equal(hidden("ボディガードを護衛"), false);
 });
+
+test("ログの日別ブロックは準備の次を1日目にする", () => {
+  const logs = [
+    { text: "2日目の昼へ" },
+    { text: "1日目の昼へ" },
+    { text: "配役完了。1日目の夜へ" },
+    { text: "配役を開始" },
+  ];
+  const groups = runFunctions(
+    ["groupLogsByDay", "getExplicitLogDayLabel", "getNextLogDayLabel", "isExileLogText"],
+    {},
+    `groupLogsByDay(${JSON.stringify(logs)})`,
+  );
+
+  assert.deepEqual(Array.from(groups, (group) => group.label), ["準備", "1日目", "2日目"]);
+});

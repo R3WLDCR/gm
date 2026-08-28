@@ -20,6 +20,7 @@
 - 人狼の自噛みは設定で許可でき、初期値は不許可とする。
 - 襲撃なしは設定で許可でき、初期値は許可とする。
 - 準備ログには個別の役職を決定した記録を表示せず、配役完了の記録だけを残す。
+- ログの日別ブロックは「準備、1日目、2日目…」の順に表示する。
 
 ## 試合情報
 
@@ -88,7 +89,7 @@
 | 昼タイマーの自動短縮 | `getNextDayTimerMinutes()` | 分数選択、昼移行、手動モード、保存・同期・復元 |
 | 画面スリープ防止 | `shouldHoldScreenWakeLock()` | タイマー開始・停止・終了、画面復帰、非対応端末 |
 | 死亡済み役職の待機 | `isBlockedRoleCountdownReady()` | ランダムカウント、OK表示、次役職への進行、復元 |
-| 準備ログ | `isPreparationRoleDecisionLog()` | 現在ログ、保存済みログ、ログコピー、配役完了ログ |
+| 準備ログ | `isPreparationRoleDecisionLog()` / `groupLogsByDay()` | 現在ログ、保存済みログ、ログコピー、配役完了ログ、日別ブロック順 |
 | 占い・霊媒結果 | `getDivinationResult()` / `getMediumResult()` | 結果画面、円卓状態、ログ、復元 |
 | 護衛対象 | `canSelectActionTarget()` | 円卓表示、護衛確定、復元、詰み判定 |
 | 襲撃対象 | `canSelectActionTarget()` | 襲撃なし、自噛み、襲撃結果、勝敗判定 |
