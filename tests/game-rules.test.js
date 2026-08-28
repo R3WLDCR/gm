@@ -337,6 +337,18 @@ test("準備ログでは参加者ごとの参加と休みを隠す", () => {
   assert.equal(hidden("配役完了。1日目の夜へ"), false);
 });
 
+test("準備ログでは配役開始を隠す", () => {
+  const hidden = (text) =>
+    runFunctions(
+      ["isPreparationProgressLog"],
+      {},
+      `isPreparationProgressLog(${JSON.stringify(text)})`,
+    );
+
+  assert.equal(hidden("配役を開始"), true);
+  assert.equal(hidden("配役完了。1日目の夜へ"), false);
+});
+
 test("ログの日別ブロックは準備の次を1日目にする", () => {
   const logs = [
     { text: "2日目の昼へ" },

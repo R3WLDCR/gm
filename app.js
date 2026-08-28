@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.34.7";
+const APP_VERSION = "v1.34.8";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -787,8 +787,6 @@ function startRoleDeal() {
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
   state.screen = "deal";
-  addLog("配役を開始");
-  markLatestLogRestorable();
   renderAndStore();
 }
 
@@ -4344,8 +4342,12 @@ function isPreparationParticipationLog(text) {
   return /^.+ が参加$/.test(text) || /^.+ は (?:参加|休み)$/.test(text);
 }
 
+function isPreparationProgressLog(text) {
+  return text === "配役を開始";
+}
+
 function isHiddenPreparationLog(text) {
-  return isPreparationRoleDecisionLog(text) || isPreparationParticipationLog(text);
+  return isPreparationRoleDecisionLog(text) || isPreparationParticipationLog(text) || isPreparationProgressLog(text);
 }
 
 function revealRole(player) {
