@@ -70,6 +70,7 @@
 - 襲撃なしが許可されている場合、人狼は対象を選ばず夜行動を終えられる。
 - 襲撃先と護衛先が同じ場合、襲撃は失敗し死亡者は出ない。
 - 襲撃結果の日付は夜の翌朝とし、最初の襲撃結果は2日目の朝とする。
+- 同じ日の霊媒・護衛・占い・襲撃結果が再実行された場合、ログは役職ごとに最新の1件だけを残す。
 
 ## 勝敗判定
 
@@ -92,6 +93,7 @@
 | 昼タイマーの自動短縮 | `getNextDayTimerMinutes()` | 分数選択、昼移行、手動モード、保存・同期・復元 |
 | 画面スリープ防止 | `shouldHoldScreenWakeLock()` | タイマー開始・停止・終了、画面復帰、非対応端末 |
 | 死亡済み役職の待機 | `isBlockedRoleCountdownReady()` | ランダムカウント、OK表示、次役職への進行、復元 |
+| 同日役職ログ | `upsertRoleResultLog()` / `filterDuplicateRoleResultGroups()` | 霊媒、護衛、占い、襲撃、アプリ再開、復元、保存済みログ、ログコピー |
 | 準備ログ | `getRoleAssignmentLogTexts()` / `filterPreparationLogGroups()` / `getCurrentMatchSourceLogs()` | 参加・休み、配役開始、役職の選択・解除・戻る、最終配役、進行開始、現在ログ、保存済みログ、ログコピー、日別ブロック順 |
 | 占い・霊媒結果 | `getDivinationResult()` / `getMediumResult()` | 結果画面、円卓状態、ログ、復元 |
 | 護衛対象 | `canSelectActionTarget()` | 円卓表示、護衛確定、復元、詰み判定 |

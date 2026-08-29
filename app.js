@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.35.0";
+const APP_VERSION = "v1.35.1";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -3498,7 +3498,7 @@ function handleActionTarget(player) {
   } else if (roleId === "medium") {
     pushUndoSnapshot("霊媒確定");
     state.actionIntroRoleId = "";
-    completedLogId = addLog(formatActionLog("霊媒", "medium", player, getMediumResult(player)));
+    completedLogId = upsertRoleResultLog(formatActionLog("霊媒", "medium", player, getMediumResult(player)), "medium", state.day);
   } else if (roleId === "werewolf") {
     state.actionSelectedTargetId = player.id;
     state.actionResultVisible = false;
@@ -3524,7 +3524,7 @@ function handleKnightOk() {
   }
   pushUndoSnapshot("護衛確定");
   state.guardedPlayerId = player.id;
-  const logId = addLog(formatActionLog("護衛", "knight", player));
+  const logId = upsertRoleResultLog(formatActionLog("護衛", "knight", player), "knight", state.day);
   state.actionRoleIndex += 1;
   resetActionSelection();
   advanceActionRole();
@@ -3566,23 +3566,25 @@ function resolveNightAttack(player = null) {
   const attackSucceeded = Boolean(player) && state.guardedPlayerId !== player.id;
   const attackDay = getAttackResultDay(state.day);
   const attackLogPrefix = `${attackDay}日目の朝`;
+  let attackLogText = "";
   if (!player) {
-    addLog(`${attackLogPrefix} 襲撃なし: ${actorNames}`);
+    attackLogText = `${attackLogPrefix} 襲撃なし: ${actorNames}`;
   } else if (state.guardedPlayerId === player.id) {
-    addLog(`${attackLogPrefix} 襲撃失敗: ${actorNames} → ${player.name}`);
+    attackLogText = `${attackLogPrefix} 襲撃失敗: ${actorNames} → ${player.name}`;
   } else {
     player.alive = false;
     if (!state.attackedPlayerIds.includes(player.id)) {
       state.attackedPlayerIds.push(player.id);
     }
     state.attackedPlayerDays[player.id] = attackDay;
-    addLog(`${attackLogPrefix} 襲撃成功: ${actorNames} → ${player.name}`);
+    attackLogText = `${attackLogPrefix} 襲撃成功: ${actorNames} → ${player.name}`;
   }
+  const attackLogId = upsertRoleResultLog(attackLogText, "werewolf", attackDay);
   state.actionRoleIndex += 1;
   resetActionSelection();
   advanceActionRole();
   finishNightActions({ attackResult: { targetId: player?.id || "", succeeded: attackSucceeded } });
-  markLatestLogRestorable();
+  markLogRestorable(attackLogId);
   renderAndStore();
 }
 
@@ -3672,7 +3674,7 @@ function handleSeerOk() {
   pushUndoSnapshot("占い確定");
   const result = getDivinationResult(player);
   state.seerCheckResults[player.id] = result;
-  const logId = addLog(formatActionLog("占い", "seer", player, result));
+  const logId = upsertRoleResultLog(formatActionLog("占い", "seer", player, result), "seer", state.day);
   state.actionRoleIndex += 1;
   resetActionSelection();
   advanceActionRole();
@@ -3710,6 +3712,24 @@ function formatActionLog(actionName, roleId, target, result = "") {
 
 function getDivinationResult(player) {
   return player.roleId === "werewolf" ? "人狼" : "市民";
+}
+
+function getRoleResultLogType(text) {
+  if (/^霊媒:/.test(text)) return "medium";
+  if (/^護衛:/.test(text)) return "knight";
+  if (/^占い:/.test(text)) return "seer";
+  if (isAttackResultLogText(text)) return "werewolf";
+  return "";
+}
+
+function upsertRoleResultLog(text, roleId, day) {
+  const roleResultKey = `${Number(day) || 0}:${roleId}`;
+  state.logs = state.logs.filter((log) => {
+    if (log.roleResultKey !== roleResultKey) return true;
+    delete state.logRestorePoints[log.id];
+    return false;
+  });
+  return addLog(text, { roleResultKey });
 }
 
 function getMediumResult(player) {
@@ -4172,7 +4192,7 @@ function renderLog() {
   const logContent = document.createElement("div");
   logContent.className = "match-log-content";
   const visibleLogs = selectedMatch.logs.filter((log) => !isHiddenPreparationLog(log.text));
-  const groups = filterPreparationLogGroups(groupLogsByDay(visibleLogs.slice(0, 80)));
+  const groups = filterDuplicateRoleResultGroups(filterPreparationLogGroups(groupLogsByDay(visibleLogs.slice(0, 80))));
   const currentMatchSelected = selectedMatch.id === "current";
   const hasRestorableLog = currentMatchSelected && visibleLogs.slice(0, 80).some((log) => state.logRestorePoints?.[log.id]);
   if (currentMatchSelected && state.logs.length && !hasRestorableLog) {
@@ -4233,6 +4253,27 @@ function filterPreparationLogGroups(groups) {
       ? { ...group, logs: group.logs.filter((log) => isRoleAssignmentSummaryLog(log.text)) }
       : group)
     .filter((group) => group.logs.length);
+}
+
+function filterDuplicateRoleResultGroups(groups) {
+  return groups.map((group) => {
+    const seenRoleIds = new Set();
+    const logs = group.logs.filter((log) => {
+      const roleId = getRoleResultLogType(log.text);
+      if (!roleId) return true;
+      if (seenRoleIds.has(roleId)) return false;
+      seenRoleIds.add(roleId);
+      return true;
+    });
+    return { ...group, logs };
+  });
+}
+
+function dedupeRoleResultLogs(logs) {
+  const retainedLogs = new Set(
+    filterDuplicateRoleResultGroups(groupLogsByDay(logs)).flatMap((group) => group.logs),
+  );
+  return logs.filter((log) => retainedLogs.has(log));
 }
 
 function getMatchLogSelectorHtml(match, selected) {
@@ -4394,12 +4435,13 @@ function revealRole(player) {
   window.requestAnimationFrame(fitSingleLineNames);
 }
 
-function addLog(text) {
+function addLog(text, details = {}) {
   const id = `log-${state.nextLogId++}`;
   state.logs.unshift({
     id,
     time: new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }),
     text,
+    ...details,
   });
   return id;
 }
@@ -4536,7 +4578,7 @@ function formatCurrentGameLogForCopy() {
 
 function formatGameLogForCopy(logs, fallbackWinner = "", match = {}) {
   const copyExcludedTexts = new Set(["ログをコピーした", "コピーできなかった", "保存した"]);
-  const sourceLogs = getCurrentMatchSourceLogs(logs);
+  const sourceLogs = dedupeRoleResultLogs(getCurrentMatchSourceLogs(logs));
   const entries = sourceLogs
     .filter((log) => !copyExcludedTexts.has(log.text) && !isHiddenPreparationLog(log.text))
     .reverse();

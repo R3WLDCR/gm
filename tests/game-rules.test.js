@@ -431,6 +431,52 @@ test("ログコピーは進行前の最終配役を残す", () => {
   ]);
 });
 
+test("同じ日の役職結果は役職ごとに最新の1件だけ表示する", () => {
+  const groups = [
+    {
+      label: "2日目",
+      logs: [
+        { text: "占い: 預言者A → 市民B = 人狼" },
+        { text: "占い: 預言者A → 市民A = 市民" },
+        { text: "護衛: 騎士A → 市民A" },
+        { text: "2日目の昼へ" },
+      ],
+    },
+  ];
+  const filtered = runFunctions(
+    ["isAttackResultLogText", "getRoleResultLogType", "filterDuplicateRoleResultGroups"],
+    {},
+    `filterDuplicateRoleResultGroups(${JSON.stringify(groups)})`,
+  );
+
+  assert.deepEqual(Array.from(filtered[0].logs, (log) => log.text), [
+    "占い: 預言者A → 市民B = 人狼",
+    "護衛: 騎士A → 市民A",
+    "2日目の昼へ",
+  ]);
+});
+
+test("役職結果の再実行は同じ日と役職の古いログを置き換える", () => {
+  const state = {
+    logs: [
+      { id: "log-1", text: "占い: 預言者A → 市民A = 市民", roleResultKey: "2:seer" },
+      { id: "log-0", text: "進行開始" },
+    ],
+    logRestorePoints: { "log-1": { screen: "action" } },
+    nextLogId: 2,
+  };
+  const logId = runFunctions(
+    ["addLog", "upsertRoleResultLog"],
+    { state },
+    'upsertRoleResultLog("占い: 預言者A → 市民B = 人狼", "seer", 2)',
+  );
+
+  assert.equal(logId, "log-2");
+  assert.equal(state.logs.filter((log) => log.roleResultKey === "2:seer").length, 1);
+  assert.equal(state.logs[0].text, "占い: 預言者A → 市民B = 人狼");
+  assert.equal(state.logRestorePoints["log-1"], undefined);
+});
+
 test("ログの日別ブロックは準備の次を1日目にする", () => {
   const logs = [
     { text: "2日目の昼へ" },
