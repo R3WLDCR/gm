@@ -436,10 +436,10 @@ test("同じ日の役職結果は役職ごとに最新の1件だけ表示する"
     {
       label: "2日目",
       logs: [
-        { text: "占い: 預言者A → 市民B = 人狼" },
+        { text: "2日目の昼へ" },
         { text: "占い: 預言者A → 市民A = 市民" },
         { text: "護衛: 騎士A → 市民A" },
-        { text: "2日目の昼へ" },
+        { text: "占い: 預言者A → 市民B = 人狼" },
       ],
     },
   ];
@@ -450,9 +450,9 @@ test("同じ日の役職結果は役職ごとに最新の1件だけ表示する"
   );
 
   assert.deepEqual(Array.from(filtered[0].logs, (log) => log.text), [
-    "占い: 預言者A → 市民B = 人狼",
-    "護衛: 騎士A → 市民A",
     "2日目の昼へ",
+    "護衛: 騎士A → 市民A",
+    "占い: 預言者A → 市民B = 人狼",
   ]);
 });
 
@@ -514,4 +514,37 @@ test("初回の襲撃結果は2日目の朝として扱う", () => {
 
   assert.ok(dayTwo);
   assert.equal(dayTwo.logs.some((log) => log.text.startsWith("襲撃成功:")), true);
+});
+
+test("ログの1日は朝から夜行動完了までにする", () => {
+  const logs = [
+    { text: "3日目の昼へ" },
+    { text: "3日目の朝 襲撃成功: 人狼A → 市民B" },
+    { text: "夜の行動完了" },
+    { text: "占い: 預言者A → 市民B = 人狼" },
+    { text: "市民A を追放" },
+    { text: "2日目の昼へ" },
+    { text: "2日目の朝 襲撃成功: 人狼A → 市民A" },
+    { text: "配役完了。1日目の夜へ" },
+  ];
+  const groups = runFunctions(
+    ["groupLogsByDay", "getExplicitLogDayLabel", "getNextLogDayLabel", "isAttackResultLogText"],
+    {},
+    `groupLogsByDay(${JSON.stringify(logs)})`,
+  );
+  const dayTwo = groups.find((group) => group.label === "2日目");
+  const dayThree = groups.find((group) => group.label === "3日目");
+
+  assert.deepEqual(Array.from(dayTwo.logs, (log) => log.text), [
+    "2日目の朝 襲撃成功: 人狼A → 市民A",
+    "2日目の昼へ",
+    "市民A を追放",
+    "占い: 預言者A → 市民B = 人狼",
+    "夜の行動完了",
+  ]);
+  assert.deepEqual(Array.from(dayThree.logs, (log) => log.text), [
+    "3日目の朝 襲撃成功: 人狼A → 市民B",
+    "3日目の昼へ",
+  ]);
+  assert.equal(runFunctions(["getSameDayNightLogSection"], {}, 'getSameDayNightLogSection("2日目 昼")'), "2日目 夜");
 });

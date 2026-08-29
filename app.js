@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.35.1";
+const APP_VERSION = "v1.36.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -3579,10 +3579,10 @@ function resolveNightAttack(player = null) {
     state.attackedPlayerDays[player.id] = attackDay;
     attackLogText = `${attackLogPrefix} 襲撃成功: ${actorNames} → ${player.name}`;
   }
-  const attackLogId = upsertRoleResultLog(attackLogText, "werewolf", attackDay);
   state.actionRoleIndex += 1;
   resetActionSelection();
   advanceActionRole();
+  const attackLogId = upsertRoleResultLog(attackLogText, "werewolf", attackDay);
   finishNightActions({ attackResult: { targetId: player?.id || "", succeeded: attackSucceeded } });
   markLogRestorable(attackLogId);
   renderAndStore();
@@ -4258,13 +4258,17 @@ function filterPreparationLogGroups(groups) {
 function filterDuplicateRoleResultGroups(groups) {
   return groups.map((group) => {
     const seenRoleIds = new Set();
-    const logs = group.logs.filter((log) => {
-      const roleId = getRoleResultLogType(log.text);
-      if (!roleId) return true;
-      if (seenRoleIds.has(roleId)) return false;
-      seenRoleIds.add(roleId);
-      return true;
-    });
+    const logs = group.logs
+      .slice()
+      .reverse()
+      .filter((log) => {
+        const roleId = getRoleResultLogType(log.text);
+        if (!roleId) return true;
+        if (seenRoleIds.has(roleId)) return false;
+        seenRoleIds.add(roleId);
+        return true;
+      })
+      .reverse();
     return { ...group, logs };
   });
 }
@@ -4352,29 +4356,23 @@ function getLogLineHtml(log, allowRestore = false) {
 function groupLogsByDay(logs) {
   const groups = [];
   let currentGroup = { label: "準備", logs: [] };
-  let pendingLabel = "";
   logs
     .slice()
     .reverse()
     .forEach((log) => {
       const explicitLabel = getExplicitLogDayLabel(log.text);
-      const inferredAttackLabel = !explicitLabel && !pendingLabel && isAttackResultLogText(log.text)
+      const inferredAttackLabel = !explicitLabel && isAttackResultLogText(log.text)
         ? getNextLogDayLabel(currentGroup.label)
         : "";
-      const label = explicitLabel || pendingLabel || inferredAttackLabel;
+      const label = explicitLabel || inferredAttackLabel;
       if (label && label !== currentGroup.label) {
         if (currentGroup.logs.length) groups.push(currentGroup);
         currentGroup = { label, logs: [] };
       }
       currentGroup.logs.push(log);
-      if (isExileLogText(log.text)) {
-        pendingLabel = getNextLogDayLabel(currentGroup.label);
-      } else if (explicitLabel) {
-        pendingLabel = "";
-      }
     });
   if (currentGroup.logs.length) groups.push(currentGroup);
-  return groups.map((group) => ({ ...group, logs: group.logs.reverse() }));
+  return groups;
 }
 
 function getExplicitLogDayLabel(text) {
@@ -4597,18 +4595,19 @@ function formatGameLogForCopy(logs, fallbackWinner = "", match = {}) {
   let pendingSection = "";
   entries.forEach((log) => {
     const explicitSection = getExplicitLogSection(log.text, currentSection);
-    const inferredAttackSection = !explicitSection && !pendingSection && isAttackResultLogText(log.text)
+    const inferredAttackSection = !explicitSection && isAttackResultLogText(log.text)
       ? getNextMorningLogSection(currentSection)
       : "";
-    const section = explicitSection || pendingSection || inferredAttackSection || currentSection;
+    const queuedSection = pendingSection;
+    const section = explicitSection || inferredAttackSection || queuedSection || currentSection;
     if (section && section !== currentSection) {
       lines.push("", `■ ${section}`);
       currentSection = section;
     }
     lines.push(log.text);
     if (isExileLogText(log.text)) {
-      pendingSection = getNextNightLogSection(currentSection);
-    } else if (explicitSection) {
+      pendingSection = getSameDayNightLogSection(currentSection);
+    } else if (explicitSection || inferredAttackSection || queuedSection) {
       pendingSection = "";
     }
   });
@@ -4648,10 +4647,10 @@ function getExplicitLogSection(text, currentSection) {
   return "";
 }
 
-function getNextNightLogSection(section) {
+function getSameDayNightLogSection(section) {
   const match = String(section).match(/(\d+)日目/);
   if (!match) return "";
-  return `${Number(match[1]) + 1}日目 夜`;
+  return `${Number(match[1])}日目 夜`;
 }
 
 function getNextMorningLogSection(section) {
