@@ -19,6 +19,24 @@ function runFunctions(names, context, expression) {
   return sandbox.result;
 }
 
+test("準備中は昼タブと夜タブを開けない", () => {
+  const functions = ["isScreenTabDisabled"];
+  const context = { state: { phase: "setup", gameWinner: "" } };
+  assert.equal(runFunctions(functions, context, 'isScreenTabDisabled("table")'), true);
+  assert.equal(runFunctions(functions, context, 'isScreenTabDisabled("action")'), true);
+  assert.equal(runFunctions(functions, context, 'isScreenTabDisabled("setup")'), false);
+  assert.equal(runFunctions(functions, context, 'isScreenTabDisabled("deal")'), false);
+  assert.equal(runFunctions(functions, { state: { phase: "setup", gameWinner: "市民陣営" } }, 'isScreenTabDisabled("table")'), true);
+});
+
+test("ゲーム開始後は進行状態に応じて昼夜タブを切り替える", () => {
+  const functions = ["isScreenTabDisabled"];
+  assert.equal(runFunctions(functions, { state: { phase: "day", gameWinner: "" } }, 'isScreenTabDisabled("table")'), false);
+  assert.equal(runFunctions(functions, { state: { phase: "day", gameWinner: "" } }, 'isScreenTabDisabled("action")'), true);
+  assert.equal(runFunctions(functions, { state: { phase: "night", gameWinner: "" } }, 'isScreenTabDisabled("table")'), true);
+  assert.equal(runFunctions(functions, { state: { phase: "night", gameWinner: "" } }, 'isScreenTabDisabled("action")'), false);
+});
+
 test("市民陣営は人狼が0人になると勝利する", () => {
   const players = [{ roleId: "villager", alive: true }];
   const result = runFunctions(["getGameResult"], { getActivePlayers: () => players }, "getGameResult()");
