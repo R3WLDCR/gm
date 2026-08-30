@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.37.0";
+const APP_VERSION = "v1.38.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -35,6 +35,7 @@ const VICTORY_REVEAL_STEP_SECONDS = 5;
 const PLEA_TIMER_SECONDS = 30;
 const NIGHT_TRANSITION_MIN_SECONDS = 3;
 const NIGHT_TRANSITION_MAX_SECONDS = 8;
+const NIGHT_TRANSITION_SMALL_MAX_SECONDS = 10;
 const NIGHT_TRANSITION_OK_DELAY_SECONDS = 5;
 const ATTACK_RESULT_REVEAL_SECONDS = 5;
 const ATTACK_RESULT_OK_DELAY_SECONDS = 5;
@@ -1359,6 +1360,7 @@ function stopNightTransitionTimer() {
 
 function startNightTransitionFallback() {
   stopNightTransitionFallback();
+  const maxDelaySeconds = Math.max(NIGHT_TRANSITION_MAX_SECONDS, getNightTransitionMaxSeconds(getActivePlayers().length));
   nightTransitionFallbackTimerId = window.setTimeout(() => {
     try {
       if (!state.showNightTransition || state.nightTransitionSeconds === 0) return;
@@ -1368,7 +1370,7 @@ function startNightTransitionFallback() {
     } catch {
       // The main transition remains available even if the fallback cannot run.
     }
-  }, (NIGHT_TRANSITION_MAX_SECONDS + 2) * 1000);
+  }, (maxDelaySeconds + 2) * 1000);
 }
 
 function stopNightTransitionFallback() {
@@ -1386,15 +1388,20 @@ function resetNightTransitionState() {
   state.nightTransitionWinner = "";
 }
 
+function getNightTransitionMaxSeconds(playerCount) {
+  return playerCount >= 5 && playerCount <= 6 ? NIGHT_TRANSITION_SMALL_MAX_SECONDS : NIGHT_TRANSITION_MAX_SECONDS;
+}
+
 function getNightTransitionDelaySeconds(result) {
   const activeCount = Math.max(1, getActivePlayers().length);
   const livingCount = getLivingPlayers().length;
   const dayPressure = clampNumber((state.day - 1) / 4, 0, 1);
   const deathPressure = clampNumber((activeCount - livingCount) / Math.max(1, activeCount - 2), 0, 1);
   const pressure = result.ended ? Math.max(0.75, dayPressure, deathPressure) : dayPressure * 0.55 + deathPressure * 0.45;
-  const center = NIGHT_TRANSITION_MIN_SECONDS + Math.round(pressure * (NIGHT_TRANSITION_MAX_SECONDS - NIGHT_TRANSITION_MIN_SECONDS));
+  const maxSeconds = getNightTransitionMaxSeconds(activeCount);
+  const center = NIGHT_TRANSITION_MIN_SECONDS + Math.round(pressure * (maxSeconds - NIGHT_TRANSITION_MIN_SECONDS));
   const min = Math.max(NIGHT_TRANSITION_MIN_SECONDS, center - 1);
-  const max = Math.min(NIGHT_TRANSITION_MAX_SECONDS, center + 1);
+  const max = Math.min(maxSeconds, center + 1);
   return getRandomInt(min, max);
 }
 

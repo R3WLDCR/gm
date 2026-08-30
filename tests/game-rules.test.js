@@ -589,3 +589,36 @@ test("通常投票の投票先は直前の投票先を初期選択として維�
   // 候補が空の場合は空文字
   assert.equal(getPreferred([], "", "B"), "");
 });
+
+test("夜遷移の演出待機時間は5〜6人のとき最大10秒まで拡張する", () => {
+  const getMaxSeconds = (count) =>
+    runFunctions(["getNightTransitionMaxSeconds"], { NIGHT_TRANSITION_MAX_SECONDS: 8, NIGHT_TRANSITION_SMALL_MAX_SECONDS: 10 }, `getNightTransitionMaxSeconds(${count})`);
+
+  assert.equal(getMaxSeconds(4), 8);
+  assert.equal(getMaxSeconds(5), 10);
+  assert.equal(getMaxSeconds(6), 10);
+  assert.equal(getMaxSeconds(7), 8);
+  assert.equal(getMaxSeconds(13), 8);
+
+  const getDelay = (state, activeCount, livingCount, ended) =>
+    runFunctions(
+      ["getNightTransitionDelaySeconds", "getNightTransitionMaxSeconds", "clampNumber", "getRandomInt"],
+      {
+        state,
+        NIGHT_TRANSITION_MIN_SECONDS: 3,
+        NIGHT_TRANSITION_MAX_SECONDS: 8,
+        NIGHT_TRANSITION_SMALL_MAX_SECONDS: 10,
+        getActivePlayers: () => Array(activeCount),
+        getLivingPlayers: () => Array(livingCount),
+      },
+      `getNightTransitionDelaySeconds({ ended: ${Boolean(ended)} })`,
+    );
+
+  // 5人村の初日（1日目、1人死亡で残り4人）は3〜5秒
+  const day1Delay = getDelay({ day: 1 }, 5, 4, false);
+  assert.ok(day1Delay >= 3 && day1Delay <= 5, `day1Delay was ${day1Delay}`);
+
+  // 5人村の決着時は9〜10秒
+  const endedDelay = getDelay({ day: 2 }, 5, 2, true);
+  assert.ok(endedDelay >= 9 && endedDelay <= 10, `endedDelay was ${endedDelay}`);
+});

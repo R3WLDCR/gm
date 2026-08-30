@@ -56,6 +56,7 @@
 - 一時停止、終了、リセット時は画面スリープ防止を解除する。
 - タイマー動作中にアプリが再表示された場合は、画面スリープ防止を再取得する。
 - 端末やブラウザが要求を拒否した場合も、タイマーとゲーム進行は継続する。
+- 夜遷移（夜が訪れます）の演出待機時間は通常3〜8秒とし、参加人数が5〜6人の場合は進行度に応じて3〜10秒とする。
 
 ## 夜行動
 
@@ -99,6 +100,7 @@
 | 昼タイマーのおすすめ | `getRecommendedTimerMinutes()` / `getDayTimerPlayerCount()` | 参加人数、生存者数、1〜9分プリセット、名簿の参加選択 |
 | 昼タイマーの自動短縮 | `getNextDayTimerMinutes()` | 分数選択、昼移行、手動モード、保存・同期・復元 |
 | 画面スリープ防止 | `shouldHoldScreenWakeLock()` | タイマー開始・停止・終了、画面復帰、非対応端末 |
+| 夜遷移の演出待機時間 | `getNightTransitionMaxSeconds()` / `getNightTransitionDelaySeconds()` | 追放確定、夜移行、勝利画面遷移、フォールバック |
 | 死亡済み役職の待機 | `isBlockedRoleCountdownReady()` | ランダムカウント、OK表示、次役職への進行、復元 |
 | 同日役職ログ | `upsertRoleResultLog()` / `filterDuplicateRoleResultGroups()` | 霊媒、護衛、占い、襲撃、アプリ再開、復元、保存済みログ、ログコピー |
 | ログの1日 | `groupLogsByDay()` / `getSameDayNightLogSection()` | 朝の襲撃結果、昼、投票、追放、夜行動完了、保存済みログ、ログコピー |
