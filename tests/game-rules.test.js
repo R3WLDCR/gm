@@ -566,3 +566,26 @@ test("ログの1日は朝から夜行動完了までにする", () => {
   ]);
   assert.equal(runFunctions(["getSameDayNightLogSection"], {}, 'getSameDayNightLogSection("2日目 昼")'), "2日目 夜");
 });
+
+test("通常投票の投票先は直前の投票先を初期選択として維持する", () => {
+  const targets = [{ id: "A" }, { id: "B" }, { id: "C" }];
+  const getPreferred = (candidateList, currentId, lastId) =>
+    runFunctions(
+      ["getPreferredVoteTargetId"],
+      {},
+      `getPreferredVoteTargetId(${JSON.stringify(candidateList)}, ${JSON.stringify(currentId)}, ${JSON.stringify(lastId)})`,
+    );
+
+  // 現在手動選択中の対象が候補にあれば最優先
+  assert.equal(getPreferred(targets, "C", "B"), "C");
+  // 手動選択がなく直前の投票先が候補にあれば直前の投票先を維持
+  assert.equal(getPreferred(targets, "", "B"), "B");
+  // 手動選択が無効で直前の投票先が候補にあれば直前の投票先を維持
+  assert.equal(getPreferred(targets, "INVALID", "B"), "B");
+  // 直前の投票先が候補にない（自分自身など）場合は先頭の候補
+  assert.equal(getPreferred(targets, "", "SELF_OR_ABSENT"), "A");
+  // 直前投票先もなく初回の場合は先頭の候補
+  assert.equal(getPreferred(targets, "", ""), "A");
+  // 候補が空の場合は空文字
+  assert.equal(getPreferred([], "", "B"), "");
+});

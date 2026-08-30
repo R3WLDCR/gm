@@ -1,4 +1,4 @@
-﻿const DEFAULT_ROLES = [
+const DEFAULT_ROLES = [
   { id: "werewolf", name: "人狼", team: "人狼陣営", count: 1 },
   { id: "madman", name: "裏切り者", team: "人狼陣営", count: 1 },
   { id: "seer", name: "預言者", team: "市民陣営", count: 1 },
@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.36.1";
+const APP_VERSION = "v1.37.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -1857,6 +1857,22 @@ function getFirstRevoteTargetIdExcept(voterId) {
   return state.revoteCandidateIds.find((id) => id !== voterId) || "";
 }
 
+function getLastVoteRecordTargetId() {
+  const lastRecord = state.voteRecords[state.voteRecords.length - 1];
+  return lastRecord?.targetId || "";
+}
+
+function getPreferredVoteTargetId(targets, currentTargetId = "", lastVoteTargetId = "") {
+  if (!Array.isArray(targets) || !targets.length) return "";
+  if (currentTargetId && targets.some((player) => player.id === currentTargetId)) {
+    return currentTargetId;
+  }
+  if (lastVoteTargetId && targets.some((player) => player.id === lastVoteTargetId)) {
+    return lastVoteTargetId;
+  }
+  return targets[0]?.id || "";
+}
+
 function getVoteVoterPlayers() {
   const editIndex = getEditingVoteRecordIndex();
   const votedIds = new Set(state.voteRecords.filter((_, index) => index !== editIndex).map((record) => record.voterId));
@@ -2617,8 +2633,11 @@ function renderVoteControls() {
   if (!voters.some((player) => player.id === state.voteVoterId)) state.voteVoterId = "";
   if (!revoteMode && !state.voteVoterId && voters.length) state.voteVoterId = voters[0].id;
   let targets = getVoteTargetPlayers();
-  if (!targets.some((player) => player.id === state.voteTargetId)) state.voteTargetId = "";
-  if (!revoteMode && !state.voteTargetId && state.voteVoterId && targets.length) state.voteTargetId = targets[0].id;
+  if (!revoteMode && state.voteVoterId && targets.length) {
+    state.voteTargetId = getPreferredVoteTargetId(targets, state.voteTargetId, getLastVoteRecordTargetId());
+  } else if (!targets.some((player) => player.id === state.voteTargetId)) {
+    state.voteTargetId = "";
+  }
   voters = getVoteVoterPlayers();
   targets = getVoteTargetPlayers();
   document.querySelector(".vote-input-grid")?.toggleAttribute("hidden", revoteMode);
