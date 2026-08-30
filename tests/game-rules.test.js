@@ -622,3 +622,47 @@ test("夜遷移の演出待機時間は5〜6人のとき最大10秒まで拡張�
   const endedDelay = getDelay({ day: 2 }, 5, 2, true);
   assert.ok(endedDelay >= 9 && endedDelay <= 10, `endedDelay was ${endedDelay}`);
 });
+
+test("昼タイマーの分数を変更しても追放履歴を保持する", () => {
+  const state = {
+    phase: "day",
+    timerBase: 300,
+    exiledPlayerIds: ["A"],
+  };
+  runFunctions(
+    ["setTimerMinutes"],
+    {
+      state,
+      resetPleaTimerState: () => {},
+      resetVoteSession: () => {},
+      resetTimerValue: (seconds) => {
+        state.timerBase = seconds;
+      },
+      rememberDayTimerMinutes: () => {},
+      renderAndStore: () => {},
+    },
+    "setTimerMinutes(4)",
+  );
+
+  assert.deepEqual(state.exiledPlayerIds, ["A"]);
+});
+
+test("追放者IDが欠けた保存データでも追放日を円卓に表示する", () => {
+  const status = runFunctions(
+    ["getSeatStatus"],
+    {
+      state: {
+        day: 3,
+        exiledPlayerIds: [],
+        exiledPlayerDays: { A: 1 },
+        attackedPlayerIds: [],
+        attackedPlayerDays: {},
+        seerCheckResults: {},
+      },
+    },
+    'getSeatStatus({ id: "A", alive: false })',
+  );
+
+  assert.equal(status.type, "exiled");
+  assert.equal(status.label, "1日目 処刑");
+});

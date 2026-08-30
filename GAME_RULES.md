@@ -88,6 +88,8 @@
 - 詰み判定では、可能なすべての襲撃先と護衛先を検討する。
 - 連続護衛の設定は、夜の選択可否と追放直後の詰み判定の両方へ適用する。
 - 市民側が回避できる護衛先が1つでもある場合は、夜を待たずに人狼勝利とはしない。
+- 昼タイマーの分数を変更しても、過去の追放者と追放日は保持する。
+- 振り返りの円卓では、追放者を「N日目 処刑」と表示する。
 
 ## 影響範囲
 
@@ -99,6 +101,7 @@
 | 投票先の初期選択 | `getPreferredVoteTargetId()` | 投票入力、投票記録、投票者変更、復元 |
 | 昼タイマーのおすすめ | `getRecommendedTimerMinutes()` / `getDayTimerPlayerCount()` | 参加人数、生存者数、1〜9分プリセット、名簿の参加選択 |
 | 昼タイマーの自動短縮 | `getNextDayTimerMinutes()` | 分数選択、昼移行、手動モード、保存・同期・復元 |
+| 追放日の表示 | `setTimerMinutes()` / `getSeatStatus()` | 追放確定、昼タイマー変更、保存・同期・復元、勝利後の円卓 |
 | 画面スリープ防止 | `shouldHoldScreenWakeLock()` | タイマー開始・停止・終了、画面復帰、非対応端末 |
 | 夜遷移の演出待機時間 | `getNightTransitionMaxSeconds()` / `getNightTransitionDelaySeconds()` | 追放確定、夜移行、勝利画面遷移、フォールバック |
 | 死亡済み役職の待機 | `isBlockedRoleCountdownReady()` | ランダムカウント、OK表示、次役職への進行、復元 |

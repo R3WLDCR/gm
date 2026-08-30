@@ -21,7 +21,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.38.0";
+const APP_VERSION = "v1.38.1";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -919,7 +919,6 @@ function setTimerMinutes(minutes) {
   state.timerResetCount = 0;
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
-  state.exiledPlayerIds = [];
   rememberDayTimerMinutes(state.timerBase);
   renderAndStore();
 }
@@ -3246,8 +3245,9 @@ function isRoundTableDealMode() {
 }
 
 function getSeatStatus(player, actionRoleId = "") {
-  if (state.exiledPlayerIds.includes(player.id)) {
-    return { type: "exiled", label: `${state.exiledPlayerDays[player.id] || state.day || 1}日目 処刑` };
+  const exiledDay = Number(state.exiledPlayerDays[player.id]) || 0;
+  if (state.exiledPlayerIds.includes(player.id) || exiledDay > 0) {
+    return { type: "exiled", label: `${exiledDay || state.day || 1}日目 処刑` };
   }
   if (state.attackedPlayerIds.includes(player.id)) {
     return { type: "attacked", label: `${state.attackedPlayerDays[player.id] || state.day || 1}日目 襲撃` };
