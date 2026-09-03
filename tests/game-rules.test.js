@@ -956,3 +956,59 @@ test("ハンター道連れでてるてるが死亡した場合はてるてる�
   assert.equal(nightResult.ended, true);
   assert.equal(nightResult.winner, "てるてる陣営");
 });
+
+test("ハンターの道連れ選択待ちを保存データへ含める", () => {
+  const state = new Proxy(
+    {
+      showHunterShot: true,
+      hunterShotActorId: "H",
+      hunterShotSelectedPlayerId: "A",
+      hunterShotQueue: [{ actorId: "H2", context: "attack" }],
+      hunterShotContext: "exile",
+    },
+    { get: (target, property) => target[property] },
+  );
+  const payload = runFunctions(
+    ["getStatePayload"],
+    { state },
+    "getStatePayload({ includeUndoHistory: false, includeLogRestorePoints: false, includeMatchHistory: false })",
+  );
+
+  assert.equal(payload.showHunterShot, true);
+  assert.equal(payload.hunterShotActorId, "H");
+  assert.equal(payload.hunterShotSelectedPlayerId, "A");
+  assert.deepEqual(Array.from(payload.hunterShotQueue, (item) => ({ ...item })), [{ actorId: "H2", context: "attack" }]);
+  assert.equal(payload.hunterShotContext, "exile");
+});
+
+test("保存したハンター道連れ画面を同じ進行位置へ復元する", () => {
+  const players = [
+    { id: "H", alive: false },
+    { id: "A", alive: true },
+    { id: "H2", alive: false },
+  ];
+  const state = {};
+  runFunctions(
+    ["applySavedHunterShotState"],
+    {
+      state,
+      findPlayer: (id) => players.find((player) => player.id === id),
+    },
+    `applySavedHunterShotState(${JSON.stringify({
+      showHunterShot: true,
+      hunterShotActorId: "H",
+      hunterShotSelectedPlayerId: "A",
+      hunterShotQueue: [{ actorId: "H2", context: "attack" }],
+      hunterShotContext: "attack",
+    })})`,
+  );
+
+  assert.equal(state.showHunterShot, true);
+  assert.equal(state.hunterShotActorId, "H");
+  assert.equal(state.hunterShotSelectedPlayerId, "A");
+  assert.deepEqual(Array.from(state.hunterShotQueue, (item) => ({ ...item })), [{ actorId: "H2", context: "attack" }]);
+  assert.equal(state.hunterShotContext, "attack");
+  assert.equal(state.screen, "table");
+  assert.equal(state.phase, "night");
+  assert.equal(state.showVoteTable, false);
+});

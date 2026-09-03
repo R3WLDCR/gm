@@ -24,7 +24,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.40.0";
+const APP_VERSION = "v1.40.1";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -5377,6 +5377,11 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     attackResultPauseSeconds: state.attackResultPauseSeconds,
     attackResultRevealSeconds: state.attackResultRevealSeconds,
     attackResultOkSeconds: state.attackResultOkSeconds,
+    showHunterShot: state.showHunterShot,
+    hunterShotActorId: state.hunterShotActorId,
+    hunterShotSelectedPlayerId: state.hunterShotSelectedPlayerId,
+    hunterShotQueue: state.hunterShotQueue,
+    hunterShotContext: state.hunterShotContext,
     logs: state.logs,
     currentMatchId: state.currentMatchId,
     currentMatchStartedAt: state.currentMatchStartedAt,
@@ -5579,6 +5584,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.exiledPlayerDays = saved.exiledPlayerDays && typeof saved.exiledPlayerDays === "object" ? saved.exiledPlayerDays : {};
   state.attackedPlayerDays = saved.attackedPlayerDays && typeof saved.attackedPlayerDays === "object" ? saved.attackedPlayerDays : {};
   state.shotPlayerDays = saved.shotPlayerDays && typeof saved.shotPlayerDays === "object" ? saved.shotPlayerDays : {};
+  applySavedHunterShotState(saved);
   state.timerRunning = false;
   state.votes = saved.votes || {};
   state.voteRecords = Array.isArray(saved.voteRecords) ? saved.voteRecords : [];
@@ -5724,6 +5730,32 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     advanceActionRole({ logComplete: false });
     prepareActionIntroForCurrentRole();
   }
+}
+
+function applySavedHunterShotState(saved) {
+  state.showHunterShot = saved.showHunterShot === true;
+  state.hunterShotActorId = typeof saved.hunterShotActorId === "string" ? saved.hunterShotActorId : "";
+  state.hunterShotSelectedPlayerId = typeof saved.hunterShotSelectedPlayerId === "string" ? saved.hunterShotSelectedPlayerId : "";
+  state.hunterShotQueue = Array.isArray(saved.hunterShotQueue)
+    ? saved.hunterShotQueue
+        .filter((item) => item && typeof item.actorId === "string")
+        .map((item) => ({ actorId: item.actorId, context: item.context === "attack" ? "attack" : "exile" }))
+    : [];
+  state.hunterShotContext = saved.hunterShotContext === "attack" ? "attack" : "exile";
+
+  if (!state.showHunterShot || !findPlayer(state.hunterShotActorId)) {
+    state.showHunterShot = false;
+    state.hunterShotActorId = "";
+    state.hunterShotSelectedPlayerId = "";
+    state.hunterShotQueue = [];
+    return;
+  }
+
+  const selectedPlayer = findPlayer(state.hunterShotSelectedPlayerId);
+  if (!selectedPlayer?.alive) state.hunterShotSelectedPlayerId = "";
+  state.screen = "table";
+  state.phase = state.hunterShotContext === "attack" ? "night" : "vote";
+  state.showVoteTable = false;
 }
 
 function normalizePlayers(players) {
