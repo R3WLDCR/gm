@@ -58,9 +58,13 @@ test("占いと霊媒は人狼だけを人狼と判定する", () => {
   const functions = ["getDivinationResult", "getMediumResult"];
   assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "werewolf" })'), "人狼");
   assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "madman" })'), "市民");
+  assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "hunter" })'), "市民");
+  assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "madman_hunter" })'), "市民");
   assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "teruteru" })'), "市民");
   assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "werewolf" })'), "人狼");
   assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "madman" })'), "市民");
+  assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "hunter" })'), "市民");
+  assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "madman_hunter" })'), "市民");
   assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "teruteru" })'), "市民");
 });
 
@@ -92,7 +96,7 @@ test("連続護衛設定を追放直後の詰み判定にも適用する", () =>
     allowWerewolfSelfAttack: false,
     lastGuardedPlayerId: "A",
   };
-  const functions = ["getGameResultAfterHypotheticalDeath", "isForcedWerewolfWinNextNight"];
+  const functions = ["getGameResultAfterHypotheticalDeath", "isForcedWerewolfWinNextNight", "isHunterRole"];
   const forced = runFunctions(
     functions,
     { state: { ...baseState, allowConsecutiveGuard: false }, getLivingPlayers: () => livingPlayers },
@@ -775,7 +779,7 @@ test("てるてるが生存している夜は人狼確定勝利（詰み判定�
     lastGuardedPlayerId: "",
   };
   const isForced = runFunctions(
-    ["isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalDeath"],
+    ["isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalDeath", "isHunterRole"],
     {
       state,
       getLivingPlayers: () => livingPlayers,
@@ -804,4 +808,151 @@ test("配役ログでてるてるが複数人いる場合は名前がまとめ�
   );
 
   assert.deepEqual(Array.from(texts), ["人狼: プレイヤーC", "てるてる: プレイヤーA、プレイヤーB"]);
+});
+
+test("ハンターが追放されたとき勝敗が決まっていなければ道連れ発砲画面へ進む", () => {
+  const players = [
+    { id: "H", name: "ハンター", roleId: "hunter", alive: false },
+    { id: "W", name: "人狼", roleId: "werewolf", alive: true },
+    { id: "V1", name: "市民1", roleId: "villager", alive: true },
+    { id: "V2", name: "市民2", roleId: "villager", alive: true },
+  ];
+  const state = {
+    showHunterShot: false,
+    hunterShotActorId: "",
+    hunterShotSelectedPlayerId: "",
+    hunterShotQueue: [],
+    hunterShotContext: "exile",
+  };
+  runFunctions(
+    ["startHunterShotFlow", "processNextHunterShot", "getGameResult", "isHunterRole"],
+    {
+      state,
+      findPlayer: (id) => players.find((p) => p.id === id),
+      getActivePlayers: () => players,
+      getLivingPlayers: () => players.filter((p) => p.alive),
+      stopAllLiveTimers: () => {},
+      renderAndStore: () => {},
+    },
+    `startHunterShotFlow(${JSON.stringify(players[0])}, "exile")`,
+  );
+
+  assert.equal(state.showHunterShot, true);
+  assert.equal(state.hunterShotActorId, "H");
+});
+
+test("ハンター死亡によって勝敗が決まる場合は道連れ発砲を行わない", () => {
+  // 人狼1・ハンター1で、ハンターが追放/襲撃死すると人狼1>=市民側0で人狼勝利確定
+  const players = [
+    { id: "H", name: "ハンター", roleId: "hunter", alive: false },
+    { id: "W", name: "人狼", roleId: "werewolf", alive: true },
+  ];
+  const state = {
+    showHunterShot: false,
+    hunterShotActorId: "",
+    hunterShotSelectedPlayerId: "",
+    hunterShotQueue: [],
+  };
+  let finalizedWinner = "";
+  let nightTransitionStarted = false;
+  runFunctions(
+    ["startHunterShotFlow", "getGameResult", "isHunterRole"],
+    {
+      state,
+      findPlayer: (id) => players.find((p) => p.id === id),
+      getActivePlayers: () => players,
+      getLivingPlayers: () => players.filter((p) => p.alive),
+      startNightTransition: () => {
+        nightTransitionStarted = true;
+      },
+      finalizeGameWinner: (winner) => {
+        finalizedWinner = winner;
+      },
+    },
+    `startHunterShotFlow(${JSON.stringify(players[0])}, "exile")`,
+  );
+
+  assert.equal(state.showHunterShot, false);
+  assert.equal(nightTransitionStarted, true);
+});
+
+test("ハンター道連れで別のハンターが死亡した場合は連鎖して発砲する", () => {
+  const players = [
+    { id: "H1", name: "ハンター1", roleId: "hunter", alive: false },
+    { id: "H2", name: "ハンター2", roleId: "hunter", alive: true },
+    { id: "W", name: "人狼", roleId: "werewolf", alive: true },
+    { id: "V1", name: "市民1", roleId: "villager", alive: true },
+    { id: "V2", name: "市民2", roleId: "villager", alive: true },
+  ];
+  const state = {
+    day: 1,
+    showHunterShot: true,
+    hunterShotActorId: "H1",
+    hunterShotSelectedPlayerId: "H2",
+    hunterShotQueue: [],
+    hunterShotContext: "exile",
+    shotPlayerIds: [],
+    shotPlayerDays: {},
+  };
+  runFunctions(
+    ["confirmHunterShot", "processNextHunterShot", "getGameResult", "isHunterRole"],
+    {
+      state,
+      findPlayer: (id) => players.find((p) => p.id === id),
+      getActivePlayers: () => players,
+      getLivingPlayers: () => players.filter((p) => p.alive),
+      pushUndoSnapshot: () => {},
+      addLog: () => {},
+      stopAllLiveTimers: () => {},
+      renderAndStore: () => {},
+    },
+    "confirmHunterShot()",
+  );
+
+  // H2が死亡し、H2による次の発砲画面に進む
+  assert.equal(players.find((p) => p.id === "H2").alive, false);
+  assert.equal(state.showHunterShot, true);
+  assert.equal(state.hunterShotActorId, "H2");
+});
+
+test("ハンター道連れでてるてるが死亡した場合はてるてる陣営の勝利となる", () => {
+  const players = [
+    { id: "H", name: "ハンター", roleId: "hunter", alive: false },
+    { id: "T", name: "てるてる", roleId: "teruteru", alive: true },
+    { id: "W", name: "人狼", roleId: "werewolf", alive: true },
+    { id: "V", name: "市民", roleId: "villager", alive: true },
+  ];
+  const state = {
+    day: 1,
+    showHunterShot: true,
+    hunterShotActorId: "H",
+    hunterShotSelectedPlayerId: "T",
+    hunterShotQueue: [],
+    hunterShotContext: "exile",
+    shotPlayerIds: [],
+    shotPlayerDays: {},
+  };
+  let nightResult = null;
+  runFunctions(
+    ["confirmHunterShot", "processNextHunterShot", "getGameResult", "isHunterRole"],
+    {
+      state,
+      findPlayer: (id) => players.find((p) => p.id === id),
+      getActivePlayers: () => players,
+      getLivingPlayers: () => players.filter((p) => p.alive),
+      pushUndoSnapshot: () => {},
+      addLog: () => {},
+      stopAllLiveTimers: () => {},
+      startNightTransition: (res) => {
+        nightResult = res;
+      },
+      renderAndStore: () => {},
+    },
+    "confirmHunterShot()",
+  );
+
+  assert.equal(state.showHunterShot, false);
+  assert.ok(nightResult);
+  assert.equal(nightResult.ended, true);
+  assert.equal(nightResult.winner, "てるてる陣営");
 });

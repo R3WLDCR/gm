@@ -18,7 +18,7 @@
         <div class="header-identity">
           <div class="title-row">
             <p class="eyebrow">Werewolf Game Master</p>
-            <span id="appVersionBadge" class="version-badge">v1.39.0</span>
+            <span id="appVersionBadge" class="version-badge">v1.40.0</span>
             <span id="progressBadge" class="progress-badge">準備中</span>
           </div>
           <div id="headerMatchInfo" class="header-match-info" hidden>
@@ -135,6 +135,8 @@
               <label><input data-role-rule="seer" type="checkbox" checked />預言者</label>
               <label><input data-role-rule="medium" type="checkbox" checked />霊媒師</label>
               <label><input data-role-rule="knight" type="checkbox" checked />ボディガード</label>
+              <label><input data-role-rule="hunter" type="checkbox" checked />ハンター</label>
+              <label><input data-role-rule="madman_hunter" type="checkbox" checked />狂人ハンター</label>
               <label><input data-role-rule="teruteru" type="checkbox" checked />てるてる</label>
             </div>
             <div class="seer-white-rule-options" aria-label="預言者の初日占い">
@@ -323,6 +325,14 @@
               <strong id="attackResultName">犠牲者なし</strong>
               <span id="attackResultMessage">本日襲撃されたのは</span>
               <button id="attackResultOkBtn" class="primary-button attack-result-ok-button" type="button">OK</button>
+            </div>
+          </div>
+          <div id="hunterShotView" class="hunter-shot-view" hidden>
+            <div class="hunter-shot-content">
+              <p id="hunterShotLead" class="hunter-shot-lead">ハンターの道連れ</p>
+              <strong id="hunterShotTitle" class="hunter-shot-title">道連れにする対象を選択</strong>
+              <div id="hunterShotTable" class="round-table hunter-shot-table" aria-live="polite"></div>
+              <button id="hunterShotConfirmBtn" class="primary-button hunter-shot-confirm-button" type="button" disabled>道連れ確定</button>
             </div>
           </div>
 

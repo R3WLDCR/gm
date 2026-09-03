@@ -1458,6 +1458,13 @@ textarea:focus {
     #ede9fe;
 }
 
+.round-seat.status-shot {
+  border-color: #334155;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)),
+    #f1f5f9;
+}
+
 .round-seat.status-dead {
   border-color: #8b9490;
   background: #ecefed;
@@ -1520,6 +1527,16 @@ textarea:focus {
 .round-seat.role-color-knight {
   border-color: #ea580c;
   background: #ffedd5;
+}
+
+.round-seat.role-color-hunter {
+  border-color: #166534;
+  background: #dcfce7;
+}
+
+.round-seat.role-color-madman_hunter {
+  border-color: #b45309;
+  background: #fef3c7;
 }
 
 .round-seat.role-color-teruteru {
@@ -3370,6 +3387,12 @@ body.attack-result-fullscreen-view .app-shell {
   padding: 0;
 }
 
+body.hunter-shot-fullscreen-view .app-shell {
+  width: 100%;
+  min-height: 100svh;
+  padding: 0;
+}
+
 body.timer-fullscreen-view .topbar,
 body.timer-fullscreen-view .screen-tabs,
 body.timer-fullscreen-view .victory-banner,
@@ -3420,6 +3443,22 @@ body.attack-result-fullscreen-view .vote-round-table,
 body.attack-result-fullscreen-view .plea-timer-view,
 body.attack-result-fullscreen-view .revote-plea-timer-view,
 body.attack-result-fullscreen-view .night-transition-view {
+  display: none;
+}
+
+body.hunter-shot-fullscreen-view .topbar,
+body.hunter-shot-fullscreen-view .screen-tabs,
+body.hunter-shot-fullscreen-view .victory-banner,
+body.hunter-shot-fullscreen-view .table-heading,
+body.hunter-shot-fullscreen-view .phase-visual,
+body.hunter-shot-fullscreen-view .timer-strip,
+body.hunter-shot-fullscreen-view .vote-table-actions,
+body.hunter-shot-fullscreen-view .vote-control-panel,
+body.hunter-shot-fullscreen-view .vote-round-table,
+body.hunter-shot-fullscreen-view .plea-timer-view,
+body.hunter-shot-fullscreen-view .revote-plea-timer-view,
+body.hunter-shot-fullscreen-view .night-transition-view,
+body.hunter-shot-fullscreen-view .attack-result-view {
   display: none;
 }
 
@@ -3525,6 +3564,85 @@ body.attack-result-fullscreen-view .attack-result-view {
   width: 100%;
   min-height: 100svh;
   border-radius: 0;
+}
+
+body.hunter-shot-fullscreen-view .table-panel.active {
+  display: grid;
+  place-items: stretch;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  overflow: hidden;
+}
+
+body.hunter-shot-fullscreen-view .hunter-shot-view {
+  width: 100%;
+  min-height: 100svh;
+  border-radius: 0;
+}
+
+.hunter-shot-view {
+  position: relative;
+  min-height: 680px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(22, 101, 52, 0.25), transparent 45%),
+    linear-gradient(180deg, #052e16 0%, #022c22 55%, #064e3b 100%);
+  color: #f0fdf4;
+}
+
+.hunter-shot-content {
+  display: grid;
+  place-items: center;
+  gap: 1.2rem;
+  width: min(100%, 720px);
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+
+.hunter-shot-lead {
+  margin: 0;
+  font-size: clamp(1.2rem, 3vw, 1.8rem);
+  font-weight: 700;
+  color: #86efac;
+}
+
+.hunter-shot-title {
+  font-size: clamp(1.6rem, 4.5vw, 2.4rem);
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.hunter-shot-table {
+  width: 100%;
+  min-height: 220px;
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1rem;
+}
+
+.hunter-shot-table .round-seat {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  cursor: pointer;
+}
+
+.hunter-shot-confirm-button {
+  min-width: 180px;
+  min-height: 52px;
+  font-size: 1.2rem;
+  font-weight: 900;
+  border-radius: 8px;
 }
 
 body.plea-fullscreen-view .plea-timer-display {

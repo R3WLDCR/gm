@@ -4,13 +4,15 @@ const DEFAULT_ROLES = [
   { id: "seer", name: "預言者", team: "市民陣営", count: 1 },
   { id: "medium", name: "霊媒師", team: "市民陣営", count: 1 },
   { id: "knight", name: "ボディガード", team: "市民陣営", count: 1 },
+  { id: "hunter", name: "ハンター", team: "市民陣営", count: 0 },
+  { id: "madman_hunter", name: "狂人ハンター", team: "人狼陣営", count: 0 },
   { id: "teruteru", name: "てるてる", team: "第3陣営", count: 0 },
   { id: "villager", name: "市民", team: "市民陣営", count: 0 },
 ];
 
-const RULE_SELECTABLE_ROLE_IDS = ["werewolf", "madman", "seer", "medium", "knight", "teruteru"];
-const DEFAULT_ENABLED_ROLE_IDS = ["werewolf", "madman", "seer", "medium", "knight", "teruteru", "villager"];
-const STANDARD_ROLE_ORDER = ["werewolf", "seer", "medium", "knight", "madman", "teruteru"];
+const RULE_SELECTABLE_ROLE_IDS = ["werewolf", "madman", "seer", "medium", "knight", "hunter", "madman_hunter", "teruteru"];
+const DEFAULT_ENABLED_ROLE_IDS = ["werewolf", "madman", "seer", "medium", "knight", "hunter", "madman_hunter", "teruteru", "villager"];
+const STANDARD_ROLE_ORDER = ["werewolf", "seer", "medium", "knight", "hunter", "madman", "madman_hunter", "teruteru"];
 const ACTION_ROLE_ORDER = ["medium", "knight", "seer", "werewolf"];
 const ACTION_ROLE_LABELS = {
   medium: "霊媒師",
@@ -22,7 +24,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.39.0";
+const APP_VERSION = "v1.40.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -105,6 +107,13 @@ const state = {
   attackResultPauseSeconds: ATTACK_RESULT_PAUSE_SECONDS,
   attackResultRevealSeconds: ATTACK_RESULT_REVEAL_SECONDS,
   attackResultOkSeconds: ATTACK_RESULT_OK_DELAY_SECONDS,
+  showHunterShot: false,
+  hunterShotActorId: "",
+  hunterShotSelectedPlayerId: "",
+  hunterShotQueue: [],
+  hunterShotContext: "exile",
+  shotPlayerIds: [],
+  shotPlayerDays: {},
   logs: [],
   matchHistory: [],
   currentMatchId: "",
@@ -314,6 +323,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     "victoryBackBtn",
     "victoryReviewActions",
     "prepareNextMatchBtn",
+    "hunterShotView",
+    "hunterShotTitle",
+    "hunterShotLead",
+    "hunterShotTable",
+    "hunterShotConfirmBtn",
   ].forEach((id) => {
     els[id] = document.getElementById(id);
   });
@@ -432,6 +446,7 @@ function bindEvents() {
   els.copyLogBtn.addEventListener("click", copyLog);
   els.victoryBackBtn?.addEventListener("click", dismissVictoryFullscreen);
   els.prepareNextMatchBtn?.addEventListener("click", prepareNextMatch);
+  els.hunterShotConfirmBtn?.addEventListener("click", confirmHunterShot);
   els.progressStartBtn.addEventListener("click", startProgress);
   els.startRoleDealBtn.addEventListener("click", startRoleDeal);
   els.shuffleSeatsBtn.addEventListener("click", shuffleSeats);
@@ -505,8 +520,14 @@ function startRoundTable() {
   state.seerCheckResults = {};
   state.exiledPlayerIds = [];
   state.attackedPlayerIds = [];
+  state.shotPlayerIds = [];
   state.exiledPlayerDays = {};
   state.attackedPlayerDays = {};
+  state.shotPlayerDays = {};
+  state.showHunterShot = false;
+  state.hunterShotActorId = "";
+  state.hunterShotSelectedPlayerId = "";
+  state.hunterShotQueue = [];
   state.actionComplete = false;
   state.actionIntroRoleId = "";
   state.showVoteTable = false;
@@ -2156,13 +2177,32 @@ function resetGame() {
   state.actionGateBaseSeconds = 0;
   state.actionBlockedRoleId = "";
   state.actionBlockedSeconds = 0;
+  state.roleDealQueue = [];
+  state.roleDealIndex = 0;
+  state.roleDealSelectedPlayerIds = [];
+  state.seerBlinkPlayerId = "";
+  state.seerCheckResults = {};
+  state.actionRoleIndex = ACTION_ROLE_ORDER.length;
+  state.actionComplete = false;
+  state.actionIntroRoleId = "";
+  state.actionGateRoleId = "";
+  state.actionGateSeconds = 0;
+  state.actionGateBaseSeconds = 0;
+  state.actionBlockedRoleId = "";
+  state.actionBlockedSeconds = 0;
   state.guardedPlayerId = "";
   state.lastGuardedPlayerId = "";
   state.nightStartGuardedPlayerId = "";
   state.exiledPlayerIds = [];
   state.attackedPlayerIds = [];
+  state.shotPlayerIds = [];
   state.exiledPlayerDays = {};
   state.attackedPlayerDays = {};
+  state.shotPlayerDays = {};
+  state.showHunterShot = false;
+  state.hunterShotActorId = "";
+  state.hunterShotSelectedPlayerId = "";
+  state.hunterShotQueue = [];
   state.playerSortMode = "manual";
   state.participationCountedForDeal = false;
   clearGameWinner();
@@ -2186,8 +2226,14 @@ function resetToFirstNight() {
   state.votes = {};
   state.exiledPlayerIds = [];
   state.attackedPlayerIds = [];
+  state.shotPlayerIds = [];
   state.exiledPlayerDays = {};
   state.attackedPlayerDays = {};
+  state.shotPlayerDays = {};
+  state.showHunterShot = false;
+  state.hunterShotActorId = "";
+  state.hunterShotSelectedPlayerId = "";
+  state.hunterShotQueue = [];
   state.showVoteTable = false;
   state.voteSelectedPlayerId = "";
   state.timerEndRevealSeconds = 0;
@@ -2232,6 +2278,7 @@ function render() {
   renderVoteRoundTable();
   renderNightTransitionView();
   renderAttackResultView();
+  renderHunterShotView();
   renderActionRoundTable();
   renderVoteControls();
   renderSelectors();
@@ -2273,6 +2320,7 @@ function renderParticipantViewMode() {
   document.body.classList.toggle("revote-plea-fullscreen-view", isRevotePleaFullscreenView());
   document.body.classList.toggle("night-transition-fullscreen-view", isNightTransitionFullscreenView());
   document.body.classList.toggle("attack-result-fullscreen-view", isAttackResultFullscreenView());
+  document.body.classList.toggle("hunter-shot-fullscreen-view", isHunterShotFullscreenView());
   const victoryFullscreen = isVictoryFullscreenView();
   document.body.classList.toggle("victory-fullscreen-view", victoryFullscreen);
   document.body.classList.toggle("werewolf-victory-view", victoryFullscreen && state.gameWinner === "人狼陣営");
@@ -2313,6 +2361,10 @@ function isNightTransitionFullscreenView() {
 
 function isAttackResultFullscreenView() {
   return state.screen === "table" && state.showAttackResult;
+}
+
+function isHunterShotFullscreenView() {
+  return state.screen === "table" && state.showHunterShot && Boolean(state.hunterShotActorId);
 }
 
 function renderVictoryBanner() {
@@ -2870,6 +2922,183 @@ function renderAttackResultView() {
   }
 }
 
+function isHunterRole(roleId) {
+  return roleId === "hunter" || roleId === "madman_hunter";
+}
+
+function startHunterShotFlow(hunterPlayer, context) {
+  const currentResult = getGameResult();
+  if (currentResult.ended) {
+    if (context === "exile") {
+      startNightTransition(currentResult);
+    } else {
+      finalizeGameWinner(currentResult.winner);
+    }
+    return;
+  }
+
+  const livingPlayers = getLivingPlayers();
+  if (livingPlayers.length === 0) {
+    if (context === "exile") {
+      startNightTransition(getGameResultAfterExile());
+    } else {
+      enterDayAfterNight();
+    }
+    return;
+  }
+
+  state.hunterShotQueue = [{ actorId: hunterPlayer.id, context }];
+  processNextHunterShot();
+}
+
+function processNextHunterShot() {
+  if (!state.hunterShotQueue.length) {
+    state.showHunterShot = false;
+    state.hunterShotActorId = "";
+    state.hunterShotSelectedPlayerId = "";
+    const context = state.hunterShotContext || "exile";
+    if (context === "exile") {
+      const result = getGameResultAfterExile();
+      startNightTransition(result);
+    } else {
+      const result = getGameResult();
+      if (result.ended) {
+        finalizeGameWinner(result.winner);
+      } else {
+        enterDayAfterNight();
+      }
+    }
+    renderAndStore();
+    return;
+  }
+
+  const currentResult = getGameResult();
+  if (currentResult.ended) {
+    state.hunterShotQueue = [];
+    state.showHunterShot = false;
+    state.hunterShotActorId = "";
+    state.hunterShotSelectedPlayerId = "";
+    const context = state.hunterShotContext || "exile";
+    if (context === "exile") {
+      startNightTransition(currentResult);
+    } else {
+      finalizeGameWinner(currentResult.winner);
+    }
+    renderAndStore();
+    return;
+  }
+
+  const livingPlayers = getLivingPlayers();
+  if (livingPlayers.length === 0) {
+    state.hunterShotQueue = [];
+    state.showHunterShot = false;
+    state.hunterShotActorId = "";
+    state.hunterShotSelectedPlayerId = "";
+    const context = state.hunterShotContext || "exile";
+    if (context === "exile") {
+      startNightTransition(getGameResultAfterExile());
+    } else {
+      enterDayAfterNight();
+    }
+    renderAndStore();
+    return;
+  }
+
+  const nextShot = state.hunterShotQueue.shift();
+  state.showHunterShot = true;
+  state.hunterShotActorId = nextShot.actorId;
+  state.hunterShotContext = nextShot.context;
+  state.hunterShotSelectedPlayerId = "";
+  stopAllLiveTimers();
+  renderAndStore();
+}
+
+function selectHunterShotTarget(playerId) {
+  const player = findPlayer(playerId);
+  if (!player || !player.alive) return;
+  state.hunterShotSelectedPlayerId = state.hunterShotSelectedPlayerId === playerId ? "" : playerId;
+  renderAndStore();
+}
+
+function confirmHunterShot() {
+  if (!state.hunterShotSelectedPlayerId) return;
+  const target = findPlayer(state.hunterShotSelectedPlayerId);
+  if (!target || !target.alive) return;
+
+  pushUndoSnapshot("ハンター道連れ");
+  target.alive = false;
+  if (!state.shotPlayerIds.includes(target.id)) {
+    state.shotPlayerIds.push(target.id);
+  }
+  state.shotPlayerDays[target.id] = state.day || 1;
+
+  const actor = findPlayer(state.hunterShotActorId);
+  const roleName = actor?.roleId === "madman_hunter" ? "狂人ハンター" : "ハンター";
+  const actorName = actor ? `${actor.name}` : "ハンター";
+  addLog(`${roleName}（${actorName}）の道連れ: ${target.name}`);
+
+  if (target.roleId === "teruteru") {
+    state.hunterShotQueue = [];
+    state.showHunterShot = false;
+    state.hunterShotActorId = "";
+    state.hunterShotSelectedPlayerId = "";
+    const result = { ended: true, winner: "てるてる陣営" };
+    if (state.hunterShotContext === "exile") {
+      startNightTransition(result);
+    } else {
+      finalizeGameWinner(result.winner);
+    }
+    renderAndStore();
+    return;
+  }
+
+  if (isHunterRole(target.roleId)) {
+    state.hunterShotQueue.push({ actorId: target.id, context: state.hunterShotContext });
+  }
+
+  processNextHunterShot();
+}
+
+function renderHunterShotView() {
+  if (!els.hunterShotView) return;
+  const visible = Boolean(state.screen === "table" && state.showHunterShot && state.hunterShotActorId);
+  els.hunterShotView.hidden = !visible;
+  if (!visible) return;
+
+  const actor = findPlayer(state.hunterShotActorId);
+  const roleName = actor?.roleId === "madman_hunter" ? "狂人ハンター" : "ハンター";
+  if (els.hunterShotLead) {
+    els.hunterShotLead.textContent = `${roleName}（${actor ? actor.name : ""}）の道連れ`;
+  }
+  if (els.hunterShotTitle) {
+    els.hunterShotTitle.textContent = "道連れにする対象を選択";
+  }
+
+  if (els.hunterShotConfirmBtn) {
+    els.hunterShotConfirmBtn.disabled = !state.hunterShotSelectedPlayerId;
+  }
+
+  if (!els.hunterShotTable) return;
+  els.hunterShotTable.innerHTML = "";
+
+  const livingPlayers = getLivingPlayers();
+  livingPlayers.forEach((player) => {
+    const seat = document.createElement("button");
+    seat.type = "button";
+    seat.className = `round-seat ${getRoleColorClass(player.roleId)}`;
+    if (state.hunterShotSelectedPlayerId === player.id) {
+      seat.classList.add("selected", "vote-selected");
+    }
+    seat.addEventListener("click", () => selectHunterShotTarget(player.id));
+
+    const name = document.createElement("strong");
+    name.textContent = player.name;
+    seat.appendChild(name);
+
+    els.hunterShotTable.appendChild(seat);
+  });
+}
+
 function renderPleaTimerView() {
   if (!els.pleaTimerView) return;
   els.pleaTimerView.hidden = !state.showPleaTimer;
@@ -3258,6 +3487,10 @@ function getSeatStatus(player, actionRoleId = "") {
   if (state.attackedPlayerIds.includes(player.id)) {
     return { type: "attacked", label: `${state.attackedPlayerDays[player.id] || state.day || 1}日目 襲撃` };
   }
+  const shotDay = Number(state.shotPlayerDays?.[player.id]) || 0;
+  if (state.shotPlayerIds?.includes(player.id) || shotDay > 0) {
+    return { type: "shot", label: `${shotDay || state.day || 1}日目 銃殺` };
+  }
   if (!player.alive) return { type: "dead", label: "処刑" };
   if (actionRoleId === "seer" && state.seerCheckResults[player.id]) {
     return {
@@ -3363,6 +3596,14 @@ function confirmSelectedPlayerExile() {
   if (player) player.alive = false;
   addLog(player ? `${player.name} を追放` : "追放");
   state.voteSelectedPlayerId = "";
+
+  if (player && isHunterRole(player.roleId)) {
+    startHunterShotFlow(player, "exile");
+    markLatestLogRestorable();
+    renderAndStore();
+    return;
+  }
+
   const result = getGameResultAfterExile();
   startNightTransition(result);
   markLatestLogRestorable();
@@ -3680,11 +3921,21 @@ function completeAttackResult() {
   if (state.attackResultStage !== ATTACK_RESULT_STAGE_READY) return;
   if (state.attackResultOkSeconds > 0) return;
   const winner = state.attackResultWinner;
+  const attackedTargetId = state.attackResultTargetId;
+  const attackSucceeded = state.attackResultSucceeded;
   resetAttackResultState();
   if (winner) {
     finalizeGameWinner(winner);
     renderAndStore();
     return;
+  }
+  if (attackSucceeded && attackedTargetId) {
+    const attackedPlayer = findPlayer(attackedTargetId);
+    if (attackedPlayer && isHunterRole(attackedPlayer.roleId)) {
+      startHunterShotFlow(attackedPlayer, "attack");
+      renderAndStore();
+      return;
+    }
   }
   enterDayAfterNight();
   renderAndStore();
@@ -3875,6 +4126,9 @@ function getGameResultAfterHypotheticalDeath(livingPlayers, playerId) {
   if (victim?.roleId === "teruteru") {
     return { ended: true, winner: "てるてる陣営" };
   }
+  if (victim && isHunterRole(victim.roleId)) {
+    return { ended: false, winner: "" };
+  }
   const survivors = livingPlayers.filter((player) => player.id !== playerId);
   const werewolfCount = survivors.filter((player) => player.roleId === "werewolf").length;
   const villageCount = survivors.length - werewolfCount;
@@ -3946,8 +4200,14 @@ function prepareNextMatch() {
   state.voteSelectedPlayerId = "";
   state.exiledPlayerIds = [];
   state.attackedPlayerIds = [];
+  state.shotPlayerIds = [];
   state.exiledPlayerDays = {};
   state.attackedPlayerDays = {};
+  state.shotPlayerDays = {};
+  state.showHunterShot = false;
+  state.hunterShotActorId = "";
+  state.hunterShotSelectedPlayerId = "";
+  state.hunterShotQueue = [];
   state.roleDealQueue = [];
   state.roleDealIndex = 0;
   state.roleDealSelectedPlayerIds = [];
@@ -5086,8 +5346,10 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     pleaRunning: state.pleaRunning,
     exiledPlayerIds: state.exiledPlayerIds,
     attackedPlayerIds: state.attackedPlayerIds,
+    shotPlayerIds: state.shotPlayerIds,
     exiledPlayerDays: state.exiledPlayerDays,
     attackedPlayerDays: state.attackedPlayerDays,
+    shotPlayerDays: state.shotPlayerDays,
     votes: state.votes,
     voteRecords: state.voteRecords,
     voteVoterId: state.voteVoterId,
@@ -5313,8 +5575,10 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   }
   state.exiledPlayerIds = saved.exiledPlayerIds || [];
   state.attackedPlayerIds = saved.attackedPlayerIds || [];
+  state.shotPlayerIds = saved.shotPlayerIds || [];
   state.exiledPlayerDays = saved.exiledPlayerDays && typeof saved.exiledPlayerDays === "object" ? saved.exiledPlayerDays : {};
   state.attackedPlayerDays = saved.attackedPlayerDays && typeof saved.attackedPlayerDays === "object" ? saved.attackedPlayerDays : {};
+  state.shotPlayerDays = saved.shotPlayerDays && typeof saved.shotPlayerDays === "object" ? saved.shotPlayerDays : {};
   state.timerRunning = false;
   state.votes = saved.votes || {};
   state.voteRecords = Array.isArray(saved.voteRecords) ? saved.voteRecords : [];
