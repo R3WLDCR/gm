@@ -335,6 +335,15 @@ h2 {
   color: white;
 }
 
+.victory-banner.victory-teruteru {
+  border-color: rgba(2, 132, 199, 0.45);
+  background:
+    radial-gradient(circle at 36% 45%, rgba(186, 230, 253, 0.5), transparent 18rem),
+    linear-gradient(135deg, rgba(224, 242, 254, 0.98), rgba(240, 249, 255, 0.96)),
+    #e0f2fe;
+  color: #0c4a6e;
+}
+
 .victory-banner[hidden] {
   display: none;
 }
@@ -1513,6 +1522,11 @@ textarea:focus {
   background: #ffedd5;
 }
 
+.round-seat.role-color-teruteru {
+  border-color: #0284c7;
+  background: #e0f2fe;
+}
+
 .round-seat.role-color-villager {
   border-color: #2563eb;
   background: #dbeafe;
@@ -2291,6 +2305,14 @@ textarea:focus {
     radial-gradient(circle at 22% 22%, rgba(255, 255, 255, 0.42), transparent 24%),
     linear-gradient(180deg, #dbeafe 0%, #fef3c7 58%, #f8fafc 100%);
   color: #1e293b;
+}
+
+.night-transition-view.night-transition-teruteru-victory {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(56, 189, 248, 0.28), transparent 30%),
+    radial-gradient(circle at 22% 22%, rgba(255, 255, 255, 0.42), transparent 24%),
+    linear-gradient(180deg, #e0f2fe 0%, #bae6fd 58%, #f0f9ff 100%);
+  color: #0c4a6e;
 }
 
 .night-transition-view.night-transition-waiting {

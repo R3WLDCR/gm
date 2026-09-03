@@ -58,8 +58,10 @@ test("占いと霊媒は人狼だけを人狼と判定する", () => {
   const functions = ["getDivinationResult", "getMediumResult"];
   assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "werewolf" })'), "人狼");
   assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "madman" })'), "市民");
+  assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "teruteru" })'), "市民");
   assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "werewolf" })'), "人狼");
   assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "madman" })'), "市民");
+  assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "teruteru" })'), "市民");
 });
 
 test("連続護衛設定が前夜と同じ対象の選択可否を切り替える", () => {
@@ -665,4 +667,141 @@ test("追放者IDが欠けた保存データでも追放日を円卓に表示す
 
   assert.equal(status.type, "exiled");
   assert.equal(status.label, "1日目 処刑");
+});
+
+test("てるてるが追放されたらてるてる陣営の勝利となる", () => {
+  const players = [
+    { id: "W", roleId: "werewolf", alive: true },
+    { id: "T", roleId: "teruteru", alive: false },
+    { id: "V", roleId: "villager", alive: true },
+  ];
+  const state = {
+    exiledPlayerIds: ["T"],
+    allowWerewolfSkipAttack: false,
+    allowWerewolfSelfAttack: false,
+  };
+  const result = runFunctions(
+    ["getGameResultAfterExile", "getGameResult", "isForcedWerewolfWinNextNight"],
+    {
+      state,
+      findPlayer: (id) => players.find((p) => p.id === id),
+      getActivePlayers: () => players,
+      getLivingPlayers: () => players.filter((p) => p.alive),
+    },
+    "getGameResultAfterExile()",
+  );
+
+  assert.equal(result.ended, true);
+  assert.equal(result.winner, "てるてる陣営");
+});
+
+test("てるてるが襲撃されて死亡したらてるてる陣営の勝利となる", () => {
+  const deadPlayers = [
+    { id: "W", roleId: "werewolf", alive: true },
+    { id: "T", roleId: "teruteru", alive: false },
+    { id: "V", roleId: "villager", alive: true },
+  ];
+  let shownScreen = null;
+  const finishNight = (players, attackResult) =>
+    runFunctions(
+      ["finishNightActions", "getGameResult"],
+      {
+        findPlayer: (id) => players.find((p) => p.id === id),
+        getActivePlayers: () => players,
+        showAttackResultScreen: (attack, gameResult) => {
+          shownScreen = { attack, gameResult };
+        },
+        finalizeGameWinner: () => {},
+        enterDayAfterNight: () => {},
+        renderAndStore: () => {},
+      },
+      `finishNightActions({ attackResult: ${JSON.stringify(attackResult)} })`,
+    );
+
+  finishNight(deadPlayers, { targetId: "T", succeeded: true });
+  assert.ok(shownScreen);
+  assert.equal(shownScreen.gameResult.ended, true);
+  assert.equal(shownScreen.gameResult.winner, "てるてる陣営");
+
+  // 護衛成功等で襲撃失敗した（全員生存している）場合はてるてる勝利にならない
+  const livingPlayers = [
+    { id: "W", roleId: "werewolf", alive: true },
+    { id: "T", roleId: "teruteru", alive: true },
+    { id: "V", roleId: "villager", alive: true },
+  ];
+  shownScreen = null;
+  finishNight(livingPlayers, { targetId: "T", succeeded: false });
+  assert.ok(shownScreen);
+  assert.equal(shownScreen.gameResult.ended, false);
+});
+
+test("てるてるが生存している場合は通常の勝敗判定が適用される", () => {
+  // 人狼全滅時は市民陣営勝利
+  const villageWinPlayers = [
+    { id: "T", roleId: "teruteru", alive: true },
+    { id: "V", roleId: "villager", alive: true },
+  ];
+  const resultVillage = runFunctions(
+    ["getGameResult"],
+    { getActivePlayers: () => villageWinPlayers },
+    "getGameResult()",
+  );
+  assert.equal(resultVillage.ended, true);
+  assert.equal(resultVillage.winner, "市民陣営");
+
+  // 人狼数 >= 人狼以外（市民＋てるてる）のときは人狼陣営勝利
+  const werewolfWinPlayers = [
+    { id: "W", roleId: "werewolf", alive: true },
+    { id: "T", roleId: "teruteru", alive: true },
+  ];
+  const resultWerewolf = runFunctions(
+    ["getGameResult"],
+    { getActivePlayers: () => werewolfWinPlayers },
+    "getGameResult()",
+  );
+  assert.equal(resultWerewolf.ended, true);
+  assert.equal(resultWerewolf.winner, "人狼陣営");
+});
+
+test("てるてるが生存している夜は人狼確定勝利（詰み判定）とならない", () => {
+  const livingPlayers = [
+    { id: "W", roleId: "werewolf", alive: true },
+    { id: "T", roleId: "teruteru", alive: true },
+    { id: "V", roleId: "villager", alive: true },
+  ];
+  const state = {
+    allowWerewolfSkipAttack: false,
+    allowWerewolfSelfAttack: false,
+    lastGuardedPlayerId: "",
+  };
+  const isForced = runFunctions(
+    ["isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalDeath"],
+    {
+      state,
+      getLivingPlayers: () => livingPlayers,
+    },
+    "isForcedWerewolfWinNextNight()",
+  );
+
+  // てるてるを襲撃するとてるてる勝利になるため、人狼の確定勝ちにはならない
+  assert.equal(isForced, false);
+});
+
+test("配役ログでてるてるが複数人いる場合は名前がまとめられる", () => {
+  const players = [
+    { id: "1", name: "プレイヤーA", roleId: "teruteru" },
+    { id: "2", name: "プレイヤーB", roleId: "teruteru" },
+    { id: "3", name: "プレイヤーC", roleId: "werewolf" },
+  ];
+  const roles = [
+    { id: "werewolf", name: "人狼" },
+    { id: "teruteru", name: "てるてる" },
+  ];
+  const texts = runFunctions(
+    ["getRoleAssignmentLogTexts"],
+    {},
+    `getRoleAssignmentLogTexts(${JSON.stringify(players)}, ${JSON.stringify(roles)})`,
+  );
+
+  assert.deepEqual(Array.from(texts), ["人狼: プレイヤーC", "てるてる: プレイヤーA、プレイヤーB"]);
 });

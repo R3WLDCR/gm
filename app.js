@@ -4,12 +4,13 @@ const DEFAULT_ROLES = [
   { id: "seer", name: "預言者", team: "市民陣営", count: 1 },
   { id: "medium", name: "霊媒師", team: "市民陣営", count: 1 },
   { id: "knight", name: "ボディガード", team: "市民陣営", count: 1 },
+  { id: "teruteru", name: "てるてる", team: "第3陣営", count: 0 },
   { id: "villager", name: "市民", team: "市民陣営", count: 0 },
 ];
 
-const RULE_SELECTABLE_ROLE_IDS = ["werewolf", "madman", "seer", "medium", "knight"];
-const DEFAULT_ENABLED_ROLE_IDS = ["werewolf", "madman", "seer", "medium", "knight", "villager"];
-const STANDARD_ROLE_ORDER = ["werewolf", "seer", "medium", "knight", "madman"];
+const RULE_SELECTABLE_ROLE_IDS = ["werewolf", "madman", "seer", "medium", "knight", "teruteru"];
+const DEFAULT_ENABLED_ROLE_IDS = ["werewolf", "madman", "seer", "medium", "knight", "teruteru", "villager"];
+const STANDARD_ROLE_ORDER = ["werewolf", "seer", "medium", "knight", "madman", "teruteru"];
 const ACTION_ROLE_ORDER = ["medium", "knight", "seer", "werewolf"];
 const ACTION_ROLE_LABELS = {
   medium: "霊媒師",
@@ -21,7 +22,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.38.1";
+const APP_VERSION = "v1.39.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -2276,6 +2277,7 @@ function renderParticipantViewMode() {
   document.body.classList.toggle("victory-fullscreen-view", victoryFullscreen);
   document.body.classList.toggle("werewolf-victory-view", victoryFullscreen && state.gameWinner === "人狼陣営");
   document.body.classList.toggle("village-victory-view", victoryFullscreen && state.gameWinner === "市民陣営");
+  document.body.classList.toggle("teruteru-victory-view", victoryFullscreen && (state.gameWinner === "てるてる陣営" || state.gameWinner === "てるてる"));
 }
 
 function isVictoryFullscreenView() {
@@ -2319,6 +2321,7 @@ function renderVictoryBanner() {
   els.victoryBanner?.toggleAttribute("hidden", !visible);
   els.victoryBanner?.classList.toggle("victory-werewolf", visible && state.gameWinner === "人狼陣営");
   els.victoryBanner?.classList.toggle("victory-village", visible && state.gameWinner === "市民陣営");
+  els.victoryBanner?.classList.toggle("victory-teruteru", visible && (state.gameWinner === "てるてる陣営" || state.gameWinner === "てるてる"));
   els.victoryBanner?.classList.toggle("victory-reveal-announcement", visible && revealStage === "announcement");
   els.victoryBanner?.classList.toggle("victory-reveal-prompt", visible && revealStage === "prompt");
   els.victoryBanner?.classList.toggle("victory-reveal-winner", visible && revealStage === "winner");
@@ -2358,12 +2361,14 @@ function scheduleVictoryBackButton(ended) {
 function getVictoryTitle(winner) {
   if (winner === "人狼陣営") return "人狼勝利";
   if (winner === "市民陣営") return "市民勝利";
+  if (winner === "てるてる陣営" || winner === "てるてる") return "てるてる勝利";
   return "";
 }
 
 function getVictoryMessage(winner) {
   if (winner === "人狼陣営") return "血が零れている";
   if (winner === "市民陣営") return "光の演出";
+  if (winner === "てるてる陣営" || winner === "てるてる") return "てるてるの勝利";
   return "";
 }
 
@@ -2784,6 +2789,7 @@ function renderNightTransitionView() {
   els.nightTransitionView.classList.toggle("night-transition-victory", state.nightTransitionOutcome === "victory");
   els.nightTransitionView.classList.toggle("night-transition-werewolf-victory", state.nightTransitionOutcome === "victory" && state.nightTransitionWinner === "人狼陣営");
   els.nightTransitionView.classList.toggle("night-transition-village-victory", state.nightTransitionOutcome === "victory" && state.nightTransitionWinner === "市民陣営");
+  els.nightTransitionView.classList.toggle("night-transition-teruteru-victory", state.nightTransitionOutcome === "victory" && (state.nightTransitionWinner === "てるてる陣営" || state.nightTransitionWinner === "てるてる"));
   if (els.nightTransitionLead) {
     els.nightTransitionLead.textContent = "";
   }
@@ -3625,7 +3631,13 @@ function getAttackResultDay(nightDay) {
 }
 
 function finishNightActions({ attackResult = null } = {}) {
-  const result = getGameResult();
+  let result = getGameResult();
+  if (attackResult?.succeeded && attackResult.targetId) {
+    const targetPlayer = findPlayer(attackResult.targetId);
+    if (targetPlayer?.roleId === "teruteru") {
+      result = { ended: true, winner: "てるてる陣営" };
+    }
+  }
   if (attackResult) {
     showAttackResultScreen(attackResult, result);
     return;
@@ -3825,6 +3837,11 @@ function getGameResult() {
 }
 
 function getGameResultAfterExile() {
+  const latestExiledId = state.exiledPlayerIds[state.exiledPlayerIds.length - 1];
+  const latestExiledPlayer = findPlayer(latestExiledId);
+  if (latestExiledPlayer?.roleId === "teruteru") {
+    return { ended: true, winner: "てるてる陣営" };
+  }
   const result = getGameResult();
   if (result.ended || !isForcedWerewolfWinNextNight()) return result;
   return { ended: true, winner: "人狼陣営" };
@@ -3854,6 +3871,10 @@ function isForcedWerewolfWinNextNight() {
 }
 
 function getGameResultAfterHypotheticalDeath(livingPlayers, playerId) {
+  const victim = livingPlayers.find((player) => player.id === playerId);
+  if (victim?.roleId === "teruteru") {
+    return { ended: true, winner: "てるてる陣営" };
+  }
   const survivors = livingPlayers.filter((player) => player.id !== playerId);
   const werewolfCount = survivors.filter((player) => player.roleId === "werewolf").length;
   const villageCount = survivors.length - werewolfCount;
@@ -4015,7 +4036,7 @@ function assignCurrentRole(player) {
     renderAndStore();
     return;
   }
-  if (roleId !== "werewolf") {
+  if (roleId !== "werewolf" && roleId !== "teruteru") {
     state.roleDealSelectedPlayerIds.forEach((id) => {
       const selectedPlayer = findPlayer(id);
       if (selectedPlayer && selectedPlayer.id !== player.id) selectedPlayer.roleId = "";
