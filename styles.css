@@ -2417,11 +2417,13 @@ textarea:focus {
   line-height: inherit;
 }
 
-.attack-result-view[hidden] {
-  display: none;
+.attack-result-view[hidden],
+.hunter-shot-view[hidden] {
+  display: none !important;
 }
 
-.attack-result-content > [hidden] {
+.attack-result-content > [hidden],
+.hunter-shot-content > [hidden] {
   display: none !important;
 }
 
@@ -3397,7 +3399,8 @@ body.timer-fullscreen-view .topbar,
 body.timer-fullscreen-view .screen-tabs,
 body.timer-fullscreen-view .victory-banner,
 body.timer-fullscreen-view .table-heading,
-body.timer-fullscreen-view .phase-visual {
+body.timer-fullscreen-view .phase-visual,
+body.timer-fullscreen-view .hunter-shot-view {
   display: none;
 }
 
@@ -3405,7 +3408,8 @@ body.plea-fullscreen-view .topbar,
 body.plea-fullscreen-view .screen-tabs,
 body.plea-fullscreen-view .victory-banner,
 body.plea-fullscreen-view .table-heading,
-body.plea-fullscreen-view .phase-visual {
+body.plea-fullscreen-view .phase-visual,
+body.plea-fullscreen-view .hunter-shot-view {
   display: none;
 }
 
@@ -3413,7 +3417,8 @@ body.revote-plea-fullscreen-view .topbar,
 body.revote-plea-fullscreen-view .screen-tabs,
 body.revote-plea-fullscreen-view .victory-banner,
 body.revote-plea-fullscreen-view .table-heading,
-body.revote-plea-fullscreen-view .phase-visual {
+body.revote-plea-fullscreen-view .phase-visual,
+body.revote-plea-fullscreen-view .hunter-shot-view {
   display: none;
 }
 
@@ -3427,7 +3432,8 @@ body.night-transition-fullscreen-view .vote-table-actions,
 body.night-transition-fullscreen-view .vote-control-panel,
 body.night-transition-fullscreen-view .vote-round-table,
 body.night-transition-fullscreen-view .plea-timer-view,
-body.night-transition-fullscreen-view .revote-plea-timer-view {
+body.night-transition-fullscreen-view .revote-plea-timer-view,
+body.night-transition-fullscreen-view .hunter-shot-view {
   display: none;
 }
 
@@ -3442,7 +3448,8 @@ body.attack-result-fullscreen-view .vote-control-panel,
 body.attack-result-fullscreen-view .vote-round-table,
 body.attack-result-fullscreen-view .plea-timer-view,
 body.attack-result-fullscreen-view .revote-plea-timer-view,
-body.attack-result-fullscreen-view .night-transition-view {
+body.attack-result-fullscreen-view .night-transition-view,
+body.attack-result-fullscreen-view .hunter-shot-view {
   display: none;
 }
 

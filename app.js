@@ -2340,7 +2340,7 @@ function isParticipantActionView() {
 }
 
 function isTimerFullscreenView() {
-  return state.screen === "table" && state.timerFocus && (state.timerRunning || state.timerSeconds === 0) && !state.showVoteTable && !state.showPleaTimer;
+  return state.screen === "table" && state.timerFocus && (state.timerRunning || state.timerSeconds === 0) && !state.showVoteTable && !state.showPleaTimer && !state.showHunterShot;
 }
 
 function isVictoryRoundTableView() {
