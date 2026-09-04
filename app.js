@@ -24,7 +24,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.41.2";
+const APP_VERSION = "v1.41.3";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -328,6 +328,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "hunterShotLead",
     "hunterShotTable",
     "hunterShotConfirmBtn",
+    "hunterShotBackBtn",
   ].forEach((id) => {
     els[id] = document.getElementById(id);
   });
@@ -447,6 +448,7 @@ function bindEvents() {
   els.victoryBackBtn?.addEventListener("click", dismissVictoryFullscreen);
   els.prepareNextMatchBtn?.addEventListener("click", prepareNextMatch);
   els.hunterShotConfirmBtn?.addEventListener("click", confirmHunterShot);
+  els.hunterShotBackBtn?.addEventListener("click", backFromHunterShot);
   els.progressStartBtn.addEventListener("click", startProgress);
   els.startRoleDealBtn.addEventListener("click", startRoleDeal);
   els.shuffleSeatsBtn.addEventListener("click", shuffleSeats);
@@ -3042,6 +3044,25 @@ function confirmHunterShot() {
   }
 
   processNextHunterShot();
+}
+
+function backFromHunterShot() {
+  if (state.undoHistory.length) {
+    const [snapshot, ...rest] = state.undoHistory;
+    applyRestoredPayload(snapshot.payload);
+    state.undoHistory = rest;
+    markLargeStateDirty();
+    renderAndStore();
+    return;
+  }
+  state.showHunterShot = false;
+  state.hunterShotActorId = "";
+  state.hunterShotSelectedPlayerId = "";
+  state.hunterShotQueue = [];
+  state.screen = "table";
+  state.phase = state.hunterShotContext === "attack" ? "night" : "vote";
+  state.showVoteTable = true;
+  renderAndStore();
 }
 
 function renderHunterShotView() {

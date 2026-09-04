@@ -3657,6 +3657,16 @@ body.hunter-shot-fullscreen-view .hunter-shot-view {
   border-radius: 8px;
 }
 
+.hunter-shot-back-button {
+  position: absolute;
+  left: max(16px, env(safe-area-inset-left));
+  top: max(16px, env(safe-area-inset-top));
+  z-index: 10;
+  min-height: clamp(44px, 6svh, 54px);
+  min-width: clamp(86px, 16vw, 112px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+}
+
 body.plea-fullscreen-view .plea-timer-display {
   font-size: clamp(9rem, 30vw, 22rem);
 }

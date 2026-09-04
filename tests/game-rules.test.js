@@ -1058,3 +1058,63 @@ test("保存したハンター道連れ画面を同じ進行位置へ復元す�
   assert.equal(state.phase, "night");
   assert.equal(state.showVoteTable, false);
 });
+
+test("ハンター道連れ画面で戻るを押すと直前のスナップショットが復元される", () => {
+  let restored = false;
+  let restoredPayload = null;
+  const state = {
+    showHunterShot: true,
+    hunterShotActorId: "H",
+    hunterShotSelectedPlayerId: "A",
+    hunterShotQueue: [],
+    undoHistory: [
+      { label: "追放", payload: { showVoteTable: true, voteSelectedPlayerId: "H" } },
+    ],
+  };
+  runFunctions(
+    ["backFromHunterShot"],
+    {
+      state,
+      applyRestoredPayload: (payload) => {
+        restored = true;
+        restoredPayload = payload;
+      },
+      markLargeStateDirty: () => {},
+      renderAndStore: () => {},
+    },
+    "backFromHunterShot()",
+  );
+
+  assert.equal(restored, true);
+  assert.deepEqual(restoredPayload, { showVoteTable: true, voteSelectedPlayerId: "H" });
+  assert.equal(state.undoHistory.length, 0);
+});
+
+test("undo履歴がないハンター道連れ画面で戻るを押すと道連れ状態が解除される", () => {
+  const state = {
+    showHunterShot: true,
+    hunterShotActorId: "H",
+    hunterShotSelectedPlayerId: "A",
+    hunterShotQueue: [{ actorId: "H2", context: "exile" }],
+    hunterShotContext: "exile",
+    undoHistory: [],
+  };
+  runFunctions(
+    ["backFromHunterShot"],
+    {
+      state,
+      applyRestoredPayload: () => {},
+      markLargeStateDirty: () => {},
+      renderAndStore: () => {},
+    },
+    "backFromHunterShot()",
+  );
+
+  assert.equal(state.showHunterShot, false);
+  assert.equal(state.hunterShotActorId, "");
+  assert.equal(state.hunterShotSelectedPlayerId, "");
+  assert.equal(state.hunterShotQueue.length, 0);
+  assert.equal(state.screen, "table");
+  assert.equal(state.phase, "vote");
+  assert.equal(state.showVoteTable, true);
+});

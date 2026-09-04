@@ -121,7 +121,7 @@
 | 襲撃対象 | `canSelectActionTarget()` / `getAttackResultDay()` | 襲撃なし、自噛み、襲撃結果、襲撃日の円卓表示、日別ログ、勝敗判定 |
 | 通常勝敗 | `getGameResult()` | 追放後、襲撃後、勝利画面、ログ |
 | てるてる勝敗 | `getGameResultAfterExile()` / `finishNightActions()` | 追放確定、襲撃結果、勝利画面、ログ、詰み判定 |
-| ハンター道連れ | `startHunterShotFlow()` / `confirmHunterShot()` / `applySavedHunterShotState()` | 追放後、襲撃後、連鎖道連れ、てるてる道連れ、勝敗判定、円卓表示、ログ、保存・同期・復元 |
+| ハンター道連れ | `startHunterShotFlow()` / `confirmHunterShot()` / `backFromHunterShot()` / `applySavedHunterShotState()` | 追放後、襲撃後、連鎖道連れ、てるてる道連れ、勝敗判定、円卓表示、戻るボタン、ログ、保存・同期・復元 |
 | 追放後の詰み | `isForcedWerewolfWinNextNight()` | 襲撃・護衛ルール、勝利画面、ログ |
 
 ## ルール変更時のテスト
