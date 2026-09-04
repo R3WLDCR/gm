@@ -24,7 +24,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.41.4";
+const APP_VERSION = "v1.42.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -2329,9 +2329,12 @@ function renderGameRuleInputs() {
   document.querySelectorAll("[data-seer-white-rule]").forEach((input) => {
     input.checked = input.value === (state.seerInitialWhiteEnabled ? "white" : "none");
   });
+  const knightEnabled = enabledRoleIds.has("knight");
   document.querySelectorAll("[data-guard-repeat-rule]").forEach((input) => {
     input.checked = input.value === (state.allowConsecutiveGuard ? "allow" : "deny");
+    input.disabled = !knightEnabled;
   });
+  document.querySelector(".guard-repeat-rule-options")?.classList.toggle("disabled", !knightEnabled);
   if (els.allowWerewolfSelfAttackInput) els.allowWerewolfSelfAttackInput.checked = state.allowWerewolfSelfAttack;
   if (els.allowWerewolfSkipAttackInput) els.allowWerewolfSkipAttackInput.checked = state.allowWerewolfSkipAttack;
 }

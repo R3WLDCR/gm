@@ -1233,3 +1233,82 @@ test("朝の襲撃結果表示中、勝敗確定時はOKボタンを非表示に
   );
   assert.equal(elsOngoing.attackResultOkBtn.hidden, false);
 });
+
+test("使用役職にボディガードが含まれない場合、連続護衛ルールは無効化（disabled）される", () => {
+  const roleInputs = [
+    { dataset: { roleRule: "werewolf" }, checked: true, disabled: false },
+    { dataset: { roleRule: "knight" }, checked: false, disabled: false },
+  ];
+  const seerInputs = [{ value: "white", checked: false }];
+  const guardInputs = [
+    { value: "allow", checked: false, disabled: false },
+    { value: "deny", checked: false, disabled: false },
+  ];
+  let guardOptionsDisabled = false;
+  const mockDocument = {
+    querySelectorAll: (selector) => {
+      if (selector === "[data-role-rule]") return roleInputs;
+      if (selector === "[data-seer-white-rule]") return seerInputs;
+      if (selector === "[data-guard-repeat-rule]") return guardInputs;
+      return [];
+    },
+    querySelector: (selector) => {
+      if (selector === ".guard-repeat-rule-options") {
+        return {
+          classList: {
+            toggle: (cls, force) => {
+              if (cls === "disabled") guardOptionsDisabled = force;
+            },
+          },
+        };
+      }
+      return null;
+    },
+  };
+
+  const stateWithoutKnight = {
+    enabledRoleIds: ["werewolf", "seer", "villager"],
+    seerInitialWhiteEnabled: true,
+    allowConsecutiveGuard: false,
+    allowWerewolfSelfAttack: false,
+    allowWerewolfSkipAttack: true,
+  };
+
+  runFunctions(
+    ["renderGameRuleInputs", "normalizeEnabledRoleIds"],
+    {
+      state: stateWithoutKnight,
+      document: mockDocument,
+      els: {},
+      RULE_SELECTABLE_ROLE_IDS: ["werewolf", "madman", "seer", "medium", "knight", "hunter", "madman_hunter", "teruteru"],
+    },
+    "renderGameRuleInputs()",
+  );
+
+  assert.equal(guardInputs[0].disabled, true);
+  assert.equal(guardInputs[1].disabled, true);
+  assert.equal(guardOptionsDisabled, true);
+
+  const stateWithKnight = {
+    enabledRoleIds: ["werewolf", "knight", "villager"],
+    seerInitialWhiteEnabled: true,
+    allowConsecutiveGuard: true,
+    allowWerewolfSelfAttack: false,
+    allowWerewolfSkipAttack: true,
+  };
+
+  runFunctions(
+    ["renderGameRuleInputs", "normalizeEnabledRoleIds"],
+    {
+      state: stateWithKnight,
+      document: mockDocument,
+      els: {},
+      RULE_SELECTABLE_ROLE_IDS: ["werewolf", "madman", "seer", "medium", "knight", "hunter", "madman_hunter", "teruteru"],
+    },
+    "renderGameRuleInputs()",
+  );
+
+  assert.equal(guardInputs[0].disabled, false);
+  assert.equal(guardInputs[1].disabled, false);
+  assert.equal(guardOptionsDisabled, false);
+});

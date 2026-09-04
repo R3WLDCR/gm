@@ -964,6 +964,22 @@ body.teruteru-victory-view .victory-banner.victory-teruteru.victory-reveal-winne
   font-weight: 900;
 }
 
+.guard-repeat-rule-options.disabled,
+.guard-repeat-rule-options:has(input:disabled) {
+  opacity: 0.45;
+}
+
+.guard-repeat-rule-options.disabled label,
+.guard-repeat-rule-options label:has(input:disabled) {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.guard-repeat-rule-options.disabled input,
+.guard-repeat-rule-options input:disabled {
+  cursor: not-allowed;
+}
+
 @media (max-width: 640px) {
   .match-info-fields {
     grid-template-columns: 1fr 1fr;

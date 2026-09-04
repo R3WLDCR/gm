@@ -19,7 +19,7 @@
 - 預言者の初日占いは「白あり／白なし」を選択でき、初期値は「白あり」とする。
 - 初日白ありでは、人狼と預言者本人を除く参加者から自動選択する。
 - 初日白の自動選択後、有効な別参加者をタップした場合は、預言者の割り当てを変えず初日白だけを変更する。
-- ボディガードの連続護衛は「あり／なし」を選択でき、既存データを含む初期値は「なし」とする。
+- ボディガードの連続護衛は「あり／なし」を選択でき、既存データを含む初期値は「なし」とする。ボディガードが使用役職に含まれていない場合は設定がグレーアウト（無効化）される。
 - 人狼の自噛みは設定で許可でき、初期値は不許可とする。
 - 襲撃なしは設定で許可でき、初期値は許可とする。
 - ゲーム開始前の準備中は昼・夜タブを開けず、ゲーム開始後に進行状態に応じて開けるようにする。
@@ -118,7 +118,7 @@
 | ログの1日 | `groupLogsByDay()` / `getSameDayNightLogSection()` | 朝の襲撃結果、昼、投票、追放、夜行動完了、保存済みログ、ログコピー |
 | 準備ログ | `getRoleAssignmentLogTexts()` / `filterPreparationLogGroups()` / `getCurrentMatchSourceLogs()` | 参加・休み、配役開始、役職の選択・解除・戻る、最終配役、進行開始、現在ログ、保存済みログ、ログコピー、日別ブロック順 |
 | 占い・霊媒結果 | `getDivinationResult()` / `getMediumResult()` | 結果画面、円卓状態、ログ、復元 |
-| 護衛対象 | `canSelectActionTarget()` | 円卓表示、護衛確定、復元、詰み判定 |
+| 護衛対象 | `canSelectActionTarget()` / `renderGameRuleInputs()` | 円卓表示、護衛確定、復元、詰み判定、ゲームルール設定表示 |
 | 襲撃対象 | `canSelectActionTarget()` / `getAttackResultDay()` / `finishVictoryAttackResult()` | 襲撃なし、自噛み、襲撃結果、朝の勝敗確定時遷移、襲撃日の円卓表示、日別ログ、勝敗判定 |
 | 通常勝敗 | `getGameResult()` | 追放後、襲撃後、勝利画面、ログ |
 | てるてる勝敗 | `getGameResultAfterExile()` / `finishNightActions()` | 追放確定、襲撃結果、勝利画面、ログ、詰み判定 |
