@@ -96,6 +96,7 @@
 - 詰み判定では、可能なすべての襲撃先と護衛先を検討する。
 - 連続護衛の設定は、夜の選択可否と追放直後の詰み判定の両方へ適用する。
 - 市民側が回避できる護衛先が1つでもある場合は、夜を待たずに人狼勝利とはしない。
+- 襲撃によって勝敗が決定する場合、朝の襲撃結果（犠牲者の名前）表示後にOKボタンを表示せず、そのままゲーム終了（勝利演出）画面へ進む。
 - 昼タイマーの分数を変更しても、過去の追放者と追放日は保持する。
 - 振り返りの円卓では、追放者を「N日目 処刑」と表示する。
 
@@ -118,7 +119,7 @@
 | 準備ログ | `getRoleAssignmentLogTexts()` / `filterPreparationLogGroups()` / `getCurrentMatchSourceLogs()` | 参加・休み、配役開始、役職の選択・解除・戻る、最終配役、進行開始、現在ログ、保存済みログ、ログコピー、日別ブロック順 |
 | 占い・霊媒結果 | `getDivinationResult()` / `getMediumResult()` | 結果画面、円卓状態、ログ、復元 |
 | 護衛対象 | `canSelectActionTarget()` | 円卓表示、護衛確定、復元、詰み判定 |
-| 襲撃対象 | `canSelectActionTarget()` / `getAttackResultDay()` | 襲撃なし、自噛み、襲撃結果、襲撃日の円卓表示、日別ログ、勝敗判定 |
+| 襲撃対象 | `canSelectActionTarget()` / `getAttackResultDay()` / `finishVictoryAttackResult()` | 襲撃なし、自噛み、襲撃結果、朝の勝敗確定時遷移、襲撃日の円卓表示、日別ログ、勝敗判定 |
 | 通常勝敗 | `getGameResult()` | 追放後、襲撃後、勝利画面、ログ |
 | てるてる勝敗 | `getGameResultAfterExile()` / `finishNightActions()` | 追放確定、襲撃結果、勝利画面、ログ、詰み判定 |
 | ハンター道連れ | `startHunterShotFlow()` / `confirmHunterShot()` / `backFromHunterShot()` / `applySavedHunterShotState()` | 追放後、襲撃後、連鎖道連れ、てるてる道連れ、勝敗判定、円卓表示、戻るボタン、ログ、保存・同期・復元 |

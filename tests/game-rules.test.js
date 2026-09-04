@@ -1118,3 +1118,118 @@ test("undo履歴がないハンター道連れ画面で戻るを押すと道連�
   assert.equal(state.phase, "vote");
   assert.equal(state.showVoteTable, true);
 });
+
+test("襲撃によって勝敗が決定する場合、朝の襲撃結果表示完了でOKボタンを出さず直接勝利画面へ進む", () => {
+  let finalizedWinner = "";
+  const state = {
+    showAttackResult: true,
+    attackResultTargetId: "V",
+    attackResultSucceeded: true,
+    attackResultWinner: "人狼陣営",
+    attackResultStage: "ready",
+    attackResultOkSeconds: 1,
+    attackResultPauseSeconds: 0,
+    attackResultRevealSeconds: 0,
+  };
+  const functions = [
+    "startAttackResultRevealTimer",
+    "stopAttackResultRevealTimer",
+    "finishVictoryAttackResult",
+    "resetAttackResultState",
+  ];
+  const holder = { callback: null };
+  const mockWindow = {
+    setInterval: (cb) => {
+      holder.callback = cb;
+      return 123;
+    },
+    clearInterval: () => {},
+  };
+  runFunctions(
+    functions,
+    {
+      state,
+      window: mockWindow,
+      holder,
+      attackResultRevealTimerId: null,
+      finalizeGameWinner: (winner) => {
+        finalizedWinner = winner;
+      },
+      renderAndStore: () => {},
+      ATTACK_RESULT_STAGE_NIGHT_COMPLETE: "night-complete",
+      ATTACK_RESULT_STAGE_NIGHT_WAIT: "night-wait",
+      ATTACK_RESULT_STAGE_DAWN: "dawn",
+      ATTACK_RESULT_STAGE_RESULT: "result",
+      ATTACK_RESULT_STAGE_READY: "ready",
+      ATTACK_RESULT_PAUSE_SECONDS: 3,
+      ATTACK_RESULT_REVEAL_SECONDS: 5,
+      ATTACK_RESULT_OK_DELAY_SECONDS: 5,
+    },
+    `startAttackResultRevealTimer();
+     if (holder.callback) holder.callback();
+    `,
+  );
+
+  assert.equal(finalizedWinner, "人狼陣営");
+  assert.equal(state.showAttackResult, false);
+});
+
+test("朝の襲撃結果表示中、勝敗確定時はOKボタンを非表示にし、ゲーム継続時はOKボタンを表示する", () => {
+  const createMockEls = () => ({
+    attackResultView: { hidden: false, classList: { toggle: () => {} } },
+    attackResultLead: { textContent: "", removeAttribute: () => {}, hidden: false },
+    attackResultName: { textContent: "", hidden: false, classList: { toggle: () => {} } },
+    attackResultMessage: { textContent: "", hidden: false },
+    attackResultOkBtn: { hidden: true, disabled: true },
+  });
+
+  const elsWinner = createMockEls();
+  const stateWinner = {
+    showAttackResult: true,
+    attackResultTargetId: "V",
+    attackResultSucceeded: true,
+    attackResultWinner: "人狼陣営",
+    attackResultStage: "ready",
+    attackResultOkSeconds: 0,
+  };
+  runFunctions(
+    ["renderAttackResultView"],
+    {
+      state: stateWinner,
+      els: elsWinner,
+      findPlayer: () => ({ id: "V", name: "市民" }),
+      ATTACK_RESULT_STAGE_NIGHT_COMPLETE: "night-complete",
+      ATTACK_RESULT_STAGE_NIGHT_WAIT: "night-wait",
+      ATTACK_RESULT_STAGE_DAWN: "dawn",
+      ATTACK_RESULT_STAGE_RESULT: "result",
+      ATTACK_RESULT_STAGE_READY: "ready",
+    },
+    "renderAttackResultView()",
+  );
+  assert.equal(elsWinner.attackResultOkBtn.hidden, true);
+
+  const elsOngoing = createMockEls();
+  const stateOngoing = {
+    showAttackResult: true,
+    attackResultTargetId: "V",
+    attackResultSucceeded: true,
+    attackResultWinner: "",
+    attackResultStage: "ready",
+    attackResultOkSeconds: 0,
+  };
+  runFunctions(
+    ["renderAttackResultView"],
+    {
+      state: stateOngoing,
+      els: elsOngoing,
+      findPlayer: () => ({ id: "V", name: "市民" }),
+      ATTACK_RESULT_STAGE_NIGHT_COMPLETE: "night-complete",
+      ATTACK_RESULT_STAGE_NIGHT_WAIT: "night-wait",
+      ATTACK_RESULT_STAGE_DAWN: "dawn",
+      ATTACK_RESULT_STAGE_RESULT: "result",
+      ATTACK_RESULT_STAGE_READY: "ready",
+    },
+    "renderAttackResultView()",
+  );
+  assert.equal(elsOngoing.attackResultOkBtn.hidden, false);
+});

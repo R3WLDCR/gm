@@ -24,7 +24,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.41.3";
+const APP_VERSION = "v1.41.4";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -1448,17 +1448,34 @@ function resetAttackResultState() {
   state.attackResultOkSeconds = ATTACK_RESULT_OK_DELAY_SECONDS;
 }
 
+function finishVictoryAttackResult(winner) {
+  if (!winner) return;
+  resetAttackResultState();
+  finalizeGameWinner(winner);
+  renderAndStore();
+}
+
 function resumeAttackResultRevealTimer() {
   if (!state.showAttackResult) return;
   if (state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_COMPLETE) return;
-  if (state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0) return;
+  if (state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0) {
+    if (state.attackResultWinner) {
+      finishVictoryAttackResult(state.attackResultWinner);
+    }
+    return;
+  }
   startAttackResultRevealTimer();
 }
 
 function startAttackResultRevealTimer() {
   if (!state.showAttackResult) return;
   if (state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_COMPLETE) return;
-  if (state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0) return;
+  if (state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0) {
+    if (state.attackResultWinner) {
+      finishVictoryAttackResult(state.attackResultWinner);
+    }
+    return;
+  }
   if (state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_WAIT && state.attackResultPauseSeconds === 0) {
     state.attackResultStage = ATTACK_RESULT_STAGE_DAWN;
     state.attackResultRevealSeconds = ATTACK_RESULT_REVEAL_SECONDS;
@@ -1475,6 +1492,10 @@ function startAttackResultRevealTimer() {
       state.attackResultOkSeconds = Math.max(0, state.attackResultOkSeconds - 1);
       if (state.attackResultOkSeconds === 0) {
         stopAttackResultRevealTimer();
+        if (state.attackResultWinner) {
+          finishVictoryAttackResult(state.attackResultWinner);
+          return;
+        }
       }
     } else {
       state.attackResultRevealSeconds = Math.max(0, state.attackResultRevealSeconds - 1);
@@ -2887,7 +2908,7 @@ function renderAttackResultView() {
   const nightCompleteVisible = state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_COMPLETE;
   const promptVisible = state.attackResultStage === ATTACK_RESULT_STAGE_RESULT;
   const nameVisible = state.attackResultStage === ATTACK_RESULT_STAGE_READY;
-  const okVisible = nightCompleteVisible || (state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0);
+  const okVisible = nightCompleteVisible || (state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0 && !state.attackResultWinner);
   const player = findPlayer(state.attackResultTargetId);
   const name = state.attackResultSucceeded ? player?.name || "不明" : "犠牲者なし";
   if (els.attackResultLead) {
