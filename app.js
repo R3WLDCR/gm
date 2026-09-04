@@ -24,7 +24,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.41.0";
+const APP_VERSION = "v1.41.1";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -2388,7 +2388,7 @@ function renderVictoryBanner() {
     els.victoryVisualMark.textContent = state.gameWinner === "人狼陣営" ? "✦" : "✧";
   }
   if (els.victoryWinnerText) {
-    els.victoryWinnerText.textContent = visible && revealStage === "winner" ? state.gameWinner : "";
+    els.victoryWinnerText.textContent = visible && revealStage === "winner" ? getVictoryTitle(state.gameWinner) : "";
   }
   if (els.victoryMessageText) {
     els.victoryMessageText.textContent = "";
@@ -2411,9 +2411,9 @@ function scheduleVictoryBackButton(ended) {
 }
 
 function getVictoryTitle(winner) {
-  if (winner === "人狼陣営") return "人狼勝利";
-  if (winner === "市民陣営") return "市民勝利";
-  if (winner === "てるてる陣営" || winner === "てるてる") return "てるてる勝利";
+  if (winner === "人狼陣営") return "人狼陣営";
+  if (winner === "市民陣営") return "市民陣営";
+  if (winner === "てるてる陣営" || winner === "てるてる") return "てるてるっ";
   return "";
 }
 

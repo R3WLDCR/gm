@@ -457,6 +457,35 @@ body.village-victory-view .victory-banner.victory-village.victory-reveal-winner 
   animation: victoryImageFadeIn 2800ms ease-out forwards;
 }
 
+.victory-banner.victory-teruteru .victory-phone {
+  display: none;
+}
+
+body.teruteru-victory-view .victory-banner.victory-reveal-winner .victory-copy {
+  display: grid;
+  place-content: center;
+}
+
+body.teruteru-victory-view .victory-banner.victory-teruteru.victory-reveal-winner .victory-copy strong {
+  color: #0284c7;
+  font-size: clamp(4.5rem, 15vw, 11rem);
+  font-weight: 900;
+  text-shadow: 0 8px 32px rgba(2, 132, 199, 0.35);
+  letter-spacing: 0.08em;
+  animation: teruteruTextPop 700ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes teruteruTextPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @keyframes victoryImageFadeIn {
   0% {
     opacity: 0;
