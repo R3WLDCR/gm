@@ -99,12 +99,12 @@ test("連続護衛設定を追放直後の詰み判定にも適用する", () =>
   const functions = ["getGameResultAfterHypotheticalDeath", "isForcedWerewolfWinNextNight", "isHunterRole"];
   const forced = runFunctions(
     functions,
-    { state: { ...baseState, allowConsecutiveGuard: false }, getLivingPlayers: () => livingPlayers },
+    { state: { ...baseState, allowConsecutiveGuard: false }, getActivePlayers: () => livingPlayers, getLivingPlayers: () => livingPlayers },
     "isForcedWerewolfWinNextNight()",
   );
   const avoidable = runFunctions(
     functions,
-    { state: { ...baseState, allowConsecutiveGuard: true }, getLivingPlayers: () => livingPlayers },
+    { state: { ...baseState, allowConsecutiveGuard: true }, getActivePlayers: () => livingPlayers, getLivingPlayers: () => livingPlayers },
     "isForcedWerewolfWinNextNight()",
   );
   assert.equal(forced, true);
@@ -782,6 +782,7 @@ test("てるてるが生存している夜は人狼確定勝利（詰み判定�
     ["isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalDeath", "isHunterRole"],
     {
       state,
+      getActivePlayers: () => livingPlayers,
       getLivingPlayers: () => livingPlayers,
     },
     "isForcedWerewolfWinNextNight()",
@@ -789,6 +790,51 @@ test("てるてるが生存している夜は人狼確定勝利（詰み判定�
 
   // てるてるを襲撃するとてるてる勝利になるため、人狼の確定勝ちにはならない
   assert.equal(isForced, false);
+});
+
+test("てるてるが複数人いる場合、1人だけ死亡した時点では勝敗はつかず全員死亡で勝利となる", () => {
+  const players = [
+    { id: "T1", roleId: "teruteru", alive: false }, // 1人目死亡
+    { id: "T2", roleId: "teruteru", alive: true },  // 2人目生存
+    { id: "W", roleId: "werewolf", alive: true },
+    { id: "V", roleId: "villager", alive: true },
+  ];
+  const state = {
+    exiledPlayerIds: ["T1"],
+    allowWerewolfSkipAttack: false,
+    allowWerewolfSelfAttack: false,
+  };
+  const result1 = runFunctions(
+    ["getGameResultAfterExile", "getGameResult", "isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalDeath", "isHunterRole"],
+    {
+      state,
+      findPlayer: (id) => players.find((p) => p.id === id),
+      getActivePlayers: () => players,
+      getLivingPlayers: () => players.filter((p) => p.alive),
+    },
+    "getGameResultAfterExile()",
+  );
+
+  // まだT2が生きているのでてるてる勝利にはならず続行
+  assert.equal(result1.ended, false);
+
+  // 2人目（T2）も死亡した場合
+  players.find((p) => p.id === "T2").alive = false;
+  state.exiledPlayerIds.push("T2");
+  const result2 = runFunctions(
+    ["getGameResultAfterExile", "getGameResult", "isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalDeath", "isHunterRole"],
+    {
+      state,
+      findPlayer: (id) => players.find((p) => p.id === id),
+      getActivePlayers: () => players,
+      getLivingPlayers: () => players.filter((p) => p.alive),
+    },
+    "getGameResultAfterExile()",
+  );
+
+  // 全員死亡したのでてるてる陣営勝利
+  assert.equal(result2.ended, true);
+  assert.equal(result2.winner, "てるてる陣営");
 });
 
 test("配役ログでてるてるが複数人いる場合は名前がまとめられる", () => {
@@ -934,7 +980,7 @@ test("ハンター道連れでてるてるが死亡した場合はてるてる�
   };
   let nightResult = null;
   runFunctions(
-    ["confirmHunterShot", "processNextHunterShot", "getGameResult", "isHunterRole"],
+    ["confirmHunterShot", "processNextHunterShot", "getGameResult", "isHunterRole", "getGameResultAfterExile", "isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalDeath"],
     {
       state,
       findPlayer: (id) => players.find((p) => p.id === id),

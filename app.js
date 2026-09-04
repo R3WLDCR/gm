@@ -24,7 +24,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.40.1";
+const APP_VERSION = "v1.41.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -3037,21 +3037,6 @@ function confirmHunterShot() {
   const actorName = actor ? `${actor.name}` : "ハンター";
   addLog(`${roleName}（${actorName}）の道連れ: ${target.name}`);
 
-  if (target.roleId === "teruteru") {
-    state.hunterShotQueue = [];
-    state.showHunterShot = false;
-    state.hunterShotActorId = "";
-    state.hunterShotSelectedPlayerId = "";
-    const result = { ended: true, winner: "てるてる陣営" };
-    if (state.hunterShotContext === "exile") {
-      startNightTransition(result);
-    } else {
-      finalizeGameWinner(result.winner);
-    }
-    renderAndStore();
-    return;
-  }
-
   if (isHunterRole(target.roleId)) {
     state.hunterShotQueue.push({ actorId: target.id, context: state.hunterShotContext });
   }
@@ -3872,13 +3857,7 @@ function getAttackResultDay(nightDay) {
 }
 
 function finishNightActions({ attackResult = null } = {}) {
-  let result = getGameResult();
-  if (attackResult?.succeeded && attackResult.targetId) {
-    const targetPlayer = findPlayer(attackResult.targetId);
-    if (targetPlayer?.roleId === "teruteru") {
-      result = { ended: true, winner: "てるてる陣営" };
-    }
-  }
+  const result = getGameResult();
   if (attackResult) {
     showAttackResultScreen(attackResult, result);
     return;
@@ -4057,6 +4036,7 @@ function getActionTargetPlayers(roleId) {
   return getLivingPlayers();
 }
 
+
 function getActionDisplayPlayers(roleId) {
   return roleId === "medium" ? getActionTargetPlayers(roleId) : getActivePlayers();
 }
@@ -4074,7 +4054,15 @@ function getLastExiledPlayer() {
 }
 
 function getGameResult() {
-  const livingPlayers = getActivePlayers().filter((player) => player.alive);
+  const activePlayers = typeof getActivePlayers === "function" ? getActivePlayers() : (typeof getLivingPlayers === "function" ? getLivingPlayers() : []);
+  const totalTeruteruCount = activePlayers.filter((player) => player.roleId === "teruteru").length;
+  const livingPlayers = typeof getLivingPlayers === "function" ? getLivingPlayers() : activePlayers.filter((player) => player.alive);
+  const livingTeruteruCount = livingPlayers.filter((player) => player.roleId === "teruteru").length;
+
+  if (totalTeruteruCount > 0 && livingTeruteruCount === 0) {
+    return { ended: true, winner: "てるてる陣営" };
+  }
+
   const werewolfCount = livingPlayers.filter((player) => player.roleId === "werewolf").length;
   const villageCount = livingPlayers.length - werewolfCount;
 
@@ -4088,11 +4076,6 @@ function getGameResult() {
 }
 
 function getGameResultAfterExile() {
-  const latestExiledId = state.exiledPlayerIds[state.exiledPlayerIds.length - 1];
-  const latestExiledPlayer = findPlayer(latestExiledId);
-  if (latestExiledPlayer?.roleId === "teruteru") {
-    return { ended: true, winner: "てるてる陣営" };
-  }
   const result = getGameResult();
   if (result.ended || !isForcedWerewolfWinNextNight()) return result;
   return { ended: true, winner: "人狼陣営" };
@@ -4122,14 +4105,18 @@ function isForcedWerewolfWinNextNight() {
 }
 
 function getGameResultAfterHypotheticalDeath(livingPlayers, playerId) {
-  const victim = livingPlayers.find((player) => player.id === playerId);
-  if (victim?.roleId === "teruteru") {
+  const activePlayers = typeof getActivePlayers === "function" ? getActivePlayers() : livingPlayers;
+  const totalTeruteruCount = activePlayers.filter((player) => player.roleId === "teruteru").length;
+  const survivors = livingPlayers.filter((player) => player.id !== playerId);
+  const survivorTeruteruCount = survivors.filter((player) => player.roleId === "teruteru").length;
+
+  if (totalTeruteruCount > 0 && survivorTeruteruCount === 0) {
     return { ended: true, winner: "てるてる陣営" };
   }
+  const victim = livingPlayers.find((player) => player.id === playerId);
   if (victim && isHunterRole(victim.roleId)) {
     return { ended: false, winner: "" };
   }
-  const survivors = livingPlayers.filter((player) => player.id !== playerId);
   const werewolfCount = survivors.filter((player) => player.roleId === "werewolf").length;
   const villageCount = survivors.length - werewolfCount;
   if (werewolfCount === 0) return { ended: true, winner: "市民陣営" };
