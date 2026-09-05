@@ -24,7 +24,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.42.0";
+const APP_VERSION = "v1.43.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -68,6 +68,7 @@ const state = {
   timerFocus: false,
   timerEndRevealSeconds: 0,
   timerResetCount: 0,
+  randomTimerWaiting: false,
   dayTimerMode: "manual",
   lastDayTimerMinutes: 0,
   showVoteTable: false,
@@ -431,12 +432,12 @@ function bindEvents() {
   els.pleaTimerToggleBtn?.addEventListener("click", togglePleaTimer);
   els.pleaExileBtn?.addEventListener("click", confirmPleaExile);
   document.querySelectorAll(".timerPresetBtn").forEach((button) => {
-    button.addEventListener("click", () => setTimerMinutes(Number(button.dataset.minutes)));
+    button.addEventListener("click", () => handleTimerPresetClick(Number(button.dataset.minutes)));
   });
   document.querySelectorAll(".dayTimerModeBtn").forEach((button) => {
     button.addEventListener("click", () => setDayTimerMode(button.dataset.dayTimerMode));
   });
-  els.randomTimerPresetBtn?.addEventListener("click", () => setTimerMinutes(Math.floor(Math.random() * 9) + 1));
+  els.randomTimerPresetBtn?.addEventListener("click", toggleRandomTimerMode);
   document.querySelectorAll(".noteBtn").forEach((button) => {
     button.addEventListener("click", () => addSelectedNote(button.dataset.note));
   });
@@ -935,7 +936,32 @@ function shiftTimer(delta) {
   renderAndStore();
 }
 
+function getRandomTimerMinutes(maxMinutes, randomFn = Math.random) {
+  const max = Math.max(1, Math.min(9, Math.floor(Number(maxMinutes) || 1)));
+  const rand = typeof randomFn === "function" ? randomFn() : Math.random();
+  return Math.floor(rand * max) + 1;
+}
+
+function resolveTimerPresetMinutes(presetMinutes, isRandomWaiting, randomFn = Math.random) {
+  const minutes = Math.max(1, Math.min(9, Math.floor(Number(presetMinutes) || 1)));
+  if (!isRandomWaiting) return minutes;
+  return getRandomTimerMinutes(minutes, randomFn);
+}
+
+function toggleRandomTimerMode() {
+  state.randomTimerWaiting = !state.randomTimerWaiting;
+  renderAndStore();
+}
+
+function handleTimerPresetClick(minutes) {
+  const isRandomWaiting = Boolean(state.randomTimerWaiting);
+  state.randomTimerWaiting = false;
+  const selectedMinutes = resolveTimerPresetMinutes(minutes, isRandomWaiting);
+  setTimerMinutes(selectedMinutes);
+}
+
 function setTimerMinutes(minutes) {
+  state.randomTimerWaiting = false;
   resetPleaTimerState();
   resetVoteSession();
   resetTimerValue(Math.max(1, minutes) * 60);
@@ -949,6 +975,7 @@ function setTimerMinutes(minutes) {
 
 function setDayTimerMode(mode) {
   if (!["manual", "shorten"].includes(mode)) return;
+  state.randomTimerWaiting = false;
   const modeChanged = state.dayTimerMode !== mode;
   state.dayTimerMode = mode;
   if (modeChanged && mode === "shorten" && state.phase === "day") {
@@ -973,6 +1000,7 @@ function getDayTimerBaselineMinutes(mode, playerCount) {
 }
 
 function prepareDayTimerForEntry() {
+  state.randomTimerWaiting = false;
   const nextMinutes = getNextDayTimerMinutes(state.dayTimerMode, state.lastDayTimerMinutes);
   resetTimerValue((nextMinutes || 5) * 60);
   if (!nextMinutes) {
@@ -986,6 +1014,7 @@ function prepareDayTimerForEntry() {
 }
 
 function toggleTimer() {
+  state.randomTimerWaiting = false;
   state.timerRunning = !state.timerRunning;
   state.timerResetCount = 0;
   if (state.timerRunning) {
@@ -1034,6 +1063,14 @@ function renderDayTimerMode() {
     button.classList.toggle("active", isActive);
     button.setAttribute("aria-pressed", String(isActive));
   });
+}
+
+function renderRandomTimerPresetBtn() {
+  if (!els.randomTimerPresetBtn) return;
+  const isWaiting = Boolean(state.randomTimerWaiting);
+  els.randomTimerPresetBtn.classList.toggle("active", isWaiting);
+  els.randomTimerPresetBtn.setAttribute("aria-pressed", String(isWaiting));
+  els.randomTimerPresetBtn.textContent = isWaiting ? "ランダム：1〜9を選択" : "ランダム";
 }
 
 function startTimer() {
@@ -1519,6 +1556,7 @@ function stopAttackResultRevealTimer() {
 }
 
 function resetTimer() {
+  state.randomTimerWaiting = false;
   const wasRunning = state.timerRunning;
   state.timerSeconds = state.timerBase;
   state.timerRunning = false;
@@ -1537,6 +1575,7 @@ function resetTimer() {
 }
 
 function resetTimerValue(seconds) {
+  state.randomTimerWaiting = false;
   resetNightTransitionState();
   resetAttackResultState();
   resetPleaTimerState();
@@ -2293,6 +2332,7 @@ function render() {
   renderHeader();
   renderRecommendedTimerPreset();
   renderDayTimerMode();
+  renderRandomTimerPresetBtn();
   renderMatchInfoInputs();
   renderGameRuleInputs();
   renderPlayers();
@@ -5595,6 +5635,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     ? Math.max(0, Math.min(VOTE_START_DELAY_SECONDS, Number(saved.timerEndRevealSeconds)))
     : 0;
   state.timerResetCount = saved.timerResetCount || 0;
+  state.randomTimerWaiting = false;
   state.dayTimerMode = saved.dayTimerMode === "shorten" ? "shorten" : "manual";
   state.lastDayTimerMinutes = Number.isInteger(Number(saved.lastDayTimerMinutes))
     ? Math.max(0, Math.min(9, Number(saved.lastDayTimerMinutes)))

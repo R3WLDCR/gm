@@ -2792,6 +2792,13 @@ textarea:focus {
   font-size: clamp(1rem, 2.5vw, 1.45rem);
 }
 
+.timer-keypad .timer-random-button.active,
+.table-panel:not(.timer-focus) .timer-keypad .timer-random-button.active {
+  background: var(--accent-strong);
+  color: white;
+  box-shadow: 0 0 0 3px rgba(12, 122, 103, 0.35);
+}
+
 .table-panel:not(.timer-focus) .timer-keypad .timer-random-button {
   min-height: clamp(58px, 9vw, 76px);
   font-size: clamp(1.2rem, 3vw, 1.75rem);

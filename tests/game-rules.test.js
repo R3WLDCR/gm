@@ -1312,3 +1312,25 @@ test("使用役職にボディガードが含まれない場合、連続護衛�
   assert.equal(guardInputs[1].disabled, false);
   assert.equal(guardOptionsDisabled, false);
 });
+
+test("昼タイマーのランダム設定はランダム待機中のみ指定数字を上限とするランダム分数を適用する", () => {
+  const functions = ["getRandomTimerMinutes", "resolveTimerPresetMinutes"];
+
+  // 通常時は押した数字がそのまま分数になる
+  assert.equal(runFunctions(functions, {}, "resolveTimerPresetMinutes(7, false)"), 7);
+  assert.equal(runFunctions(functions, {}, "resolveTimerPresetMinutes(1, false)"), 1);
+  assert.equal(runFunctions(functions, {}, "resolveTimerPresetMinutes(9, false)"), 9);
+
+  // ランダム待機中は押した数字（N）を上限とし、1〜N分の範囲でランダムに決定される
+  assert.equal(runFunctions(functions, {}, "resolveTimerPresetMinutes(7, true, () => 0)"), 1);
+  assert.equal(runFunctions(functions, {}, "resolveTimerPresetMinutes(7, true, () => 0.999)"), 7);
+  assert.equal(runFunctions(functions, {}, "resolveTimerPresetMinutes(3, true, () => 0.5)"), 2);
+  assert.equal(runFunctions(functions, {}, "resolveTimerPresetMinutes(1, true, () => 0.999)"), 1);
+  assert.equal(runFunctions(functions, {}, "resolveTimerPresetMinutes(9, true, () => 0.45)"), 5);
+
+  // getRandomTimerMinutes 単体の動作
+  assert.equal(runFunctions(functions, {}, "getRandomTimerMinutes(5, () => 0)"), 1);
+  assert.equal(runFunctions(functions, {}, "getRandomTimerMinutes(5, () => 0.999)"), 5);
+  assert.equal(runFunctions(functions, {}, "getRandomTimerMinutes(0, () => 0.999)"), 1);
+  assert.equal(runFunctions(functions, {}, "getRandomTimerMinutes(15, () => 0.999)"), 9);
+});
