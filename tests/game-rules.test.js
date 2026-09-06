@@ -1090,7 +1090,7 @@ test("ハンター道連れ画面で戻るを押すと直前のスナップシ�
   assert.equal(state.undoHistory.length, 0);
 });
 
-test("undo履歴がないハンター道連れ画面で戻るを押すと道連れ状態が解除される", () => {
+test("undo履歴がないハンター道連れ画面では戻るを押しても進行を変更しない", () => {
   const state = {
     showHunterShot: true,
     hunterShotActorId: "H",
@@ -1099,6 +1099,7 @@ test("undo履歴がないハンター道連れ画面で戻るを押すと道連�
     hunterShotContext: "exile",
     undoHistory: [],
   };
+  const before = JSON.stringify(state);
   runFunctions(
     ["backFromHunterShot"],
     {
@@ -1110,13 +1111,7 @@ test("undo履歴がないハンター道連れ画面で戻るを押すと道連�
     "backFromHunterShot()",
   );
 
-  assert.equal(state.showHunterShot, false);
-  assert.equal(state.hunterShotActorId, "");
-  assert.equal(state.hunterShotSelectedPlayerId, "");
-  assert.equal(state.hunterShotQueue.length, 0);
-  assert.equal(state.screen, "table");
-  assert.equal(state.phase, "vote");
-  assert.equal(state.showVoteTable, true);
+  assert.equal(JSON.stringify(state), before);
 });
 
 test("襲撃によって勝敗が決定する場合、朝の襲撃結果表示完了でOKボタンを出さず直接勝利画面へ進む", () => {
@@ -1174,7 +1169,7 @@ test("襲撃によって勝敗が決定する場合、朝の襲撃結果表示�
   assert.equal(state.showAttackResult, false);
 });
 
-test("朝の襲撃結果表示中、勝敗確定時はOKボタンを非表示にし、ゲーム継続時はOKボタンを表示する", () => {
+test("停止した襲撃結果は勝敗確定時もゲーム継続時もOKボタンで進める", () => {
   const createMockEls = () => ({
     attackResultView: { hidden: false, classList: { toggle: () => {} } },
     attackResultLead: { textContent: "", removeAttribute: () => {}, hidden: false },
@@ -1206,7 +1201,8 @@ test("朝の襲撃結果表示中、勝敗確定時はOKボタンを非表示に
     },
     "renderAttackResultView()",
   );
-  assert.equal(elsWinner.attackResultOkBtn.hidden, true);
+  assert.equal(elsWinner.attackResultOkBtn.hidden, false);
+  assert.equal(elsWinner.attackResultOkBtn.disabled, false);
 
   const elsOngoing = createMockEls();
   const stateOngoing = {
@@ -1311,6 +1307,47 @@ test("使用役職にボディガードが含まれない場合、連続護衛�
   assert.equal(guardInputs[0].disabled, false);
   assert.equal(guardInputs[1].disabled, false);
   assert.equal(guardOptionsDisabled, false);
+});
+
+test("ハンター画面の戻るは履歴がある場合だけ有効になる", () => {
+  for (const history of [[], [{ payload: {} }]]) {
+    const button = { disabled: false };
+    runFunctions(["renderHunterShotView"], {
+      state: { screen: "table", showHunterShot: true, hunterShotActorId: "H", undoHistory: history },
+      els: { hunterShotView: {}, hunterShotBackBtn: button },
+      findPlayer: () => ({ id: "H", roleId: "hunter" }),
+    }, "renderHunterShotView()");
+    assert.equal(button.disabled, history.length === 0);
+  }
+});
+
+test("勝敗確定の襲撃ログへ復元した後はタイマーを動かさずOKで勝利へ進める", () => {
+  for (const winner of ["市民陣営", "人狼陣営", "てるてる陣営"]) {
+    const state = { matchHistory: [], logRestorePoints: {}, selectedLogMatchId: "current" };
+    let finalizedWinner = "";
+    const context = {
+      state,
+      stopAllLiveTimers: () => {},
+      applySavedState: (payload) => Object.assign(state, payload),
+      pruneLogRestorePoints: () => {},
+      stopAttackResultRevealTimer: () => {},
+      finalizeGameWinner: (value) => { finalizedWinner = value; },
+      renderAndStore: () => {},
+      ATTACK_RESULT_STAGE_READY: "ready",
+      ATTACK_RESULT_STAGE_NIGHT_COMPLETE: "night-complete",
+      ATTACK_RESULT_PAUSE_SECONDS: 3,
+      ATTACK_RESULT_REVEAL_SECONDS: 5,
+      ATTACK_RESULT_OK_DELAY_SECONDS: 5,
+    };
+    const payload = { showAttackResult: true, attackResultStage: "night-complete", attackResultWinner: winner };
+    runFunctions(["applyRestoredPayload"], context, `applyRestoredPayload(${JSON.stringify(payload)})`);
+    assert.equal(state.attackResultStage, "ready");
+    assert.equal(state.attackResultOkSeconds, 0);
+    assert.equal(finalizedWinner, "");
+    runFunctions(["completeAttackResult", "resetAttackResultState"], context, "completeAttackResult()");
+    assert.equal(finalizedWinner, winner);
+    assert.equal(state.showAttackResult, false);
+  }
 });
 
 test("昼タイマーのランダム設定はランダム待機中のみ指定数字を上限とするランダム分数を適用する", () => {

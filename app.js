@@ -24,7 +24,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.43.0";
+const APP_VERSION = "v1.43.1";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -2951,7 +2951,7 @@ function renderAttackResultView() {
   const nightCompleteVisible = state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_COMPLETE;
   const promptVisible = state.attackResultStage === ATTACK_RESULT_STAGE_RESULT;
   const nameVisible = state.attackResultStage === ATTACK_RESULT_STAGE_READY;
-  const okVisible = nightCompleteVisible || (state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0 && !state.attackResultWinner);
+  const okVisible = nightCompleteVisible || (state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0);
   const player = findPlayer(state.attackResultTargetId);
   const name = state.attackResultSucceeded ? player?.name || "不明" : "犠牲者なし";
   if (els.attackResultLead) {
@@ -3119,14 +3119,6 @@ function backFromHunterShot() {
     renderAndStore();
     return;
   }
-  state.showHunterShot = false;
-  state.hunterShotActorId = "";
-  state.hunterShotSelectedPlayerId = "";
-  state.hunterShotQueue = [];
-  state.screen = "table";
-  state.phase = state.hunterShotContext === "attack" ? "night" : "vote";
-  state.showVoteTable = true;
-  renderAndStore();
 }
 
 function renderHunterShotView() {
@@ -3134,6 +3126,10 @@ function renderHunterShotView() {
   const visible = Boolean(state.screen === "table" && state.showHunterShot && state.hunterShotActorId);
   els.hunterShotView.hidden = !visible;
   if (!visible) return;
+
+  if (els.hunterShotBackBtn) {
+    els.hunterShotBackBtn.disabled = !state.undoHistory.length;
+  }
 
   const actor = findPlayer(state.hunterShotActorId);
   const roleName = actor?.roleId === "madman_hunter" ? "狂人ハンター" : "ハンター";
