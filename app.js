@@ -24,7 +24,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.43.1";
+const APP_VERSION = "v1.44.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -4961,19 +4961,22 @@ function formatGameLogForCopy(logs, fallbackWinner = "", match = {}) {
   const entries = sourceLogs
     .filter((log) => !copyExcludedTexts.has(log.text) && !isHiddenPreparationLog(log.text))
     .reverse();
-  const lines = ["【人狼GMログ】"];
+  const lines = ["# 人狼GMログ"];
+  const metadata = [];
   const tournamentTitle = [getTournamentEditionLabel(match), match.tournamentName].filter(Boolean).join(" ");
-  if (tournamentTitle) lines.push(`大会: ${tournamentTitle}`);
-  if (formatMatchDate(match.tournamentDate)) lines.push(`開催日: ${formatMatchDate(match.tournamentDate)}`);
-  if (getMatchNumberLabel(match)) lines.push(getMatchNumberLabel(match));
+  if (tournamentTitle) metadata.push(`- **大会:** ${tournamentTitle}`);
+  if (formatMatchDate(match.tournamentDate)) metadata.push(`- **開催日:** ${formatMatchDate(match.tournamentDate)}`);
+  if (getMatchNumberLabel(match)) metadata.push(`- **試合:** ${getMatchNumberLabel(match)}`);
   const winner = getWinnerFromLogs(entries, fallbackWinner);
 
   if (winner) {
-    lines.push(`結果: ${winner}の勝利`);
+    metadata.push(`- **結果:** ${winner}の勝利`);
   }
+  if (metadata.length) lines.push("", ...metadata);
 
   let currentSection = "";
   let pendingSection = "";
+  let preparationSectionVisible = false;
   entries.forEach((log) => {
     const explicitSection = getExplicitLogSection(log.text, currentSection);
     const inferredAttackSection = !explicitSection && isAttackResultLogText(log.text)
@@ -4982,10 +4985,13 @@ function formatGameLogForCopy(logs, fallbackWinner = "", match = {}) {
     const queuedSection = pendingSection;
     const section = explicitSection || inferredAttackSection || queuedSection || currentSection;
     if (section && section !== currentSection) {
-      lines.push("", `■ ${section}`);
+      lines.push("", `## ${section}`);
       currentSection = section;
+    } else if (!section && !preparationSectionVisible && isRoleAssignmentSummaryLog(log.text)) {
+      lines.push("", "## 準備");
+      preparationSectionVisible = true;
     }
-    lines.push(log.text);
+    lines.push(`- ${String(log.text).replace(/[\r\n]+/g, " ")}`);
     if (isExileLogText(log.text)) {
       pendingSection = getSameDayNightLogSection(currentSection);
     } else if (explicitSection || inferredAttackSection || queuedSection) {

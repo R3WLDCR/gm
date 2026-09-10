@@ -27,6 +27,7 @@
 - 配役ログは最終配役だけを「役職名: 名前、名前」の形式で役職ごとに表示する。
 - 準備の日別ブロックには最終配役だけを表示し、進行開始から1日目のログとして扱う。
 - ログの日別ブロックは「準備、1日目、2日目…」の順に表示する。
+- ログコピーはNotionへ貼り付けやすいMarkdown形式とし、試合情報、準備、日別ログを見出しと箇条書きで出力する。
 
 ## 試合情報
 
@@ -121,6 +122,7 @@
 | 死亡済み役職の待機 | `isBlockedRoleCountdownReady()` | ランダムカウント、OK表示、次役職への進行、復元 |
 | 同日役職ログ | `upsertRoleResultLog()` / `filterDuplicateRoleResultGroups()` | 霊媒、護衛、占い、襲撃、アプリ再開、復元、保存済みログ、ログコピー |
 | ログの1日 | `groupLogsByDay()` / `getSameDayNightLogSection()` | 朝の襲撃結果、昼、投票、追放、夜行動完了、保存済みログ、ログコピー |
+| ログのMarkdownコピー | `formatGameLogForCopy()` | 進行中ログ、保存済みログ、大会情報、試合情報、勝利結果、日別区切り |
 | 準備ログ | `getRoleAssignmentLogTexts()` / `filterPreparationLogGroups()` / `getCurrentMatchSourceLogs()` | 参加・休み、配役開始、役職の選択・解除・戻る、最終配役、進行開始、現在ログ、保存済みログ、ログコピー、日別ブロック順 |
 | 占い・霊媒結果 | `getDivinationResult()` / `getMediumResult()` | 結果画面、円卓状態、ログ、復元 |
 | 護衛対象 | `canSelectActionTarget()` / `renderGameRuleInputs()` | 円卓表示、護衛確定、復元、詰み判定、ゲームルール設定表示 |

@@ -455,6 +455,55 @@ test("ログコピーは進行前の最終配役を残す", () => {
   ]);
 });
 
+test("ログコピーはNotion向けMarkdownで試合情報と日別ログを出力する", () => {
+  const logs = [
+    { text: "ゲーム終了: 市民陣営の勝利" },
+    { text: "1日目の昼へ" },
+    { text: "進行開始" },
+    { text: "市民: A、B" },
+    { text: "人狼: C" },
+  ];
+  const text = runFunctions(
+    ["formatGameLogForCopy"],
+    {
+      dedupeRoleResultLogs: (value) => value,
+      getCurrentMatchSourceLogs: (value) => value,
+      isHiddenPreparationLog: () => false,
+      getTournamentEditionLabel: () => "第12回",
+      formatMatchDate: () => "2026/09/10",
+      getMatchNumberLabel: () => "第3試合",
+      getWinnerFromLogs: () => "市民陣営",
+      getExplicitLogSection: (value) => value === "進行開始" ? "1日目 夜" : value === "1日目の昼へ" ? "1日目 昼" : "",
+      isAttackResultLogText: () => false,
+      getNextMorningLogSection: () => "",
+      isRoleAssignmentSummaryLog: (value) => /^(人狼|市民): /.test(value),
+      isExileLogText: () => false,
+      getSameDayNightLogSection: () => "",
+    },
+    `formatGameLogForCopy(${JSON.stringify(logs)}, "", ${JSON.stringify({ tournamentName: "秋大会" })})`,
+  );
+
+  assert.equal(text, [
+    "# 人狼GMログ",
+    "",
+    "- **大会:** 第12回 秋大会",
+    "- **開催日:** 2026/09/10",
+    "- **試合:** 第3試合",
+    "- **結果:** 市民陣営の勝利",
+    "",
+    "## 準備",
+    "- 人狼: C",
+    "- 市民: A、B",
+    "",
+    "## 1日目 夜",
+    "- 進行開始",
+    "",
+    "## 1日目 昼",
+    "- 1日目の昼へ",
+    "- ゲーム終了: 市民陣営の勝利",
+  ].join("\n"));
+});
+
 test("同じ日の役職結果は役職ごとに最新の1件だけ表示する", () => {
   const groups = [
     {
