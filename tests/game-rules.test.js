@@ -1399,6 +1399,96 @@ test("勝敗確定の襲撃ログへ復元した後はタイマーを動かさ�
   }
 });
 
+test("役職の所属陣営に応じてプレイヤーの勝利を判定する", () => {
+  const roles = [
+    { id: "villager", team: "市民陣営" },
+    { id: "werewolf", team: "人狼陣営" },
+    { id: "madman", team: "人狼陣営" },
+    { id: "teruteru", team: "第3陣営" },
+  ];
+  const functions = ["normalizeVillageTeam", "getRoleWinningTeam", "didRoleWinMatch"];
+  assert.equal(runFunctions(functions, {}, `didRoleWinMatch("villager", "市民陣営", ${JSON.stringify(roles)})`), true);
+  assert.equal(runFunctions(functions, {}, `didRoleWinMatch("werewolf", "市民陣営", ${JSON.stringify(roles)})`), false);
+  assert.equal(runFunctions(functions, {}, `didRoleWinMatch("madman", "人狼陣営", ${JSON.stringify(roles)})`), true);
+  assert.equal(runFunctions(functions, {}, `didRoleWinMatch("teruteru", "てるてる陣営", ${JSON.stringify(roles)})`), true);
+});
+
+test("プレイヤー成績は完了試合だけを数え、本日の勝利数も集計する", () => {
+  const player = { id: "P1", name: "しんたろー" };
+  const history = [
+    { status: "finished", winner: "市民陣営", playedOn: "2026-09-10", playerResults: [{ playerId: "P1", roleId: "seer", won: true }] },
+    { status: "finished", winner: "人狼陣営", playedOn: "2026-09-10", playerResults: [{ playerId: "P1", roleId: "villager", won: false }] },
+    { status: "finished", winner: "市民陣営", playedOn: "2026-09-09", playerResults: [{ playerId: "P1", roleId: "villager", won: true }] },
+    { status: "interrupted", winner: "", playedOn: "2026-09-10", playerResults: [{ playerId: "P1", roleId: "villager", won: false }] },
+  ];
+  const functions = [
+    "normalizeVillageTeam",
+    "getRoleWinningTeam",
+    "didRoleWinMatch",
+    "getMatchPlayedOn",
+    "getLegacyMatchPlayerResult",
+    "getMatchPlayerResult",
+    "getPlayerWinStats",
+  ];
+  const context = { state: { roles: [] }, DEFAULT_ROLES: [] };
+  const result = runFunctions(functions, context, `getPlayerWinStats(${JSON.stringify(player)}, ${JSON.stringify(history)}, "2026-09-10")`);
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), { games: 3, wins: 2, todayWins: 1 });
+});
+
+test("既存の保存済み試合は配役ログから勝敗を集計する", () => {
+  const defaultRoles = [
+    { id: "werewolf", name: "人狼", team: "人狼陣営" },
+    { id: "villager", name: "市民", team: "市民陣営" },
+  ];
+  const player = { id: "P1", name: "A" };
+  const history = [{
+    status: "finished",
+    winner: "市民陣営",
+    savedAt: new Date(2026, 8, 10).getTime(),
+    playerNames: ["A", "B"],
+    logs: [{ text: "市民: A" }, { text: "人狼: B" }],
+  }];
+  const functions = [
+    "normalizeVillageTeam",
+    "getRoleWinningTeam",
+    "didRoleWinMatch",
+    "getMatchPlayedOn",
+    "getLegacyMatchPlayerResult",
+    "getMatchPlayerResult",
+    "getPlayerWinStats",
+  ];
+  const context = { state: { roles: defaultRoles }, DEFAULT_ROLES: defaultRoles };
+  const result = runFunctions(functions, context, `getPlayerWinStats(${JSON.stringify(player)}, ${JSON.stringify(history)}, "2026-09-10")`);
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), { games: 1, wins: 1, todayWins: 1 });
+});
+
+test("保存済み試合のプレイヤー成績情報を正規化後も保持する", () => {
+  const history = [{
+    id: "match-1",
+    savedAt: 1,
+    playedOn: "2026-09-10",
+    status: "finished",
+    winner: "市民陣営",
+    playerResults: [{ playerId: "P1", name: "A", roleId: "seer", won: true }],
+    logs: [],
+  }];
+  const functions = [
+    "normalizeLogs",
+    "normalizeVillageTeam",
+    "normalizeMatchInfoNumber",
+    "getMatchPlayedOn",
+    "getRoleWinningTeam",
+    "didRoleWinMatch",
+    "normalizeMatchHistory",
+  ];
+  const context = { state: { roles: [] } };
+  const result = runFunctions(functions, context, `normalizeMatchHistory(${JSON.stringify(history)})`);
+  assert.equal(result[0].playedOn, "2026-09-10");
+  assert.deepEqual(JSON.parse(JSON.stringify(result[0].playerResults)), [
+    { playerId: "P1", name: "A", roleId: "seer", won: true },
+  ]);
+});
+
 test("昼タイマーのランダム設定はランダム待機中のみ指定数字を上限とするランダム分数を適用する", () => {
   const functions = ["getRandomTimerMinutes", "resolveTimerPresetMinutes"];
 

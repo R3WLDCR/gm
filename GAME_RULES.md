@@ -35,6 +35,11 @@
 - 試合番号は1〜999試合を、左右送りまたは数字の直接入力で指定する。
 - 回数・試合番号の送りボタンは長押しで連続変更できる。
 - 「次の試合を準備」では、設定済みの試合番号を1つ進める。
+- 勝利確定した試合だけをプレイヤー成績へ集計し、中断試合は試合数・勝利数・勝率に含めない。
+- プレイヤーの勝利は、保存した役職の所属陣営と試合の勝利陣営が一致した場合に数える。てるてるは、てるてる陣営勝利の場合に数える。
+- 名簿には、本日の勝利数、通算の勝利数・完了試合数・勝率を表示する。
+- 本日の勝利数は、設定した開催日を優先し、開催日がない試合は保存日を試合日として集計する。
+- 保存済み試合を削除した場合は、その試合を除外してプレイヤー成績を再集計する。
 
 ## 昼と投票
 
@@ -124,6 +129,7 @@
 | ログの1日 | `groupLogsByDay()` / `getSameDayNightLogSection()` | 朝の襲撃結果、昼、投票、追放、夜行動完了、保存済みログ、ログコピー |
 | ログのMarkdownコピー | `formatGameLogForCopy()` | 進行中ログ、保存済みログ、大会情報、試合情報、勝利結果、日別区切り |
 | 準備ログ | `getRoleAssignmentLogTexts()` / `filterPreparationLogGroups()` / `getCurrentMatchSourceLogs()` | 参加・休み、配役開始、役職の選択・解除・戻る、最終配役、進行開始、現在ログ、保存済みログ、ログコピー、日別ブロック順 |
+| プレイヤー成績 | `createMatchPlayerResults()` / `getPlayerWinStats()` | 勝利確定、中断試合、試合日、役職陣営、履歴削除、保存・同期、既存履歴 |
 | 占い・霊媒結果 | `getDivinationResult()` / `getMediumResult()` | 結果画面、円卓状態、ログ、復元 |
 | 護衛対象 | `canSelectActionTarget()` / `renderGameRuleInputs()` | 円卓表示、護衛確定、復元、詰み判定、ゲームルール設定表示 |
 | 襲撃対象 | `canSelectActionTarget()` / `getAttackResultDay()` / `finishVictoryAttackResult()` | 襲撃なし、自噛み、襲撃結果、朝の勝敗確定時遷移、襲撃日の円卓表示、日別ログ、勝敗判定 |

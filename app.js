@@ -24,7 +24,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.44.0";
+const APP_VERSION = "v1.45.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -637,10 +637,12 @@ function beginNewMatch({ createId = true } = {}) {
 function archiveCurrentMatch() {
   if (!state.currentMatchId || state.currentMatchArchived || !state.logs.length) return false;
   const winner = getWinnerFromLogs(state.logs, state.gameWinner);
+  const savedAt = Date.now();
   state.matchHistory.unshift({
     id: state.currentMatchId,
     startedAt: state.currentMatchStartedAt || Date.now(),
-    savedAt: Date.now(),
+    savedAt,
+    playedOn: getMatchPlayedOn({ tournamentDate: state.tournamentDate, savedAt }),
     status: winner ? "finished" : "interrupted",
     winner,
     tournamentName: state.tournamentName,
@@ -648,6 +650,7 @@ function archiveCurrentMatch() {
     tournamentDate: state.tournamentDate,
     matchNumber: state.matchNumber,
     playerNames: getActivePlayers().map((player) => player.name),
+    playerResults: createMatchPlayerResults(winner),
     logs: state.logs.map((log) => ({ ...log })),
   });
   state.currentMatchArchived = true;
@@ -2648,6 +2651,7 @@ function renderPlayers() {
   getDisplayPlayers().forEach(({ player, index }) => {
     const active = isActivePlayer(player);
     const todayCount = getTodayParticipationCount(player);
+    const winStats = getPlayerWinStats(player);
     const row = document.createElement("div");
     row.className = `player-row ${manualMode ? "manual-sort" : ""} ${active ? "" : "inactive"}`;
     row.dataset.playerId = player.id;
@@ -2658,7 +2662,10 @@ function renderPlayers() {
         <span>${active ? "参加" : "休み"}</span>
       </label>
       <strong>${escapeHtml(player.name)}</strong>
-      <span class="participation-stats">今日 ${todayCount} / 累計 ${player.totalParticipations || 0}</span>
+      <div class="player-stats">
+        <span class="participation-stats">参加 今日 ${todayCount} / 累計 ${player.totalParticipations || 0}</span>
+        <span class="win-stats">勝利 本日 ${winStats.todayWins} / 通算 ${winStats.wins}勝 ${winStats.games}戦 / 勝率 ${formatWinRate(winStats)}</span>
+      </div>
       <button class="mini-button player-edit-button" data-action="edit" title="名前を編集" aria-label="${escapeHtml(player.name)}の名前を編集">✎</button>
       <div class="player-order-actions" aria-label="${escapeHtml(player.name)}の並び替え" ${manualMode ? "" : "hidden"}>
         <button class="mini-button" data-action="move-up" title="上へ" aria-label="${escapeHtml(player.name)}を上へ" ${index === 0 ? "disabled" : ""}>↑</button>
@@ -2753,6 +2760,83 @@ function renderVoteRoundTable() {
   const revoteCandidateIds = isRevoteAssignmentMode() ? new Set(state.revoteCandidateIds) : new Set();
   const players = isRevoteTargetSelectMode() ? getRevoteCandidatePlayers() : getLivingPlayers().filter((player) => !revoteCandidateIds.has(player.id));
   renderRoundTableInto(els.voteRoundTable, { hideRoles: true, voteMode: true, players });
+}
+
+function getRoleWinningTeam(roleId, roles = state.roles) {
+  if (roleId === "teruteru") return "てるてる陣営";
+  return normalizeVillageTeam(roles.find((role) => role.id === roleId)?.team || "");
+}
+
+function didRoleWinMatch(roleId, winner, roles = state.roles) {
+  return Boolean(winner) && getRoleWinningTeam(roleId, roles) === normalizeVillageTeam(winner);
+}
+
+function createMatchPlayerResults(winner) {
+  return getActivePlayers().map((player) => ({
+    playerId: player.id,
+    name: player.name,
+    roleId: player.roleId,
+    won: didRoleWinMatch(player.roleId, winner),
+  }));
+}
+
+function getMatchPlayedOn(match) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(match?.playedOn || "")) return match.playedOn;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(match?.tournamentDate || "")) return match.tournamentDate;
+  const date = new Date(Number(match?.savedAt) || Date.now());
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getLegacyMatchPlayerResult(match, player) {
+  if (!Array.isArray(match.playerNames) || match.playerNames.filter((name) => name === player.name).length !== 1) return null;
+  const role = DEFAULT_ROLES.find((candidate) =>
+    match.logs.some((log) => {
+      const prefix = `${candidate.name}: `;
+      if (!String(log.text || "").startsWith(prefix)) return false;
+      return String(log.text).slice(prefix.length).split("、").map((name) => name.trim()).includes(player.name);
+    }),
+  );
+  if (!role) return null;
+  return { roleId: role.id, won: didRoleWinMatch(role.id, match.winner, DEFAULT_ROLES) };
+}
+
+function getMatchPlayerResult(match, player) {
+  if (Array.isArray(match.playerResults) && match.playerResults.length) {
+    const byId = match.playerResults.find((result) => result.playerId === player.id);
+    if (byId) return byId;
+    const nameMatches = match.playerResults.filter((result) => !result.playerId && result.name === player.name);
+    return nameMatches.length === 1 ? nameMatches[0] : null;
+  }
+  return getLegacyMatchPlayerResult(match, player);
+}
+
+function getPlayerWinStats(player, history, todayKey) {
+  const matches = history || state.matchHistory;
+  const targetDay = todayKey || getTodayKey();
+  return matches.reduce(
+    (stats, match) => {
+      if (match.status !== "finished" || !match.winner) return stats;
+      const result = getMatchPlayerResult(match, player);
+      if (!result) return stats;
+      stats.games += 1;
+      const won = typeof result.won === "boolean" ? result.won : didRoleWinMatch(result.roleId, match.winner);
+      if (won) {
+        stats.wins += 1;
+        if (getMatchPlayedOn(match) === targetDay) stats.todayWins += 1;
+      }
+      return stats;
+    },
+    { games: 0, wins: 0, todayWins: 0 },
+  );
+}
+
+function formatWinRate(stats) {
+  if (!stats.games) return "--";
+  const rate = Math.round((stats.wins / stats.games) * 1000) / 10;
+  return `${Number.isInteger(rate) ? rate.toFixed(0) : rate.toFixed(1)}%`;
 }
 
 function renderVoteControls() {
@@ -5860,6 +5944,7 @@ function normalizeMatchHistory(history) {
       id: String(match.id),
       startedAt: Number(match.startedAt) || 0,
       savedAt: Number(match.savedAt) || 0,
+      playedOn: /^\d{4}-\d{2}-\d{2}$/.test(match.playedOn || "") ? match.playedOn : getMatchPlayedOn(match),
       status: match.status === "interrupted" ? "interrupted" : "finished",
       winner: normalizeVillageTeam(match.winner || ""),
       tournamentName: String(match.tournamentName || "").trim().slice(0, 80),
@@ -5867,6 +5952,16 @@ function normalizeMatchHistory(history) {
       tournamentDate: /^\d{4}-\d{2}-\d{2}$/.test(match.tournamentDate || "") ? match.tournamentDate : "",
       matchNumber: normalizeMatchInfoNumber(match.matchNumber),
       playerNames: Array.isArray(match.playerNames) ? match.playerNames.map((name) => String(name)) : [],
+      playerResults: Array.isArray(match.playerResults)
+        ? match.playerResults
+            .filter((result) => result && typeof result === "object")
+            .map((result) => ({
+              playerId: String(result.playerId || ""),
+              name: String(result.name || ""),
+              roleId: String(result.roleId || ""),
+              won: typeof result.won === "boolean" ? result.won : didRoleWinMatch(String(result.roleId || ""), match.winner),
+            }))
+        : [],
       logs: normalizeLogs(Array.isArray(match.logs) ? match.logs : []),
     }))
     .sort((a, b) => b.savedAt - a.savedAt);

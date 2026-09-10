@@ -1266,11 +1266,22 @@ textarea:focus {
   accent-color: var(--accent);
 }
 
-.participation-stats {
+.player-stats {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.participation-stats,
+.win-stats {
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.win-stats {
+  color: var(--accent-strong);
 }
 
 .player-order-actions {
@@ -3991,8 +4002,13 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
     grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
-  .participation-stats {
+  .player-stats {
     grid-column: 2 / -1;
+  }
+
+  .participation-stats,
+  .win-stats {
+    white-space: normal;
   }
 
   .player-order-actions {
