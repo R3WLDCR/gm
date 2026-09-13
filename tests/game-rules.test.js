@@ -59,11 +59,13 @@ test("占いと霊媒は人狼だけを人狼と判定する", () => {
   assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "werewolf" })'), "人狼");
   assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "madman" })'), "市民");
   assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "hunter" })'), "市民");
+  assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "cat" })'), "市民");
   assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "madman_hunter" })'), "市民");
   assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "teruteru" })'), "市民");
   assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "werewolf" })'), "人狼");
   assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "madman" })'), "市民");
   assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "hunter" })'), "市民");
+  assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "cat" })'), "市民");
   assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "madman_hunter" })'), "市民");
   assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "teruteru" })'), "市民");
 });
@@ -96,7 +98,7 @@ test("連続護衛設定を追放直後の詰み判定にも適用する", () =>
     allowWerewolfSelfAttack: false,
     lastGuardedPlayerId: "A",
   };
-  const functions = ["getGameResultAfterHypotheticalDeath", "isForcedWerewolfWinNextNight", "isHunterRole"];
+  const functions = ["getGameResultAfterHypotheticalDeath", "getGameResultAfterHypotheticalNightAttack", "isForcedWerewolfWinNextNight", "isHunterRole", "isCatRole"];
   const forced = runFunctions(
     functions,
     { state: { ...baseState, allowConsecutiveGuard: false }, getActivePlayers: () => livingPlayers, getLivingPlayers: () => livingPlayers },
@@ -757,7 +759,7 @@ test("てるてるが襲撃されて死亡したらてるてる陣営の勝利�
   let shownScreen = null;
   const finishNight = (players, attackResult) =>
     runFunctions(
-      ["finishNightActions", "getGameResult"],
+      ["finishNightActions", "getGameResult", "isCatRole"],
       {
         findPlayer: (id) => players.find((p) => p.id === id),
         getActivePlayers: () => players,
@@ -828,7 +830,7 @@ test("てるてるが生存している夜は人狼確定勝利（詰み判定�
     lastGuardedPlayerId: "",
   };
   const isForced = runFunctions(
-    ["isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalDeath", "isHunterRole"],
+    ["isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalNightAttack", "getGameResultAfterHypotheticalDeath", "isHunterRole", "isCatRole"],
     {
       state,
       getActivePlayers: () => livingPlayers,
@@ -854,7 +856,7 @@ test("てるてるが複数人いる場合、1人だけ死亡した時点では�
     allowWerewolfSelfAttack: false,
   };
   const result1 = runFunctions(
-    ["getGameResultAfterExile", "getGameResult", "isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalDeath", "isHunterRole"],
+    ["getGameResultAfterExile", "getGameResult", "isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalNightAttack", "getGameResultAfterHypotheticalDeath", "isHunterRole", "isCatRole"],
     {
       state,
       findPlayer: (id) => players.find((p) => p.id === id),
@@ -871,7 +873,7 @@ test("てるてるが複数人いる場合、1人だけ死亡した時点では�
   players.find((p) => p.id === "T2").alive = false;
   state.exiledPlayerIds.push("T2");
   const result2 = runFunctions(
-    ["getGameResultAfterExile", "getGameResult", "isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalDeath", "isHunterRole"],
+    ["getGameResultAfterExile", "getGameResult", "isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalNightAttack", "getGameResultAfterHypotheticalDeath", "isHunterRole", "isCatRole"],
     {
       state,
       findPlayer: (id) => players.find((p) => p.id === id),
@@ -905,6 +907,117 @@ test("配役ログでてるてるが複数人いる場合は名前がまとめ�
   assert.deepEqual(Array.from(texts), ["人狼: プレイヤーC", "てるてる: プレイヤーA、プレイヤーB"]);
 });
 
+test("猫又の道連れ候補は追放時は全生存者、襲撃時は生存中の人狼だけになる", () => {
+  const players = [
+    { id: "W1", roleId: "werewolf" },
+    { id: "W2", roleId: "werewolf" },
+    { id: "V", roleId: "villager" },
+  ];
+  const exileCandidates = runFunctions(
+    ["getCatLinkedDeathCandidates"],
+    {},
+    `getCatLinkedDeathCandidates(${JSON.stringify(players)}, "exile")`,
+  );
+  const attackCandidates = runFunctions(
+    ["getCatLinkedDeathCandidates"],
+    {},
+    `getCatLinkedDeathCandidates(${JSON.stringify(players)}, "attack")`,
+  );
+  assert.deepEqual(Array.from(exileCandidates, (player) => player.id), ["W1", "W2", "V"]);
+  assert.deepEqual(Array.from(attackCandidates, (player) => player.id), ["W1", "W2"]);
+  assert.equal(runFunctions(["pickRandomPlayer"], {}, `pickRandomPlayer(${JSON.stringify(players)}, () => 0.99).id`), "V");
+});
+
+test("猫又は襲撃で通常勝敗が成立しても人狼をランダム道連れにする", () => {
+  const players = [
+    { id: "C", name: "猫又", roleId: "cat", alive: false },
+    { id: "W", name: "人狼", roleId: "werewolf", alive: true },
+  ];
+  const state = {
+    showHunterShot: false,
+    hunterShotActorId: "",
+    hunterShotSelectedPlayerId: "",
+    hunterShotQueue: [],
+    hunterShotContext: "attack",
+  };
+  runFunctions(
+    ["startHunterShotFlow", "processNextHunterShot", "getGameResult", "isHunterRole", "isCatRole", "getCatLinkedDeathCandidates", "pickRandomPlayer"],
+    {
+      state,
+      findPlayer: (id) => players.find((player) => player.id === id),
+      getActivePlayers: () => players,
+      getLivingPlayers: () => players.filter((player) => player.alive),
+      stopAllLiveTimers: () => {},
+      renderAndStore: () => {},
+    },
+    `startHunterShotFlow(${JSON.stringify(players[0])}, "attack")`,
+  );
+  assert.equal(state.showHunterShot, true);
+  assert.equal(state.hunterShotActorId, "C");
+  assert.equal(state.hunterShotSelectedPlayerId, "W");
+});
+
+test("猫又の道連れ確定後に死亡と勝敗を反映する", () => {
+  const players = [
+    { id: "C", name: "猫又", roleId: "cat", alive: false },
+    { id: "W", name: "人狼", roleId: "werewolf", alive: true },
+  ];
+  const state = {
+    day: 2,
+    showHunterShot: true,
+    hunterShotActorId: "C",
+    hunterShotSelectedPlayerId: "W",
+    hunterShotQueue: [],
+    hunterShotContext: "attack",
+    shotPlayerIds: [],
+    shotPlayerDays: {},
+    catLinkedPlayerIds: [],
+    catLinkedPlayerDays: {},
+  };
+  let winner = "";
+  const logs = [];
+  runFunctions(
+    ["confirmHunterShot", "processNextHunterShot", "getGameResult", "isHunterRole", "isCatRole", "getDeathAbilityRoleName", "getCatLinkedDeathCandidates", "pickRandomPlayer", "getAttackResultDay"],
+    {
+      state,
+      findPlayer: (id) => players.find((player) => player.id === id),
+      getActivePlayers: () => players,
+      getLivingPlayers: () => players.filter((player) => player.alive),
+      pushUndoSnapshot: () => {},
+      addLog: (text) => logs.push(text),
+      stopAllLiveTimers: () => {},
+      finalizeGameWinner: (value) => { winner = value; },
+      renderAndStore: () => {},
+    },
+    "confirmHunterShot()",
+  );
+  assert.equal(players[1].alive, false);
+  assert.deepEqual(state.catLinkedPlayerIds, ["W"]);
+  assert.equal(state.catLinkedPlayerDays.W, 3);
+  assert.equal(logs[0], "猫又（猫又）の道連れ: 人狼（ランダム）");
+  assert.equal(winner, "市民陣営");
+});
+
+test("生存猫又を襲撃できる夜は人狼の確定勝利と判定しない", () => {
+  const players = [
+    { id: "W", roleId: "werewolf", alive: true },
+    { id: "C", roleId: "cat", alive: true },
+    { id: "V", roleId: "villager", alive: true },
+  ];
+  const state = {
+    allowWerewolfSkipAttack: false,
+    allowWerewolfSelfAttack: false,
+    allowConsecutiveGuard: false,
+    lastGuardedPlayerId: "",
+  };
+  const result = runFunctions(
+    ["isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalNightAttack", "getGameResultAfterHypotheticalDeath", "isHunterRole", "isCatRole"],
+    { state, getActivePlayers: () => players, getLivingPlayers: () => players },
+    "isForcedWerewolfWinNextNight()",
+  );
+  assert.equal(result, false);
+});
+
 test("ハンターが追放されたとき勝敗が決まっていなければ道連れ発砲画面へ進む", () => {
   const players = [
     { id: "H", name: "ハンター", roleId: "hunter", alive: false },
@@ -920,7 +1033,7 @@ test("ハンターが追放されたとき勝敗が決まっていなければ�
     hunterShotContext: "exile",
   };
   runFunctions(
-    ["startHunterShotFlow", "processNextHunterShot", "getGameResult", "isHunterRole"],
+    ["startHunterShotFlow", "processNextHunterShot", "getGameResult", "isHunterRole", "isCatRole", "getCatLinkedDeathCandidates", "pickRandomPlayer"],
     {
       state,
       findPlayer: (id) => players.find((p) => p.id === id),
@@ -951,7 +1064,7 @@ test("ハンター死亡によって勝敗が決まる場合は道連れ発砲�
   let finalizedWinner = "";
   let nightTransitionStarted = false;
   runFunctions(
-    ["startHunterShotFlow", "getGameResult", "isHunterRole"],
+    ["startHunterShotFlow", "getGameResult", "isHunterRole", "isCatRole"],
     {
       state,
       findPlayer: (id) => players.find((p) => p.id === id),
@@ -990,7 +1103,7 @@ test("ハンター道連れで別のハンターが死亡した場合は連鎖�
     shotPlayerDays: {},
   };
   runFunctions(
-    ["confirmHunterShot", "processNextHunterShot", "getGameResult", "isHunterRole"],
+    ["confirmHunterShot", "processNextHunterShot", "getGameResult", "isHunterRole", "isCatRole", "getDeathAbilityRoleName", "getCatLinkedDeathCandidates", "pickRandomPlayer", "getAttackResultDay"],
     {
       state,
       findPlayer: (id) => players.find((p) => p.id === id),
@@ -1029,7 +1142,7 @@ test("ハンター道連れでてるてるが死亡した場合はてるてる�
   };
   let nightResult = null;
   runFunctions(
-    ["confirmHunterShot", "processNextHunterShot", "getGameResult", "isHunterRole", "getGameResultAfterExile", "isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalDeath"],
+    ["confirmHunterShot", "processNextHunterShot", "getGameResult", "isHunterRole", "isCatRole", "getDeathAbilityRoleName", "getCatLinkedDeathCandidates", "pickRandomPlayer", "getAttackResultDay", "getGameResultAfterExile", "isForcedWerewolfWinNextNight", "getGameResultAfterHypotheticalNightAttack", "getGameResultAfterHypotheticalDeath"],
     {
       state,
       findPlayer: (id) => players.find((p) => p.id === id),
@@ -1060,6 +1173,8 @@ test("ハンターの道連れ選択待ちを保存データへ含める", () =>
       hunterShotSelectedPlayerId: "A",
       hunterShotQueue: [{ actorId: "H2", context: "attack" }],
       hunterShotContext: "exile",
+      catLinkedPlayerIds: ["W"],
+      catLinkedPlayerDays: { W: 2 },
     },
     { get: (target, property) => target[property] },
   );
@@ -1074,6 +1189,8 @@ test("ハンターの道連れ選択待ちを保存データへ含める", () =>
   assert.equal(payload.hunterShotSelectedPlayerId, "A");
   assert.deepEqual(Array.from(payload.hunterShotQueue, (item) => ({ ...item })), [{ actorId: "H2", context: "attack" }]);
   assert.equal(payload.hunterShotContext, "exile");
+  assert.deepEqual(Array.from(payload.catLinkedPlayerIds), ["W"]);
+  assert.equal(payload.catLinkedPlayerDays.W, 2);
 });
 
 test("保存したハンター道連れ画面を同じ進行位置へ復元する", () => {
@@ -1084,7 +1201,7 @@ test("保存したハンター道連れ画面を同じ進行位置へ復元す�
   ];
   const state = {};
   runFunctions(
-    ["applySavedHunterShotState"],
+    ["applySavedHunterShotState", "isCatRole", "getCatLinkedDeathCandidates", "pickRandomPlayer"],
     {
       state,
       findPlayer: (id) => players.find((player) => player.id === id),
@@ -1325,7 +1442,7 @@ test("使用役職にボディガードが含まれない場合、連続護衛�
       state: stateWithoutKnight,
       document: mockDocument,
       els: {},
-      RULE_SELECTABLE_ROLE_IDS: ["werewolf", "madman", "seer", "medium", "knight", "hunter", "madman_hunter", "teruteru"],
+      RULE_SELECTABLE_ROLE_IDS: ["werewolf", "madman", "seer", "medium", "knight", "hunter", "cat", "madman_hunter", "teruteru"],
     },
     "renderGameRuleInputs()",
   );
@@ -1348,7 +1465,7 @@ test("使用役職にボディガードが含まれない場合、連続護衛�
       state: stateWithKnight,
       document: mockDocument,
       els: {},
-      RULE_SELECTABLE_ROLE_IDS: ["werewolf", "madman", "seer", "medium", "knight", "hunter", "madman_hunter", "teruteru"],
+      RULE_SELECTABLE_ROLE_IDS: ["werewolf", "madman", "seer", "medium", "knight", "hunter", "cat", "madman_hunter", "teruteru"],
     },
     "renderGameRuleInputs()",
   );
@@ -1361,7 +1478,7 @@ test("使用役職にボディガードが含まれない場合、連続護衛�
 test("ハンター画面の戻るは履歴がある場合だけ有効になる", () => {
   for (const history of [[], [{ payload: {} }]]) {
     const button = { disabled: false };
-    runFunctions(["renderHunterShotView"], {
+    runFunctions(["renderHunterShotView", "isCatRole", "getDeathAbilityRoleName"], {
       state: { screen: "table", showHunterShot: true, hunterShotActorId: "H", undoHistory: history },
       els: { hunterShotView: {}, hunterShotBackBtn: button },
       findPlayer: () => ({ id: "H", roleId: "hunter" }),

@@ -1566,6 +1566,11 @@ textarea:focus {
   background: #dcfce7;
 }
 
+.round-seat.role-color-cat {
+  border-color: #be185d;
+  background: #fce7f3;
+}
+
 .round-seat.role-color-madman_hunter {
   border-color: #b45309;
   background: #fef3c7;
