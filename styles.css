@@ -3122,6 +3122,8 @@ textarea:focus {
 
 .medium-result-card em.villager-result {
   color: #153d2a;
+  font-size: clamp(3rem, 11vw, 7rem);
+  white-space: nowrap;
 }
 
 .medium-ok-button {
@@ -4654,4 +4656,10 @@ body.participant-action-view .action-confirm-actions {
   body.participant-action-view .medium-only-result-card.has-result em {
     font-size: clamp(6rem, 18vw, 10rem);
   }
+}
+
+body.participant-action-view .seer-result-card.has-result em.villager-result,
+body.participant-action-view .medium-only-result-card.has-result em.villager-result {
+  font-size: clamp(3rem, 12vw, 8rem);
+  white-space: nowrap;
 }

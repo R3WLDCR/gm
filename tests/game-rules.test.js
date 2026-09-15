@@ -55,19 +55,39 @@ test("人狼数が市民側以上になると人狼陣営が勝利する", () =>
 });
 
 test("占いと霊媒は人狼だけを人狼と判定する", () => {
-  const functions = ["getDivinationResult", "getMediumResult"];
+  const functions = ["getInvestigationResult", "getDivinationResult", "getMediumResult"];
   assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "werewolf" })'), "人狼");
-  assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "madman" })'), "市民");
-  assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "hunter" })'), "市民");
-  assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "cat" })'), "市民");
-  assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "madman_hunter" })'), "市民");
-  assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "teruteru" })'), "市民");
+  assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "madman" })'), "人狼ではない");
+  assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "hunter" })'), "人狼ではない");
+  assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "cat" })'), "人狼ではない");
+  assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "madman_hunter" })'), "人狼ではない");
+  assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "teruteru" })'), "人狼ではない");
+  assert.equal(runFunctions(functions, {}, 'getDivinationResult({ roleId: "villager" })'), "人狼ではない");
   assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "werewolf" })'), "人狼");
-  assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "madman" })'), "市民");
-  assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "hunter" })'), "市民");
-  assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "cat" })'), "市民");
-  assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "madman_hunter" })'), "市民");
-  assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "teruteru" })'), "市民");
+  assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "madman" })'), "人狼ではない");
+  assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "hunter" })'), "人狼ではない");
+  assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "cat" })'), "人狼ではない");
+  assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "madman_hunter" })'), "人狼ではない");
+  assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "teruteru" })'), "人狼ではない");
+  assert.equal(runFunctions(functions, {}, 'getMediumResult({ roleId: "villager" })'), "人狼ではない");
+});
+
+test("保存済みの市民判定を人狼ではないへ読み替える", () => {
+  assert.equal(runFunctions(["getSeerResultLabel"], {}, 'getSeerResultLabel("市民")'), "人狼ではない");
+  const logs = runFunctions(
+    ["normalizeLogs"],
+    {},
+    `normalizeLogs(${JSON.stringify([
+      { text: "占い: 預言者A → 市民A = 市民" },
+      { text: "霊媒: 霊媒師A → 市民B = 市民" },
+      { text: "市民: 市民A、市民B" },
+    ])})`,
+  );
+  assert.deepEqual(Array.from(logs, (log) => log.text), [
+    "占い: 預言者A → 市民A = 人狼ではない",
+    "霊媒: 霊媒師A → 市民B = 人狼ではない",
+    "市民: 市民A、市民B",
+  ]);
 });
 
 test("連続護衛設定が前夜と同じ対象の選択可否を切り替える", () => {
@@ -512,7 +532,7 @@ test("同じ日の役職結果は役職ごとに最新の1件だけ表示する"
       label: "2日目",
       logs: [
         { text: "2日目の昼へ" },
-        { text: "占い: 預言者A → 市民A = 市民" },
+        { text: "占い: 預言者A → 市民A = 人狼ではない" },
         { text: "護衛: 騎士A → 市民A" },
         { text: "占い: 預言者A → 市民B = 人狼" },
       ],
@@ -534,7 +554,7 @@ test("同じ日の役職結果は役職ごとに最新の1件だけ表示する"
 test("役職結果の再実行は同じ日と役職の古いログを置き換える", () => {
   const state = {
     logs: [
-      { id: "log-1", text: "占い: 預言者A → 市民A = 市民", roleResultKey: "2:seer" },
+      { id: "log-1", text: "占い: 預言者A → 市民A = 人狼ではない", roleResultKey: "2:seer" },
       { id: "log-0", text: "進行開始" },
     ],
     logRestorePoints: { "log-1": { screen: "action" } },
@@ -576,7 +596,7 @@ test("初回の襲撃結果は2日目の朝として扱う", () => {
   const logs = [
     { text: "2日目の昼へ" },
     { text: "襲撃成功: 人狼A → 市民A" },
-    { text: "占い: 預言者A → 市民A = 市民" },
+    { text: "占い: 預言者A → 市民A = 人狼ではない" },
     { text: "配役完了。1日目の夜へ" },
     { text: "配役を開始" },
   ];

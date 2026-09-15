@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.46.0";
+const APP_VERSION = "v1.46.1";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -3472,7 +3472,7 @@ function renderMediumResult() {
     els.actionRoundTable.innerHTML = '<div class="round-empty">直前の追放者がいません</div>';
     return;
   }
-  const result = player.roleId === "werewolf" ? "人狼" : "市民";
+  const result = getMediumResult(player);
   startActionGateCountdown("medium");
   const gateReady = isActionGateReady("medium");
   els.actionRoundTable.innerHTML = `
@@ -4205,8 +4205,12 @@ function formatActionLog(actionName, roleId, target, result = "") {
   return result ? `${actionText} = ${result}` : actionText;
 }
 
+function getInvestigationResult(player) {
+  return player.roleId === "werewolf" ? "人狼" : "人狼ではない";
+}
+
 function getDivinationResult(player) {
-  return player.roleId === "werewolf" ? "人狼" : "市民";
+  return getInvestigationResult(player);
 }
 
 function getRoleResultLogType(text) {
@@ -4228,11 +4232,11 @@ function upsertRoleResultLog(text, roleId, day) {
 }
 
 function getMediumResult(player) {
-  return player.roleId === "werewolf" ? "人狼" : "市民";
+  return getInvestigationResult(player);
 }
 
 function getSeerResultLabel(result) {
-  return result === "人狼" ? "人狼" : "市民";
+  return result === "人狼" ? "人狼" : "人狼ではない";
 }
 
 function hasLivingRole(roleId) {
@@ -5926,7 +5930,9 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.roleDealIndex = saved.roleDealIndex || 0;
   state.roleDealSelectedPlayerIds = saved.roleDealSelectedPlayerIds || (saved.roleDealSelectedPlayerId ? [saved.roleDealSelectedPlayerId] : []);
   state.seerBlinkPlayerId = saved.seerBlinkPlayerId || "";
-  state.seerCheckResults = saved.seerCheckResults && typeof saved.seerCheckResults === "object" ? saved.seerCheckResults : {};
+  state.seerCheckResults = saved.seerCheckResults && typeof saved.seerCheckResults === "object"
+    ? Object.fromEntries(Object.entries(saved.seerCheckResults).map(([playerId, result]) => [playerId, getSeerResultLabel(result)]))
+    : {};
   state.actionRoleIndex = Number.isInteger(saved.actionRoleIndex) ? saved.actionRoleIndex : ACTION_ROLE_ORDER.length;
   state.actionComplete = saved.actionComplete === true;
   state.actionIntroRoleId = saved.actionIntroRoleId || "";
@@ -6019,7 +6025,9 @@ function normalizeLogs(logs) {
   return logs.map((log) => ({
     ...log,
     id: log.id || `legacy-log-${fallbackId++}`,
-    text: String(log.text || "").replaceAll("村人", "市民"),
+    text: String(log.text || "")
+      .replaceAll("村人", "市民")
+      .replace(/^((?:占い|霊媒):.* = )市民$/, "$1人狼ではない"),
   }));
 }
 
