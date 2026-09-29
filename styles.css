@@ -2420,7 +2420,10 @@ textarea:focus {
 }
 
 .attack-result-view.attack-result-prompt,
-.attack-result-view.attack-result-ready {
+.attack-result-view.attack-result-ready,
+.attack-result-view.attack-result-cat-bridge,
+.attack-result-view.attack-result-cat-prompt,
+.attack-result-view.attack-result-cat-name {
   background: #000;
   color: #fff;
 }
@@ -2431,7 +2434,8 @@ textarea:focus {
   line-height: 1;
 }
 
-.attack-result-view.attack-result-night-complete #attackResultLead {
+.attack-result-view.attack-result-night-complete #attackResultLead,
+.attack-result-view.attack-result-cat-bridge #attackResultLead {
   color: #fff;
   font-size: clamp(4rem, 12vw, 9.5rem);
   line-height: 1;
@@ -2443,8 +2447,23 @@ textarea:focus {
 
 .attack-result-view.attack-result-prompt #attackResultMessage,
 .attack-result-view.attack-result-ready #attackResultName,
-.attack-result-view.attack-result-ready #attackResultName.no-victim {
+.attack-result-view.attack-result-ready #attackResultName.no-victim,
+.attack-result-view.attack-result-cat-prompt #attackResultMessage,
+.attack-result-view.attack-result-cat-name #attackResultName {
   color: #fff;
+}
+
+.attack-result-view.attack-result-cat-prompt #attackResultMessage {
+  opacity: 0;
+  filter: blur(14px);
+  animation: catLinkedPromptReveal 1800ms ease-out forwards;
+}
+
+.attack-result-view.attack-result-cat-name #attackResultName {
+  opacity: 0;
+  filter: blur(16px);
+  transform: scale(1.08);
+  animation: catLinkedNameReveal 1800ms ease-out forwards;
 }
 
 .attack-result-content #attackResultLead .night-transition-typewriter-char {
@@ -2535,6 +2554,21 @@ textarea:focus {
     opacity: 0.3;
     filter: blur(1px);
     transform: translateY(-0.1em) scale(0.56);
+  }
+}
+
+@keyframes catLinkedPromptReveal {
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes catLinkedNameReveal {
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
   }
 }
 
@@ -4509,7 +4543,8 @@ body.participant-action-view .action-confirm-actions {
   }
 
   .attack-result-view.attack-result-dawn #attackResultLead,
-  .attack-result-view.attack-result-night-complete #attackResultLead {
+  .attack-result-view.attack-result-night-complete #attackResultLead,
+  .attack-result-view.attack-result-cat-bridge #attackResultLead {
     font-size: clamp(3.2rem, 18vw, 6rem);
   }
 
@@ -4642,7 +4677,8 @@ body.participant-action-view .action-confirm-actions {
   }
 
   .attack-result-view.attack-result-dawn #attackResultLead,
-  .attack-result-view.attack-result-night-complete #attackResultLead {
+  .attack-result-view.attack-result-night-complete #attackResultLead,
+  .attack-result-view.attack-result-cat-bridge #attackResultLead {
     font-size: clamp(3.8rem, 13vw, 7rem);
   }
 

@@ -781,6 +781,7 @@ test("てるてるが襲撃されて死亡したらてるてる陣営の勝利�
     runFunctions(
       ["finishNightActions", "getGameResult", "isCatRole"],
       {
+        state: {},
         findPlayer: (id) => players.find((p) => p.id === id),
         getActivePlayers: () => players,
         showAttackResultScreen: (attack, gameResult) => {
@@ -1051,6 +1052,7 @@ test("ラストウルフが猫又を襲撃した場合は朝の結果画面か�
   assert.equal(players[1].alive, false);
   assert.deepEqual(state.catLinkedPlayerIds, ["W"]);
   assert.equal(state.catLinkedPlayerDays.W, 3);
+  assert.equal(state.attackResultCatLinkedPlayerId, "W");
   assert.equal(logs[0], "猫又（猫又）の道連れ: 人狼（ランダム）");
   assert.ok(shownScreen);
   assert.equal(shownScreen.gameResult.ended, true);
@@ -1422,6 +1424,66 @@ test("襲撃によって勝敗が決定する場合、朝の襲撃結果表示�
   assert.equal(state.showAttackResult, false);
 });
 
+test("ラストウルフの猫又道連れ演出はそして・案内・名前の順で勝利へ進む", () => {
+  let finalizedWinner = "";
+  const state = {
+    showAttackResult: true,
+    attackResultTargetId: "C",
+    attackResultSucceeded: true,
+    attackResultWinner: "市民陣営",
+    attackResultCatLinkedPlayerId: "W",
+    attackResultStage: "ready",
+    attackResultOkSeconds: 1,
+    attackResultPauseSeconds: 0,
+    attackResultRevealSeconds: 0,
+  };
+  const holder = { callback: null };
+  const mockWindow = {
+    setInterval: (callback) => {
+      holder.callback = callback;
+      return 123;
+    },
+    clearInterval: () => {},
+  };
+  runFunctions(
+    ["startAttackResultRevealTimer", "stopAttackResultRevealTimer", "finishVictoryAttackResult", "resetAttackResultState"],
+    {
+      state,
+      window: mockWindow,
+      holder,
+      attackResultRevealTimerId: null,
+      finalizeGameWinner: (winner) => {
+        finalizedWinner = winner;
+      },
+      renderAndStore: () => {},
+      ATTACK_RESULT_STAGE_NIGHT_COMPLETE: "night-complete",
+      ATTACK_RESULT_STAGE_NIGHT_WAIT: "night-wait",
+      ATTACK_RESULT_STAGE_DAWN: "dawn",
+      ATTACK_RESULT_STAGE_RESULT: "result",
+      ATTACK_RESULT_STAGE_READY: "ready",
+      ATTACK_RESULT_STAGE_CAT_BRIDGE: "cat-bridge",
+      ATTACK_RESULT_STAGE_CAT_PROMPT: "cat-prompt",
+      ATTACK_RESULT_STAGE_CAT_NAME: "cat-name",
+      ATTACK_RESULT_PAUSE_SECONDS: 3,
+      ATTACK_RESULT_REVEAL_SECONDS: 5,
+      ATTACK_RESULT_OK_DELAY_SECONDS: 5,
+      CAT_LINK_BRIDGE_SECONDS: 4,
+      CAT_LINK_REVEAL_SECONDS: 5,
+    },
+    `startAttackResultRevealTimer();
+     holder.callback();
+     if (state.attackResultStage !== "cat-bridge") throw new Error("そして演出へ進んでいません");
+     for (let index = 0; index < 4; index += 1) holder.callback();
+     if (state.attackResultStage !== "cat-prompt") throw new Error("道連れ案内へ進んでいません");
+     for (let index = 0; index < 5; index += 1) holder.callback();
+     if (state.attackResultStage !== "cat-name") throw new Error("ラストウルフ名へ進んでいません");
+     for (let index = 0; index < 5; index += 1) holder.callback();`,
+  );
+
+  assert.equal(finalizedWinner, "市民陣営");
+  assert.equal(state.showAttackResult, false);
+});
+
 test("停止した襲撃結果は勝敗確定時もゲーム継続時もOKボタンで進める", () => {
   const createMockEls = () => ({
     attackResultView: { hidden: false, classList: { toggle: () => {} } },
@@ -1451,6 +1513,9 @@ test("停止した襲撃結果は勝敗確定時もゲーム継続時もOKボタ
       ATTACK_RESULT_STAGE_DAWN: "dawn",
       ATTACK_RESULT_STAGE_RESULT: "result",
       ATTACK_RESULT_STAGE_READY: "ready",
+      ATTACK_RESULT_STAGE_CAT_BRIDGE: "cat-bridge",
+      ATTACK_RESULT_STAGE_CAT_PROMPT: "cat-prompt",
+      ATTACK_RESULT_STAGE_CAT_NAME: "cat-name",
     },
     "renderAttackResultView()",
   );
@@ -1477,6 +1542,9 @@ test("停止した襲撃結果は勝敗確定時もゲーム継続時もOKボタ
       ATTACK_RESULT_STAGE_DAWN: "dawn",
       ATTACK_RESULT_STAGE_RESULT: "result",
       ATTACK_RESULT_STAGE_READY: "ready",
+      ATTACK_RESULT_STAGE_CAT_BRIDGE: "cat-bridge",
+      ATTACK_RESULT_STAGE_CAT_PROMPT: "cat-prompt",
+      ATTACK_RESULT_STAGE_CAT_NAME: "cat-name",
     },
     "renderAttackResultView()",
   );
