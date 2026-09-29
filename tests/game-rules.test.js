@@ -997,7 +997,7 @@ test("猫又の道連れ確定後に死亡と勝敗を反映する", () => {
   let winner = "";
   const logs = [];
   runFunctions(
-    ["confirmHunterShot", "processNextHunterShot", "getGameResult", "isHunterRole", "isCatRole", "getDeathAbilityRoleName", "getCatLinkedDeathCandidates", "pickRandomPlayer", "getAttackResultDay"],
+    ["confirmHunterShot", "processNextHunterShot", "getGameResult", "isHunterRole", "isCatRole", "getDeathAbilityRoleName", "getCatLinkedDeathCandidates", "pickRandomPlayer", "recordCatLinkedDeath", "getAttackResultDay"],
     {
       state,
       findPlayer: (id) => players.find((player) => player.id === id),
@@ -1016,6 +1016,73 @@ test("猫又の道連れ確定後に死亡と勝敗を反映する", () => {
   assert.equal(state.catLinkedPlayerDays.W, 3);
   assert.equal(logs[0], "猫又（猫又）の道連れ: 人狼（ランダム）");
   assert.equal(winner, "市民陣営");
+});
+
+test("ラストウルフが猫又を襲撃した場合は朝の結果画面から市民勝利へ進む", () => {
+  const players = [
+    { id: "C", name: "猫又", roleId: "cat", alive: false },
+    { id: "W", name: "人狼", roleId: "werewolf", alive: true },
+    { id: "V", name: "市民", roleId: "villager", alive: true },
+  ];
+  const state = {
+    day: 2,
+    catLinkedPlayerIds: [],
+    catLinkedPlayerDays: {},
+  };
+  let shownScreen = null;
+  const logs = [];
+  runFunctions(
+    ["finishNightActions", "resolveLastWerewolfCatAttack", "recordCatLinkedDeath", "getGameResult", "getLivingPlayers", "isCatRole", "getAttackResultDay"],
+    {
+      state,
+      findPlayer: (id) => players.find((player) => player.id === id),
+      getActivePlayers: () => players,
+      addLog: (text) => logs.push(text),
+      showAttackResultScreen: (attack, gameResult) => {
+        shownScreen = { attack, gameResult };
+      },
+      finalizeGameWinner: () => {},
+      enterDayAfterNight: () => {},
+      renderAndStore: () => {},
+    },
+    'finishNightActions({ attackResult: { targetId: "C", succeeded: true } })',
+  );
+
+  assert.equal(players[1].alive, false);
+  assert.deepEqual(state.catLinkedPlayerIds, ["W"]);
+  assert.equal(state.catLinkedPlayerDays.W, 3);
+  assert.equal(logs[0], "猫又（猫又）の道連れ: 人狼（ランダム）");
+  assert.ok(shownScreen);
+  assert.equal(shownScreen.gameResult.ended, true);
+  assert.equal(shownScreen.gameResult.winner, "市民陣営");
+});
+
+test("複数の人狼が生存中に猫又が襲撃された場合は道連れを自動確定しない", () => {
+  const players = [
+    { id: "C", name: "猫又", roleId: "cat", alive: false },
+    { id: "W1", name: "人狼A", roleId: "werewolf", alive: true },
+    { id: "W2", name: "人狼B", roleId: "werewolf", alive: true },
+    { id: "V", name: "市民", roleId: "villager", alive: true },
+  ];
+  const state = {
+    day: 2,
+    catLinkedPlayerIds: [],
+    catLinkedPlayerDays: {},
+  };
+  const resolved = runFunctions(
+    ["resolveLastWerewolfCatAttack", "recordCatLinkedDeath", "getLivingPlayers", "isCatRole", "getAttackResultDay"],
+    {
+      state,
+      getActivePlayers: () => players,
+      addLog: () => {},
+    },
+    `resolveLastWerewolfCatAttack(${JSON.stringify(players[0])})`,
+  );
+
+  assert.equal(resolved, false);
+  assert.equal(players[1].alive, true);
+  assert.equal(players[2].alive, true);
+  assert.deepEqual(state.catLinkedPlayerIds, []);
 });
 
 test("生存猫又を襲撃できる夜は人狼の確定勝利と判定しない", () => {

@@ -100,6 +100,7 @@
 - 道連れされた対象がハンターまたは狂人ハンターの場合、勝敗が決まっていなければ連鎖して道連れが発動する。
 - 道連れされた対象がてるてるで、てるてるが全員死亡した場合、てるてる陣営の勝利となる。
 - 猫又の道連れ先はアプリがランダムに決め、対象だけを確認画面へ表示してGMが確定する。猫又の道連れで死亡した猫又の能力は連鎖しない。
+- ラストウルフが猫又を襲撃した場合は、朝と襲撃結果を表示した後、ラストウルフの道連れを自動確定して市民陣営の勝利画面へ進む。
 - 猫又の道連れでハンターまたは狂人ハンターが死亡し、その時点で勝敗が決まっていなければ、ハンターの道連れが続けて発動する。
 - 道連れ対象の選択待ちは保存・同期対象とし、再読み込み後も同じ画面から続行する。
 - ハンターの道連れ画面では、復元履歴がない場合は「戻る」を無効にし、道連れ待ち・死亡状態・ログを保持する。
@@ -139,7 +140,7 @@
 | 通常勝敗 | `getGameResult()` | 追放後、襲撃後、勝利画面、ログ |
 | てるてる勝敗 | `getGameResultAfterExile()` / `finishNightActions()` | 追放確定、襲撃結果、勝利画面、ログ、詰み判定 |
 | ハンター道連れ | `startHunterShotFlow()` / `confirmHunterShot()` / `backFromHunterShot()` / `applySavedHunterShotState()` | 追放後、襲撃後、連鎖道連れ、てるてる道連れ、勝敗判定、円卓表示、戻るボタン、ログ、保存・同期・復元 |
-| 猫又道連れ | `getCatLinkedDeathCandidates()` / `startHunterShotFlow()` / `confirmHunterShot()` / `getGameResultAfterHypotheticalNightAttack()` | 追放、襲撃、ランダム抽選、ハンター連鎖、詰み判定、円卓表示、ログ、保存・同期・復元 |
+| 猫又道連れ | `getCatLinkedDeathCandidates()` / `resolveLastWerewolfCatAttack()` / `startHunterShotFlow()` / `confirmHunterShot()` / `getGameResultAfterHypotheticalNightAttack()` | 追放、襲撃、ラストウルフ自動確定、ランダム抽選、ハンター連鎖、詰み判定、円卓表示、ログ、保存・同期・復元 |
 | 追放後の詰み | `isForcedWerewolfWinNextNight()` | 襲撃・護衛ルール、勝利画面、ログ |
 
 ## ルール変更時のテスト

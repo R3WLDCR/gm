@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.46.1";
+const APP_VERSION = "v1.46.2";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -3106,6 +3106,22 @@ function pickRandomPlayer(players, randomSource) {
   return players[index];
 }
 
+function recordCatLinkedDeath(actor, target, deathDay) {
+  target.alive = false;
+  if (!state.catLinkedPlayerIds.includes(target.id)) state.catLinkedPlayerIds.push(target.id);
+  state.catLinkedPlayerDays[target.id] = deathDay;
+  const actorName = actor ? actor.name : "猫又";
+  addLog(`猫又（${actorName}）の道連れ: ${target.name}（ランダム）`);
+}
+
+function resolveLastWerewolfCatAttack(attackedPlayer) {
+  if (!isCatRole(attackedPlayer?.roleId)) return false;
+  const livingWerewolves = getLivingPlayers().filter((player) => player.roleId === "werewolf");
+  if (livingWerewolves.length !== 1) return false;
+  recordCatLinkedDeath(attackedPlayer, livingWerewolves[0], getAttackResultDay(state.day));
+  return true;
+}
+
 function startHunterShotFlow(hunterPlayer, context) {
   const currentResult = getGameResult();
   if (currentResult.ended && !isCatRole(hunterPlayer.roleId)) {
@@ -3221,18 +3237,16 @@ function confirmHunterShot() {
   const catLinkedDeath = isCatRole(actor?.roleId);
   const deathDay = state.hunterShotContext === "attack" ? getAttackResultDay(state.day) : state.day || 1;
   pushUndoSnapshot(catLinkedDeath ? "猫又道連れ" : "ハンター道連れ");
-  target.alive = false;
   if (catLinkedDeath) {
-    if (!state.catLinkedPlayerIds.includes(target.id)) state.catLinkedPlayerIds.push(target.id);
-    state.catLinkedPlayerDays[target.id] = deathDay;
+    recordCatLinkedDeath(actor, target, deathDay);
   } else {
+    target.alive = false;
     if (!state.shotPlayerIds.includes(target.id)) state.shotPlayerIds.push(target.id);
     state.shotPlayerDays[target.id] = deathDay;
+    const roleName = getDeathAbilityRoleName(actor?.roleId);
+    const actorName = actor ? `${actor.name}` : roleName;
+    addLog(`${roleName}（${actorName}）の道連れ: ${target.name}`);
   }
-
-  const roleName = getDeathAbilityRoleName(actor?.roleId);
-  const actorName = actor ? `${actor.name}` : roleName;
-  addLog(`${roleName}（${actorName}）の道連れ: ${target.name}${catLinkedDeath ? "（ランダム）" : ""}`);
 
   if (isHunterRole(target.roleId)) {
     state.hunterShotQueue.push({ actorId: target.id, context: state.hunterShotContext });
@@ -4077,7 +4091,9 @@ function getAttackResultDay(nightDay) {
 
 function finishNightActions({ attackResult = null } = {}) {
   const attackedPlayer = attackResult?.succeeded ? findPlayer(attackResult.targetId) : null;
-  const catAbilityPending = isCatRole(attackedPlayer?.roleId);
+  const catWasAttacked = isCatRole(attackedPlayer?.roleId);
+  const lastWerewolfResolved = catWasAttacked ? resolveLastWerewolfCatAttack(attackedPlayer) : false;
+  const catAbilityPending = catWasAttacked && !lastWerewolfResolved;
   const result = catAbilityPending ? { ended: false, winner: "" } : getGameResult();
   if (attackResult) {
     showAttackResultScreen(attackResult, result);
