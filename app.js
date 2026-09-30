@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.47.0";
+const APP_VERSION = "v1.48.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -50,7 +50,6 @@ const ATTACK_RESULT_STAGE_DAWN = "dawn";
 const ATTACK_RESULT_STAGE_RESULT = "result";
 const ATTACK_RESULT_STAGE_READY = "ready";
 const ATTACK_RESULT_STAGE_CAT_BRIDGE = "cat-bridge";
-const ATTACK_RESULT_STAGE_CAT_PROMPT = "cat-prompt";
 const ATTACK_RESULT_STAGE_CAT_NAME = "cat-name";
 const CAT_LINK_BRIDGE_SECONDS = 4;
 const CAT_LINK_REVEAL_SECONDS = 5;
@@ -111,6 +110,7 @@ const state = {
   attackResultSucceeded: false,
   attackResultWinner: "",
   attackResultCatLinkedPlayerId: "",
+  attackResultDeathPlayerIds: [],
   attackResultStage: ATTACK_RESULT_STAGE_NIGHT_COMPLETE,
   attackResultPauseSeconds: ATTACK_RESULT_PAUSE_SECONDS,
   attackResultRevealSeconds: ATTACK_RESULT_REVEAL_SECONDS,
@@ -1494,6 +1494,7 @@ function resetAttackResultState() {
   state.attackResultSucceeded = false;
   state.attackResultWinner = "";
   state.attackResultCatLinkedPlayerId = "";
+  state.attackResultDeathPlayerIds = [];
   state.attackResultStage = ATTACK_RESULT_STAGE_NIGHT_COMPLETE;
   state.attackResultPauseSeconds = ATTACK_RESULT_PAUSE_SECONDS;
   state.attackResultRevealSeconds = ATTACK_RESULT_REVEAL_SECONDS;
@@ -1511,11 +1512,19 @@ function resumeAttackResultRevealTimer() {
   if (!state.showAttackResult) return;
   if (state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_COMPLETE) return;
   if (state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0) {
-    if (state.attackResultWinner && !state.attackResultCatLinkedPlayerId) {
+    if ((state.attackResultDeathPlayerIds || []).length > 1) {
+      startAttackResultRevealTimer();
+      return;
+    }
+    if (state.attackResultWinner) {
       finishVictoryAttackResult(state.attackResultWinner);
       return;
     }
-    if (!state.attackResultWinner) return;
+    return;
+  }
+  if (state.attackResultStage === ATTACK_RESULT_STAGE_CAT_NAME && state.attackResultRevealSeconds === 0) {
+    if (state.attackResultWinner) finishVictoryAttackResult(state.attackResultWinner);
+    return;
   }
   startAttackResultRevealTimer();
 }
@@ -1524,17 +1533,19 @@ function startAttackResultRevealTimer() {
   if (!state.showAttackResult) return;
   if (state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_COMPLETE) return;
   if (state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0) {
-    if (state.attackResultWinner) {
-      if (state.attackResultCatLinkedPlayerId) {
-        state.attackResultStage = ATTACK_RESULT_STAGE_CAT_BRIDGE;
-        state.attackResultRevealSeconds = CAT_LINK_BRIDGE_SECONDS;
-      } else {
-        finishVictoryAttackResult(state.attackResultWinner);
-        return;
-      }
+    if ((state.attackResultDeathPlayerIds || []).length > 1) {
+      state.attackResultStage = ATTACK_RESULT_STAGE_CAT_BRIDGE;
+      state.attackResultRevealSeconds = CAT_LINK_BRIDGE_SECONDS;
+    } else if (state.attackResultWinner) {
+      finishVictoryAttackResult(state.attackResultWinner);
+      return;
     } else {
       return;
     }
+  }
+  if (state.attackResultStage === ATTACK_RESULT_STAGE_CAT_NAME && state.attackResultRevealSeconds === 0) {
+    if (state.attackResultWinner) finishVictoryAttackResult(state.attackResultWinner);
+    return;
   }
   if (state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_WAIT && state.attackResultPauseSeconds === 0) {
     state.attackResultStage = ATTACK_RESULT_STAGE_DAWN;
@@ -1551,15 +1562,13 @@ function startAttackResultRevealTimer() {
     } else if (state.attackResultStage === ATTACK_RESULT_STAGE_READY) {
       state.attackResultOkSeconds = Math.max(0, state.attackResultOkSeconds - 1);
       if (state.attackResultOkSeconds === 0) {
-        if (state.attackResultWinner) {
-          if (state.attackResultCatLinkedPlayerId) {
-            state.attackResultStage = ATTACK_RESULT_STAGE_CAT_BRIDGE;
-            state.attackResultRevealSeconds = CAT_LINK_BRIDGE_SECONDS;
-          } else {
-            stopAttackResultRevealTimer();
-            finishVictoryAttackResult(state.attackResultWinner);
-            return;
-          }
+        if ((state.attackResultDeathPlayerIds || []).length > 1) {
+          state.attackResultStage = ATTACK_RESULT_STAGE_CAT_BRIDGE;
+          state.attackResultRevealSeconds = CAT_LINK_BRIDGE_SECONDS;
+        } else if (state.attackResultWinner) {
+          stopAttackResultRevealTimer();
+          finishVictoryAttackResult(state.attackResultWinner);
+          return;
         } else {
           stopAttackResultRevealTimer();
         }
@@ -1578,18 +1587,17 @@ function startAttackResultRevealTimer() {
     }
     if (
       state.attackResultRevealSeconds === 0 &&
-      [ATTACK_RESULT_STAGE_CAT_BRIDGE, ATTACK_RESULT_STAGE_CAT_PROMPT, ATTACK_RESULT_STAGE_CAT_NAME].includes(state.attackResultStage)
+      [ATTACK_RESULT_STAGE_CAT_BRIDGE, ATTACK_RESULT_STAGE_CAT_NAME].includes(state.attackResultStage)
     ) {
       if (state.attackResultStage === ATTACK_RESULT_STAGE_CAT_BRIDGE) {
-        state.attackResultStage = ATTACK_RESULT_STAGE_CAT_PROMPT;
-        state.attackResultRevealSeconds = CAT_LINK_REVEAL_SECONDS;
-      } else if (state.attackResultStage === ATTACK_RESULT_STAGE_CAT_PROMPT) {
         state.attackResultStage = ATTACK_RESULT_STAGE_CAT_NAME;
         state.attackResultRevealSeconds = CAT_LINK_REVEAL_SECONDS;
-      } else {
+      } else if (state.attackResultWinner) {
         stopAttackResultRevealTimer();
         finishVictoryAttackResult(state.attackResultWinner);
         return;
+      } else {
+        stopAttackResultRevealTimer();
       }
     }
     renderAndStore();
@@ -3080,18 +3088,20 @@ function renderAttackResultView() {
   els.attackResultView.classList.toggle("attack-result-prompt", state.attackResultStage === ATTACK_RESULT_STAGE_RESULT);
   els.attackResultView.classList.toggle("attack-result-ready", state.attackResultStage === ATTACK_RESULT_STAGE_READY);
   els.attackResultView.classList.toggle("attack-result-cat-bridge", state.attackResultStage === ATTACK_RESULT_STAGE_CAT_BRIDGE);
-  els.attackResultView.classList.toggle("attack-result-cat-prompt", state.attackResultStage === ATTACK_RESULT_STAGE_CAT_PROMPT);
   els.attackResultView.classList.toggle("attack-result-cat-name", state.attackResultStage === ATTACK_RESULT_STAGE_CAT_NAME);
   const nightCompleteVisible = state.attackResultStage === ATTACK_RESULT_STAGE_NIGHT_COMPLETE;
   const promptVisible = state.attackResultStage === ATTACK_RESULT_STAGE_RESULT;
   const nameVisible = state.attackResultStage === ATTACK_RESULT_STAGE_READY;
   const catBridgeVisible = state.attackResultStage === ATTACK_RESULT_STAGE_CAT_BRIDGE;
-  const catPromptVisible = state.attackResultStage === ATTACK_RESULT_STAGE_CAT_PROMPT;
   const catNameVisible = state.attackResultStage === ATTACK_RESULT_STAGE_CAT_NAME;
-  const okVisible = nightCompleteVisible || (state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0);
-  const player = findPlayer(state.attackResultTargetId);
-  const catLinkedPlayer = findPlayer(state.attackResultCatLinkedPlayerId);
-  const name = state.attackResultSucceeded ? player?.name || "不明" : "犠牲者なし";
+  const okVisible =
+    nightCompleteVisible ||
+    (state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0) ||
+    (catNameVisible && state.attackResultRevealSeconds === 0 && !state.attackResultWinner);
+  const deathPlayerIds = state.attackResultDeathPlayerIds || [];
+  const firstDeathPlayer = findPlayer(deathPlayerIds[0]);
+  const secondDeathPlayer = findPlayer(deathPlayerIds[1]);
+  const name = deathPlayerIds.length ? firstDeathPlayer?.name || "不明" : "犠牲者なし";
   if (els.attackResultLead) {
     const leadText = nightCompleteVisible ? "夜行動終了" : catBridgeVisible ? "そして" : "朝が訪れます";
     const animatedLeadVisible = state.attackResultStage === ATTACK_RESULT_STAGE_DAWN || catBridgeVisible;
@@ -3113,13 +3123,13 @@ function renderAttackResultView() {
     els.attackResultLead.hidden = !nightCompleteVisible && state.attackResultStage !== ATTACK_RESULT_STAGE_DAWN && !catBridgeVisible;
   }
   if (els.attackResultName) {
-    els.attackResultName.textContent = catNameVisible ? catLinkedPlayer?.name || "不明" : nameVisible ? name : "";
+    els.attackResultName.textContent = catNameVisible ? secondDeathPlayer?.name || "不明" : nameVisible ? name : "";
     els.attackResultName.hidden = !nameVisible && !catNameVisible;
-    els.attackResultName.classList.toggle("no-victim", nameVisible && !state.attackResultSucceeded);
+    els.attackResultName.classList.toggle("no-victim", nameVisible && deathPlayerIds.length === 0);
   }
   if (els.attackResultMessage) {
-    els.attackResultMessage.textContent = catPromptVisible ? "猫又の道連れになったのは" : "本日襲撃されたのは";
-    els.attackResultMessage.hidden = !promptVisible && !catPromptVisible;
+    els.attackResultMessage.textContent = "本日の死亡者は";
+    els.attackResultMessage.hidden = !promptVisible;
   }
   if (els.attackResultOkBtn) {
     els.attackResultOkBtn.hidden = !okVisible;
@@ -3160,13 +3170,22 @@ function recordCatLinkedDeath(actor, target, deathDay) {
   addLog(`猫又（${actorName}）の道連れ: ${target.name}（ランダム）`);
 }
 
-function resolveLastWerewolfCatAttack(attackedPlayer) {
-  if (!isCatRole(attackedPlayer?.roleId)) return false;
-  const livingWerewolves = getLivingPlayers().filter((player) => player.roleId === "werewolf");
-  if (livingWerewolves.length !== 1) return false;
-  state.attackResultCatLinkedPlayerId = livingWerewolves[0].id;
-  recordCatLinkedDeath(attackedPlayer, livingWerewolves[0], getAttackResultDay(state.day));
-  return true;
+function resolveAttackedCatLinkedDeath(attackedPlayer, randomSource) {
+  if (!isCatRole(attackedPlayer?.roleId)) return null;
+  const target = pickRandomPlayer(getCatLinkedDeathCandidates(getLivingPlayers(), "attack"), randomSource);
+  if (!target) return null;
+  state.attackResultCatLinkedPlayerId = target.id;
+  recordCatLinkedDeath(attackedPlayer, target, getAttackResultDay(state.day));
+  return target;
+}
+
+function getAttackResultDeathPlayerIds(attackResult, catLinkedPlayerId = "", randomSource) {
+  const playerIds = [];
+  if (attackResult?.succeeded && attackResult.targetId) playerIds.push(attackResult.targetId);
+  if (catLinkedPlayerId && !playerIds.includes(catLinkedPlayerId)) playerIds.push(catLinkedPlayerId);
+  if (playerIds.length < 2) return playerIds;
+  const value = typeof randomSource === "function" ? randomSource() : Math.random();
+  return value < 0.5 ? playerIds : [...playerIds].reverse();
 }
 
 function startHunterShotFlow(hunterPlayer, context) {
@@ -4139,10 +4158,8 @@ function getAttackResultDay(nightDay) {
 function finishNightActions({ attackResult = null } = {}) {
   const attackedPlayer = attackResult?.succeeded ? findPlayer(attackResult.targetId) : null;
   state.attackResultCatLinkedPlayerId = "";
-  const catWasAttacked = isCatRole(attackedPlayer?.roleId);
-  const lastWerewolfResolved = catWasAttacked ? resolveLastWerewolfCatAttack(attackedPlayer) : false;
-  const catAbilityPending = catWasAttacked && !lastWerewolfResolved;
-  const result = catAbilityPending ? { ended: false, winner: "" } : getGameResult();
+  if (isCatRole(attackedPlayer?.roleId)) resolveAttackedCatLinkedDeath(attackedPlayer);
+  const result = getGameResult();
   if (attackResult) {
     showAttackResultScreen(attackResult, result);
     return;
@@ -4161,6 +4178,7 @@ function showAttackResultScreen(attackResult, gameResult) {
   state.attackResultTargetId = attackResult.targetId || "";
   state.attackResultSucceeded = attackResult.succeeded === true;
   state.attackResultWinner = gameResult.ended ? gameResult.winner : "";
+  state.attackResultDeathPlayerIds = getAttackResultDeathPlayerIds(attackResult, state.attackResultCatLinkedPlayerId);
   state.attackResultStage = ATTACK_RESULT_STAGE_NIGHT_COMPLETE;
   state.attackResultPauseSeconds = ATTACK_RESULT_PAUSE_SECONDS;
   state.attackResultRevealSeconds = ATTACK_RESULT_REVEAL_SECONDS;
@@ -4182,8 +4200,9 @@ function completeAttackResult() {
     renderAndStore();
     return;
   }
-  if (state.attackResultStage !== ATTACK_RESULT_STAGE_READY) return;
-  if (state.attackResultOkSeconds > 0) return;
+  const resultReady = state.attackResultStage === ATTACK_RESULT_STAGE_READY && state.attackResultOkSeconds === 0;
+  const secondDeathReady = state.attackResultStage === ATTACK_RESULT_STAGE_CAT_NAME && state.attackResultRevealSeconds === 0;
+  if (!resultReady && !secondDeathReady) return;
   const winner = state.attackResultWinner;
   const attackedTargetId = state.attackResultTargetId;
   const attackSucceeded = state.attackResultSucceeded;
@@ -4195,7 +4214,7 @@ function completeAttackResult() {
   }
   if (attackSucceeded && attackedTargetId) {
     const attackedPlayer = findPlayer(attackedTargetId);
-    if (attackedPlayer && (isHunterRole(attackedPlayer.roleId) || isCatRole(attackedPlayer.roleId))) {
+    if (attackedPlayer && isHunterRole(attackedPlayer.roleId)) {
       startHunterShotFlow(attackedPlayer, "attack");
       renderAndStore();
       return;
@@ -5679,6 +5698,7 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     attackResultSucceeded: state.attackResultSucceeded,
     attackResultWinner: state.attackResultWinner,
     attackResultCatLinkedPlayerId: state.attackResultCatLinkedPlayerId,
+    attackResultDeathPlayerIds: state.attackResultDeathPlayerIds,
     attackResultStage: state.attackResultStage,
     attackResultPauseSeconds: state.attackResultPauseSeconds,
     attackResultRevealSeconds: state.attackResultRevealSeconds,
@@ -5941,6 +5961,16 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.attackResultSucceeded = saved.attackResultSucceeded === true;
   state.attackResultWinner = saved.attackResultWinner || "";
   state.attackResultCatLinkedPlayerId = saved.attackResultCatLinkedPlayerId || "";
+  const savedAttackResultDeathPlayerIds = Array.isArray(saved.attackResultDeathPlayerIds)
+    ? saved.attackResultDeathPlayerIds.filter((playerId) => typeof playerId === "string" && playerId).slice(0, 2)
+    : [];
+  state.attackResultDeathPlayerIds = savedAttackResultDeathPlayerIds.length
+    ? savedAttackResultDeathPlayerIds
+    : getAttackResultDeathPlayerIds(
+        { targetId: state.attackResultTargetId, succeeded: state.attackResultSucceeded },
+        state.attackResultCatLinkedPlayerId,
+      );
+  const savedAttackResultStage = saved.attackResultStage === "cat-prompt" ? ATTACK_RESULT_STAGE_CAT_BRIDGE : saved.attackResultStage;
   state.attackResultStage = [
     ATTACK_RESULT_STAGE_NIGHT_COMPLETE,
     ATTACK_RESULT_STAGE_NIGHT_WAIT,
@@ -5948,10 +5978,9 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     ATTACK_RESULT_STAGE_RESULT,
     ATTACK_RESULT_STAGE_READY,
     ATTACK_RESULT_STAGE_CAT_BRIDGE,
-    ATTACK_RESULT_STAGE_CAT_PROMPT,
     ATTACK_RESULT_STAGE_CAT_NAME,
-  ].includes(saved.attackResultStage)
-    ? saved.attackResultStage
+  ].includes(savedAttackResultStage)
+    ? savedAttackResultStage
     : ATTACK_RESULT_STAGE_READY;
   state.attackResultPauseSeconds = Number.isFinite(Number(saved.attackResultPauseSeconds))
     ? Math.max(0, Math.min(ATTACK_RESULT_PAUSE_SECONDS, Number(saved.attackResultPauseSeconds)))
@@ -5970,6 +5999,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
     state.showVoteTable = false;
   } else {
     state.attackResultCatLinkedPlayerId = "";
+    state.attackResultDeathPlayerIds = [];
     state.attackResultStage = ATTACK_RESULT_STAGE_NIGHT_COMPLETE;
     state.attackResultPauseSeconds = ATTACK_RESULT_PAUSE_SECONDS;
     state.attackResultRevealSeconds = ATTACK_RESULT_REVEAL_SECONDS;

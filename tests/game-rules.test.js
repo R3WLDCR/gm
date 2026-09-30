@@ -1033,7 +1033,7 @@ test("ラストウルフが猫又を襲撃した場合は朝の結果画面か�
   let shownScreen = null;
   const logs = [];
   runFunctions(
-    ["finishNightActions", "resolveLastWerewolfCatAttack", "recordCatLinkedDeath", "getGameResult", "getLivingPlayers", "isCatRole", "getAttackResultDay"],
+    ["finishNightActions", "resolveAttackedCatLinkedDeath", "recordCatLinkedDeath", "getGameResult", "getLivingPlayers", "isCatRole", "getCatLinkedDeathCandidates", "pickRandomPlayer", "getAttackResultDay"],
     {
       state,
       findPlayer: (id) => players.find((player) => player.id === id),
@@ -1059,7 +1059,7 @@ test("ラストウルフが猫又を襲撃した場合は朝の結果画面か�
   assert.equal(shownScreen.gameResult.winner, "市民陣営");
 });
 
-test("複数の人狼が生存中に猫又が襲撃された場合は道連れを自動確定しない", () => {
+test("複数の人狼が生存中に猫又が襲撃された場合も人狼1名をランダムで自動確定する", () => {
   const players = [
     { id: "C", name: "猫又", roleId: "cat", alive: false },
     { id: "W1", name: "人狼A", roleId: "werewolf", alive: true },
@@ -1071,20 +1071,38 @@ test("複数の人狼が生存中に猫又が襲撃された場合は道連れ�
     catLinkedPlayerIds: [],
     catLinkedPlayerDays: {},
   };
-  const resolved = runFunctions(
-    ["resolveLastWerewolfCatAttack", "recordCatLinkedDeath", "getLivingPlayers", "isCatRole", "getAttackResultDay"],
+  const targetId = runFunctions(
+    ["resolveAttackedCatLinkedDeath", "recordCatLinkedDeath", "getLivingPlayers", "isCatRole", "getCatLinkedDeathCandidates", "pickRandomPlayer", "getAttackResultDay"],
     {
       state,
       getActivePlayers: () => players,
       addLog: () => {},
     },
-    `resolveLastWerewolfCatAttack(${JSON.stringify(players[0])})`,
+    `resolveAttackedCatLinkedDeath(${JSON.stringify(players[0])}, () => 0).id`,
   );
 
-  assert.equal(resolved, false);
-  assert.equal(players[1].alive, true);
+  assert.equal(targetId, "W1");
+  assert.equal(players[1].alive, false);
   assert.equal(players[2].alive, true);
-  assert.deepEqual(state.catLinkedPlayerIds, []);
+  assert.deepEqual(state.catLinkedPlayerIds, ["W1"]);
+  assert.equal(state.attackResultCatLinkedPlayerId, "W1");
+});
+
+test("猫又襲撃時の2名はランダム順で死因を付けずに表示する", () => {
+  const attackResult = { targetId: "C", succeeded: true };
+  const attackFirst = runFunctions(
+    ["getAttackResultDeathPlayerIds"],
+    {},
+    `getAttackResultDeathPlayerIds(${JSON.stringify(attackResult)}, "W", () => 0)`,
+  );
+  const linkedFirst = runFunctions(
+    ["getAttackResultDeathPlayerIds"],
+    {},
+    `getAttackResultDeathPlayerIds(${JSON.stringify(attackResult)}, "W", () => 0.99)`,
+  );
+
+  assert.deepEqual(Array.from(attackFirst), ["C", "W"]);
+  assert.deepEqual(Array.from(linkedFirst), ["W", "C"]);
 });
 
 test("生存猫又を襲撃できる夜は人狼の確定勝利と判定しない", () => {
@@ -1264,6 +1282,8 @@ test("ハンターの道連れ選択待ちを保存データへ含める", () =>
       hunterShotContext: "exile",
       catLinkedPlayerIds: ["W"],
       catLinkedPlayerDays: { W: 2 },
+      attackResultCatLinkedPlayerId: "W",
+      attackResultDeathPlayerIds: ["C", "W"],
     },
     { get: (target, property) => target[property] },
   );
@@ -1280,6 +1300,8 @@ test("ハンターの道連れ選択待ちを保存データへ含める", () =>
   assert.equal(payload.hunterShotContext, "exile");
   assert.deepEqual(Array.from(payload.catLinkedPlayerIds), ["W"]);
   assert.equal(payload.catLinkedPlayerDays.W, 2);
+  assert.equal(payload.attackResultCatLinkedPlayerId, "W");
+  assert.deepEqual(Array.from(payload.attackResultDeathPlayerIds), ["C", "W"]);
 });
 
 test("保存したハンター道連れ画面を同じ進行位置へ復元する", () => {
@@ -1376,6 +1398,7 @@ test("襲撃によって勝敗が決定する場合、朝の襲撃結果表示�
     attackResultTargetId: "V",
     attackResultSucceeded: true,
     attackResultWinner: "人狼陣営",
+    attackResultDeathPlayerIds: ["V"],
     attackResultStage: "ready",
     attackResultOkSeconds: 1,
     attackResultPauseSeconds: 0,
@@ -1411,6 +1434,7 @@ test("襲撃によって勝敗が決定する場合、朝の襲撃結果表示�
       ATTACK_RESULT_STAGE_DAWN: "dawn",
       ATTACK_RESULT_STAGE_RESULT: "result",
       ATTACK_RESULT_STAGE_READY: "ready",
+      ATTACK_RESULT_STAGE_CAT_NAME: "cat-name",
       ATTACK_RESULT_PAUSE_SECONDS: 3,
       ATTACK_RESULT_REVEAL_SECONDS: 5,
       ATTACK_RESULT_OK_DELAY_SECONDS: 5,
@@ -1424,7 +1448,7 @@ test("襲撃によって勝敗が決定する場合、朝の襲撃結果表示�
   assert.equal(state.showAttackResult, false);
 });
 
-test("ラストウルフの猫又道連れ演出はそして・案内・名前の順で勝利へ進む", () => {
+test("猫又襲撃の朝は1人目・そして・2人目の順で勝利へ進む", () => {
   let finalizedWinner = "";
   const state = {
     showAttackResult: true,
@@ -1432,6 +1456,7 @@ test("ラストウルフの猫又道連れ演出はそして・案内・名前�
     attackResultSucceeded: true,
     attackResultWinner: "市民陣営",
     attackResultCatLinkedPlayerId: "W",
+    attackResultDeathPlayerIds: ["C", "W"],
     attackResultStage: "ready",
     attackResultOkSeconds: 1,
     attackResultPauseSeconds: 0,
@@ -1462,7 +1487,6 @@ test("ラストウルフの猫又道連れ演出はそして・案内・名前�
       ATTACK_RESULT_STAGE_RESULT: "result",
       ATTACK_RESULT_STAGE_READY: "ready",
       ATTACK_RESULT_STAGE_CAT_BRIDGE: "cat-bridge",
-      ATTACK_RESULT_STAGE_CAT_PROMPT: "cat-prompt",
       ATTACK_RESULT_STAGE_CAT_NAME: "cat-name",
       ATTACK_RESULT_PAUSE_SECONDS: 3,
       ATTACK_RESULT_REVEAL_SECONDS: 5,
@@ -1474,13 +1498,71 @@ test("ラストウルフの猫又道連れ演出はそして・案内・名前�
      holder.callback();
      if (state.attackResultStage !== "cat-bridge") throw new Error("そして演出へ進んでいません");
      for (let index = 0; index < 4; index += 1) holder.callback();
-     if (state.attackResultStage !== "cat-prompt") throw new Error("道連れ案内へ進んでいません");
-     for (let index = 0; index < 5; index += 1) holder.callback();
-     if (state.attackResultStage !== "cat-name") throw new Error("ラストウルフ名へ進んでいません");
+     if (state.attackResultStage !== "cat-name") throw new Error("2人目の名前へ進んでいません");
      for (let index = 0; index < 5; index += 1) holder.callback();`,
   );
 
   assert.equal(finalizedWinner, "市民陣営");
+  assert.equal(state.showAttackResult, false);
+});
+
+test("猫又襲撃後も試合が続く場合は2人目の表示後にOKで昼へ進む", () => {
+  let dayEntered = false;
+  const state = {
+    showAttackResult: true,
+    attackResultTargetId: "C",
+    attackResultSucceeded: true,
+    attackResultWinner: "",
+    attackResultCatLinkedPlayerId: "W1",
+    attackResultDeathPlayerIds: ["C", "W1"],
+    attackResultStage: "cat-name",
+    attackResultOkSeconds: 0,
+    attackResultPauseSeconds: 0,
+    attackResultRevealSeconds: 1,
+  };
+  const players = [{ id: "C", roleId: "cat" }];
+  const holder = { callback: null };
+  const mockWindow = {
+    setInterval: (callback) => {
+      holder.callback = callback;
+      return 123;
+    },
+    clearInterval: () => {},
+  };
+  runFunctions(
+    ["startAttackResultRevealTimer", "stopAttackResultRevealTimer", "completeAttackResult", "resetAttackResultState", "isHunterRole"],
+    {
+      state,
+      window: mockWindow,
+      holder,
+      attackResultRevealTimerId: null,
+      findPlayer: (id) => players.find((player) => player.id === id),
+      finalizeGameWinner: () => {},
+      startHunterShotFlow: () => {},
+      enterDayAfterNight: () => {
+        dayEntered = true;
+      },
+      renderAndStore: () => {},
+      ATTACK_RESULT_STAGE_NIGHT_COMPLETE: "night-complete",
+      ATTACK_RESULT_STAGE_NIGHT_WAIT: "night-wait",
+      ATTACK_RESULT_STAGE_DAWN: "dawn",
+      ATTACK_RESULT_STAGE_RESULT: "result",
+      ATTACK_RESULT_STAGE_READY: "ready",
+      ATTACK_RESULT_STAGE_CAT_BRIDGE: "cat-bridge",
+      ATTACK_RESULT_STAGE_CAT_NAME: "cat-name",
+      ATTACK_RESULT_PAUSE_SECONDS: 3,
+      ATTACK_RESULT_REVEAL_SECONDS: 5,
+      ATTACK_RESULT_OK_DELAY_SECONDS: 5,
+      CAT_LINK_BRIDGE_SECONDS: 4,
+      CAT_LINK_REVEAL_SECONDS: 5,
+    },
+    `startAttackResultRevealTimer();
+     holder.callback();
+     if (state.attackResultRevealSeconds !== 0) throw new Error("2人目の表示が完了していません");
+     completeAttackResult();`,
+  );
+
+  assert.equal(dayEntered, true);
   assert.equal(state.showAttackResult, false);
 });
 
@@ -1514,13 +1596,13 @@ test("停止した襲撃結果は勝敗確定時もゲーム継続時もOKボタ
       ATTACK_RESULT_STAGE_RESULT: "result",
       ATTACK_RESULT_STAGE_READY: "ready",
       ATTACK_RESULT_STAGE_CAT_BRIDGE: "cat-bridge",
-      ATTACK_RESULT_STAGE_CAT_PROMPT: "cat-prompt",
       ATTACK_RESULT_STAGE_CAT_NAME: "cat-name",
     },
     "renderAttackResultView()",
   );
   assert.equal(elsWinner.attackResultOkBtn.hidden, false);
   assert.equal(elsWinner.attackResultOkBtn.disabled, false);
+  assert.equal(elsWinner.attackResultMessage.textContent, "本日の死亡者は");
 
   const elsOngoing = createMockEls();
   const stateOngoing = {
@@ -1528,6 +1610,7 @@ test("停止した襲撃結果は勝敗確定時もゲーム継続時もOKボタ
     attackResultTargetId: "V",
     attackResultSucceeded: true,
     attackResultWinner: "",
+    attackResultDeathPlayerIds: ["V"],
     attackResultStage: "ready",
     attackResultOkSeconds: 0,
   };
@@ -1543,7 +1626,6 @@ test("停止した襲撃結果は勝敗確定時もゲーム継続時もOKボタ
       ATTACK_RESULT_STAGE_RESULT: "result",
       ATTACK_RESULT_STAGE_READY: "ready",
       ATTACK_RESULT_STAGE_CAT_BRIDGE: "cat-bridge",
-      ATTACK_RESULT_STAGE_CAT_PROMPT: "cat-prompt",
       ATTACK_RESULT_STAGE_CAT_NAME: "cat-name",
     },
     "renderAttackResultView()",
@@ -1655,6 +1737,7 @@ test("勝敗確定の襲撃ログへ復元した後はタイマーを動かさ�
       finalizeGameWinner: (value) => { finalizedWinner = value; },
       renderAndStore: () => {},
       ATTACK_RESULT_STAGE_READY: "ready",
+      ATTACK_RESULT_STAGE_CAT_NAME: "cat-name",
       ATTACK_RESULT_STAGE_NIGHT_COMPLETE: "night-complete",
       ATTACK_RESULT_PAUSE_SECONDS: 3,
       ATTACK_RESULT_REVEAL_SECONDS: 5,

@@ -2422,7 +2422,6 @@ textarea:focus {
 .attack-result-view.attack-result-prompt,
 .attack-result-view.attack-result-ready,
 .attack-result-view.attack-result-cat-bridge,
-.attack-result-view.attack-result-cat-prompt,
 .attack-result-view.attack-result-cat-name {
   background: #000;
   color: #fff;
@@ -2448,15 +2447,8 @@ textarea:focus {
 .attack-result-view.attack-result-prompt #attackResultMessage,
 .attack-result-view.attack-result-ready #attackResultName,
 .attack-result-view.attack-result-ready #attackResultName.no-victim,
-.attack-result-view.attack-result-cat-prompt #attackResultMessage,
 .attack-result-view.attack-result-cat-name #attackResultName {
   color: #fff;
-}
-
-.attack-result-view.attack-result-cat-prompt #attackResultMessage {
-  opacity: 0;
-  filter: blur(14px);
-  animation: catLinkedPromptReveal 1800ms ease-out forwards;
 }
 
 .attack-result-view.attack-result-cat-name #attackResultName {
@@ -2554,13 +2546,6 @@ textarea:focus {
     opacity: 0.3;
     filter: blur(1px);
     transform: translateY(-0.1em) scale(0.56);
-  }
-}
-
-@keyframes catLinkedPromptReveal {
-  to {
-    opacity: 1;
-    filter: blur(0);
   }
 }
 
