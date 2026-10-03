@@ -18,7 +18,7 @@
         <div class="header-identity">
           <div class="title-row">
             <p class="eyebrow">Werewolf Game Master</p>
-            <span id="appVersionBadge" class="version-badge">v1.49.0</span>
+            <span id="appVersionBadge" class="version-badge">v1.49.1</span>
             <span id="progressBadge" class="progress-badge">準備中</span>
           </div>
           <div id="headerMatchInfo" class="header-match-info" hidden>
@@ -125,7 +125,17 @@
                 <button id="matchNumberNext" class="match-number-step" type="button" aria-label="次の試合番号">›</button>
               </div>
             </div>
-            <label>開催日<input id="tournamentDateInput" type="date" /></label>
+            <div class="match-number-field match-date-field">
+              <div class="match-date-label-row">
+                <span id="tournamentDateLabel" class="match-number-label">開催日</span>
+                <button id="tournamentDateTodayBtn" class="mini-button match-date-today-btn" type="button" aria-label="今日の日付をセット">今日</button>
+              </div>
+              <div class="match-number-control match-date-control" role="group" aria-labelledby="tournamentDateLabel">
+                <button id="tournamentDatePrevious" class="match-number-step" type="button" aria-label="前の日">‹</button>
+                <input id="tournamentDateInput" type="date" aria-label="開催日" />
+                <button id="tournamentDateNext" class="match-number-step" type="button" aria-label="次の日">›</button>
+              </div>
+            </div>
           </div>
 
           <fieldset class="game-rule-settings">

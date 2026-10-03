@@ -815,7 +815,7 @@ body.teruteru-victory-view .victory-banner.victory-teruteru.victory-reveal-winne
 
 .match-info-fields {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.42fr) minmax(190px, 0.42fr) minmax(150px, 0.5fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(170px, 0.75fr) minmax(170px, 0.75fr) minmax(200px, 1fr);
   gap: 10px;
 }
 
@@ -823,6 +823,31 @@ body.teruteru-victory-view .victory-banner.victory-teruteru.victory-reveal-winne
 .match-number-field {
   display: grid;
   gap: 7px;
+}
+
+.match-date-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.match-date-today-btn {
+  padding: 2px 8px;
+  min-height: 22px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  border-radius: 4px;
+  background: #edf5f2;
+  color: var(--accent-strong);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.match-date-today-btn:hover {
+  background: var(--accent);
+  color: white;
 }
 
 .match-number-label {
@@ -841,6 +866,38 @@ body.teruteru-victory-view .victory-banner.victory-teruteru.victory-reveal-winne
   border-radius: 7px;
   overflow: hidden;
   background: var(--paper);
+}
+
+.match-date-control input[type="date"] {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0 4px;
+  min-height: 42px;
+  min-width: 0;
+}
+
+.match-date-control input[type="date"]:focus {
+  box-shadow: none;
+}
+
+.match-date-control input[type="date"]::-webkit-date-and-time-value {
+  text-align: center;
+  min-height: 1.4em;
+}
+
+.match-date-control input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  padding: 4px;
+  margin-right: 2px;
+  opacity: 0.65;
+}
+
+.match-date-control input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }
 
 .match-number-control:focus-within {
@@ -1219,6 +1276,16 @@ body.teruteru-victory-view .victory-banner.victory-teruteru.victory-reveal-winne
   cursor: not-allowed;
 }
 
+@media (max-width: 900px) {
+  .match-info-fields {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .match-info-fields > label:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (max-width: 640px) {
   .match-info-fields {
     grid-template-columns: 1fr 1fr;
@@ -1228,7 +1295,7 @@ body.teruteru-victory-view .victory-banner.victory-teruteru.victory-reveal-winne
     grid-column: 1 / -1;
   }
 
-  .match-info-fields > label:last-child {
+  .match-info-fields .match-date-field {
     grid-column: 1 / -1;
   }
 }

@@ -2024,3 +2024,31 @@ test("配役開始時は設定された役職人数に基づき配役キュー�
   assert.equal(counts.hunter, 1);
   assert.equal(counts.villager, 5);
 });
+
+test("開催日の日付シフトと今日ボタンで日付を素早く変更できる", () => {
+  assert.equal(runFunctions(["shiftDate"], {}, 'shiftDate("2026-10-03", 1)'), "2026-10-04");
+  assert.equal(runFunctions(["shiftDate"], {}, 'shiftDate("2026-10-03", -1)'), "2026-10-02");
+  assert.equal(runFunctions(["shiftDate"], {}, 'shiftDate("2026-10-01", -1)'), "2026-09-30");
+  assert.equal(runFunctions(["shiftDate"], {}, 'shiftDate("2026-12-31", 1)'), "2027-01-01");
+
+  const state = { tournamentDate: "2026-10-03" };
+  const els = { tournamentDateInput: { value: "2026-10-03" } };
+  const context = {
+    state,
+    els,
+    getTodayKey: () => "2026-10-03",
+    renderAndStore: () => {},
+  };
+
+  runFunctions(["shiftDate", "stepTournamentDate"], context, "stepTournamentDate(1)");
+  assert.equal(state.tournamentDate, "2026-10-04");
+  assert.equal(els.tournamentDateInput.value, "2026-10-04");
+
+  runFunctions(["shiftDate", "stepTournamentDate"], context, "stepTournamentDate(-2)");
+  assert.equal(state.tournamentDate, "2026-10-02");
+  assert.equal(els.tournamentDateInput.value, "2026-10-02");
+
+  runFunctions(["setTournamentDateToday"], context, "setTournamentDateToday()");
+  assert.equal(state.tournamentDate, "2026-10-03");
+  assert.equal(els.tournamentDateInput.value, "2026-10-03");
+});

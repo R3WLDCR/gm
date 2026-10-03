@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.49.0";
+const APP_VERSION = "v1.49.1";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -323,6 +323,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     "tournamentEditionMinus",
     "tournamentEditionPlus",
     "tournamentDateInput",
+    "tournamentDatePrevious",
+    "tournamentDateNext",
+    "tournamentDateTodayBtn",
     "matchNumberInput",
     "matchNumberPrevious",
     "matchNumberNext",
@@ -478,6 +481,9 @@ function bindEvents() {
   bindMatchNumberStepper(els.tournamentEditionPlus, els.tournamentEditionInput, 1);
   bindMatchNumberStepper(els.matchNumberPrevious, els.matchNumberInput, -1);
   bindMatchNumberStepper(els.matchNumberNext, els.matchNumberInput, 1);
+  bindMatchDateStepper(els.tournamentDatePrevious, -1);
+  bindMatchDateStepper(els.tournamentDateNext, 1);
+  els.tournamentDateTodayBtn?.addEventListener("click", setTournamentDateToday);
   document.querySelectorAll("[data-role-rule]").forEach((input) => {
     input.addEventListener("change", updateGameRules);
   });
@@ -731,6 +737,61 @@ function bindMatchNumberStepper(button, input, delta) {
   });
   button.addEventListener("click", (event) => {
     if (event.detail === 0) step();
+  });
+}
+
+function shiftDate(dateString, deltaDays) {
+  const base = /^\d{4}-\d{2}-\d{2}$/.test(dateString)
+    ? new Date(`${dateString}T00:00:00`)
+    : new Date();
+  base.setDate(base.getDate() + deltaDays);
+  const year = base.getFullYear();
+  const month = String(base.getMonth() + 1).padStart(2, "0");
+  const day = String(base.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function setTournamentDateToday() {
+  const today = typeof getTodayKey === "function" ? getTodayKey() : new Date().toISOString().slice(0, 10);
+  state.tournamentDate = today;
+  if (els.tournamentDateInput) els.tournamentDateInput.value = today;
+  if (typeof renderAndStore === "function") renderAndStore();
+}
+
+function stepTournamentDate(delta) {
+  const current = state.tournamentDate || (typeof getTodayKey === "function" ? getTodayKey() : "");
+  const next = shiftDate(current, delta);
+  state.tournamentDate = next;
+  if (els.tournamentDateInput) els.tournamentDateInput.value = next;
+  if (typeof renderAndStore === "function") renderAndStore();
+}
+
+function bindMatchDateStepper(button, delta) {
+  if (!button) return;
+  let repeatDelayId = null;
+  let repeatIntervalId = null;
+
+  const stopRepeating = () => {
+    window.clearTimeout(repeatDelayId);
+    window.clearInterval(repeatIntervalId);
+    repeatDelayId = null;
+    repeatIntervalId = null;
+  };
+
+  button.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    button.setPointerCapture?.(event.pointerId);
+    stepTournamentDate(delta);
+    repeatDelayId = window.setTimeout(() => {
+      repeatIntervalId = window.setInterval(() => stepTournamentDate(delta), 120);
+    }, 480);
+  });
+  ["pointerup", "pointercancel", "lostpointercapture"].forEach((eventName) => {
+    button.addEventListener(eventName, stopRepeating);
+  });
+  button.addEventListener("click", (event) => {
+    if (event.detail === 0) stepTournamentDate(delta);
   });
 }
 
