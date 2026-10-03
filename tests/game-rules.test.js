@@ -1865,3 +1865,162 @@ test("昼タイマーのランダム設定はランダム待機中のみ指定�
   assert.equal(runFunctions(functions, {}, "getRandomTimerMinutes(0, () => 0.999)"), 1);
   assert.equal(runFunctions(functions, {}, "getRandomTimerMinutes(15, () => 0.999)"), 9);
 });
+test("レギュレーションを適用すると役職内訳とルール設定が一括で切り替わる", () => {
+  const state = {
+    roles: [
+      { id: "werewolf", name: "人狼", count: 1 },
+      { id: "madman", name: "裏切り者", count: 1 },
+      { id: "seer", name: "預言者", count: 1 },
+      { id: "medium", name: "霊媒師", count: 1 },
+      { id: "knight", name: "ボディガード", count: 1 },
+      { id: "hunter", name: "ハンター", count: 0 },
+      { id: "cat", name: "猫又", count: 0 },
+      { id: "madman_hunter", name: "狂人ハンター", count: 0 },
+      { id: "teruteru", name: "てるてる", count: 0 },
+      { id: "villager", name: "市民", count: 0 },
+    ],
+    enabledRoleIds: [],
+    regulations: [
+      {
+        id: "default-12a",
+        name: "12A",
+        playerCount: 12,
+        roles: { werewolf: 2, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 1, cat: 0, madman_hunter: 0, teruteru: 0, villager: 5 },
+        seerInitialWhiteEnabled: true,
+        allowConsecutiveGuard: false,
+        allowWerewolfSelfAttack: false,
+        allowWerewolfSkipAttack: true,
+      },
+    ],
+    selectedRegulationId: "",
+    seerInitialWhiteEnabled: false,
+    allowConsecutiveGuard: true,
+    allowWerewolfSelfAttack: true,
+    allowWerewolfSkipAttack: false,
+  };
+
+  const logs = [];
+  runFunctions(
+    ["applyRegulation"],
+    {
+      state,
+      addLog: (text) => logs.push(text),
+      renderAndStore: () => {},
+    },
+    'applyRegulation("default-12a")',
+  );
+
+  assert.equal(state.selectedRegulationId, "default-12a");
+  assert.equal(state.roles.find((r) => r.id === "werewolf").count, 2);
+  assert.equal(state.roles.find((r) => r.id === "hunter").count, 1);
+  assert.equal(state.roles.find((r) => r.id === "villager").count, 5);
+  assert.equal(state.seerInitialWhiteEnabled, true);
+  assert.equal(state.allowConsecutiveGuard, false);
+  assert.equal(state.allowWerewolfSelfAttack, false);
+  assert.equal(state.allowWerewolfSkipAttack, true);
+  assert.deepEqual(Array.from(state.enabledRoleIds).sort(), ["werewolf", "madman", "seer", "medium", "knight", "hunter", "villager"].sort());
+  assert.equal(logs[0], "レギュレーション「12A」（12人）を適用した");
+});
+
+test("現在の役職設定を新しいレギュレーション名で保存・上書きできる", () => {
+  const state = {
+    roles: [
+      { id: "werewolf", count: 2 },
+      { id: "madman", count: 1 },
+      { id: "seer", count: 1 },
+      { id: "medium", count: 1 },
+      { id: "knight", count: 1 },
+      { id: "cat", count: 1 },
+      { id: "villager", count: 6 },
+    ],
+    regulations: [],
+    selectedRegulationId: "",
+    seerInitialWhiteEnabled: true,
+    allowConsecutiveGuard: false,
+    allowWerewolfSelfAttack: false,
+    allowWerewolfSkipAttack: true,
+  };
+
+  const logs = [];
+  const context = {
+    state,
+    getActivePlayers: () => Array.from({ length: 13 }, (_, i) => ({ id: `P${i + 1}`, active: true })),
+    addLog: (text) => logs.push(text),
+    renderAndStore: () => {},
+  };
+
+  runFunctions(["saveCurrentAsRegulation"], context, 'saveCurrentAsRegulation("13人猫又村", 13)');
+  assert.equal(state.regulations.length, 1);
+  assert.equal(state.regulations[0].name, "13人猫又村");
+  assert.equal(state.regulations[0].playerCount, 13);
+  assert.equal(state.regulations[0].roles.werewolf, 2);
+  assert.equal(state.regulations[0].roles.cat, 1);
+  assert.equal(state.selectedRegulationId, state.regulations[0].id);
+
+  // 同名・同人数の場合は上書き保存
+  state.roles.find((r) => r.id === "werewolf").count = 3;
+  runFunctions(["saveCurrentAsRegulation"], context, 'saveCurrentAsRegulation("13人猫又村", 13)');
+  assert.equal(state.regulations.length, 1);
+  assert.equal(state.regulations[0].roles.werewolf, 3);
+});
+
+test("役職内訳で人数を変更すると市民人数が自動計算され有効役職が連動する", () => {
+  const state = {
+    roles: [
+      { id: "werewolf", count: 1 },
+      { id: "madman", count: 0 },
+      { id: "seer", count: 0 },
+      { id: "medium", count: 0 },
+      { id: "knight", count: 0 },
+      { id: "hunter", count: 0 },
+      { id: "cat", count: 0 },
+      { id: "madman_hunter", count: 0 },
+      { id: "teruteru", count: 0 },
+      { id: "villager", count: 11 },
+    ],
+    enabledRoleIds: ["werewolf", "villager"],
+    selectedRegulationId: "prev-id",
+  };
+
+  const context = {
+    state,
+    getActivePlayers: () => Array.from({ length: 12 }, (_, i) => ({ id: `P${i + 1}`, active: true })),
+    renderAndStore: () => {},
+  };
+
+  // ハンターを1人増やす
+  runFunctions(["setRoleCount"], context, 'setRoleCount("hunter", 1)');
+  assert.equal(state.roles.find((r) => r.id === "hunter").count, 1);
+  assert.equal(state.roles.find((r) => r.id === "villager").count, 10);
+  assert.equal(state.enabledRoleIds.includes("hunter"), true);
+  assert.equal(state.selectedRegulationId, "");
+
+  // 人狼を2人に増やす
+  runFunctions(["setRoleCount"], context, 'setRoleCount("werewolf", 1)');
+  assert.equal(state.roles.find((r) => r.id === "werewolf").count, 2);
+  assert.equal(state.roles.find((r) => r.id === "villager").count, 9);
+});
+
+test("配役開始時は設定された役職人数に基づき配役キューが構築される", () => {
+  const state = {
+    roles: [
+      { id: "werewolf", count: 2 },
+      { id: "madman", count: 1 },
+      { id: "seer", count: 1 },
+      { id: "medium", count: 1 },
+      { id: "knight", count: 1 },
+      { id: "hunter", count: 1 },
+      { id: "cat", count: 0 },
+      { id: "madman_hunter", count: 0 },
+      { id: "teruteru", count: 0 },
+      { id: "villager", count: 5 },
+    ],
+  };
+
+  const counts = runFunctions(["getRoleDealCounts"], { state }, "getRoleDealCounts(12)");
+  assert.equal(counts.werewolf, 2);
+  assert.equal(counts.madman, 1);
+  assert.equal(counts.seer, 1);
+  assert.equal(counts.hunter, 1);
+  assert.equal(counts.villager, 5);
+});

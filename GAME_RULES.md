@@ -15,7 +15,10 @@
 
 ## 開始時ルール
 
-- 使用役職は名簿画面のゲームルールで選択する。
+- 使用役職および役職内訳は名簿画面のゲームルールで設定する。
+- 人数ごとのレギュレーション（役職内訳、初日占い、連続護衛、自噛み、襲撃なし）を「12A」「13B」などの名前をつけてセットで保存・呼び出しできる。
+- 保存したレギュレーションを適用すると、役職内訳およびルール設定が一括で切り替わる。
+- 役職内訳では各役職の人数を直接増減でき、円卓での配役時にもその設定人数が反映される。
 - 人狼は必須役職とする。
 - 預言者の初日占いは「白あり／白なし」を選択でき、初期値は「白あり」とする。
 - 初日白ありでは、人狼と預言者本人を除く参加者から自動選択する。
@@ -127,6 +130,7 @@
 | 昼タイマーのおすすめ | `getRecommendedTimerMinutes()` / `getDayTimerPlayerCount()` | 参加人数、生存者数、1〜9分プリセット、名簿の参加選択 |
 | 昼タイマーの自動短縮 | `getNextDayTimerMinutes()` | 分数選択、昼移行、手動モード、保存・同期・復元 |
 | 昼タイマーのランダム設定 | `resolveTimerPresetMinutes()` / `getRandomTimerMinutes()` | ランダムボタン押下、1〜9プリセット押下、上限範囲判定、待機解除 |
+| レギュレーションセット | `applyRegulation()` / `saveCurrentAsRegulation()` / `deleteRegulation()` / `getRoleDealCounts()` | 名簿画面のレギュ選択、設定保存・削除、役職内訳連動、配役キュー構築、保存・同期・復元 |
 | 追放日の表示 | `setTimerMinutes()` / `getSeatStatus()` | 追放確定、昼タイマー変更、保存・同期・復元、勝利後の円卓 |
 | 画面スリープ防止 | `shouldHoldScreenWakeLock()` | タイマー開始・停止・終了、画面復帰、非対応端末 |
 | 夜遷移の演出待機時間 | `getNightTransitionMaxSeconds()` / `getNightTransitionDelaySeconds()` | 追放確定、夜移行、勝利画面遷移、フォールバック |

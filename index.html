@@ -18,7 +18,7 @@
         <div class="header-identity">
           <div class="title-row">
             <p class="eyebrow">Werewolf Game Master</p>
-            <span id="appVersionBadge" class="version-badge">v1.48.0</span>
+            <span id="appVersionBadge" class="version-badge">v1.49.0</span>
             <span id="progressBadge" class="progress-badge">準備中</span>
           </div>
           <div id="headerMatchInfo" class="header-match-info" hidden>
@@ -129,8 +129,24 @@
           </div>
 
           <fieldset class="game-rule-settings">
-            <legend>ゲームルール</legend>
-            <div class="role-rule-options" aria-label="使用役職">
+            <legend>レギュレーション・ゲームルール</legend>
+            <div class="regulation-section">
+              <div class="regulation-section-header">
+                <span class="regulation-title">レギュセット（人数別）</span>
+                <button id="saveRegulationBtn" class="secondary-button regulation-save-button" type="button">現在の設定を保存</button>
+              </div>
+              <div id="regulationPresetList" class="regulation-preset-list" aria-label="レギュレーション一覧"></div>
+            </div>
+
+            <div class="role-breakdown-section">
+              <div class="role-breakdown-header">
+                <span>役職内訳</span>
+                <span id="roleBreakdownSummary" class="status-badge">内訳合計: 0人</span>
+              </div>
+              <div id="roleBreakdownList" class="role-breakdown-grid" aria-label="役職人数設定"></div>
+            </div>
+
+            <div class="role-rule-options" aria-label="使用役職" hidden>
               <label><input data-role-rule="werewolf" type="checkbox" checked />人狼</label>
               <label><input data-role-rule="madman" type="checkbox" checked />裏切り者</label>
               <label><input data-role-rule="seer" type="checkbox" checked />預言者</label>

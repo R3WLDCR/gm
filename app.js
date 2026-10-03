@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.48.0";
+const APP_VERSION = "v1.49.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -56,10 +56,115 @@ const CAT_LINK_REVEAL_SECONDS = 5;
 const VOTE_START_DELAY_SECONDS = 5;
 const DEBUG_HISTORY_LIMIT = 10;
 
+const DEFAULT_REGULATIONS = [
+  {
+    id: "default-8",
+    name: "8人基本",
+    playerCount: 8,
+    roles: { werewolf: 2, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 0, cat: 0, madman_hunter: 0, teruteru: 0, villager: 2 },
+    seerInitialWhiteEnabled: true,
+    allowConsecutiveGuard: false,
+    allowWerewolfSelfAttack: false,
+    allowWerewolfSkipAttack: true,
+  },
+  {
+    id: "default-9",
+    name: "9人基本",
+    playerCount: 9,
+    roles: { werewolf: 2, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 0, cat: 0, madman_hunter: 0, teruteru: 0, villager: 3 },
+    seerInitialWhiteEnabled: true,
+    allowConsecutiveGuard: false,
+    allowWerewolfSelfAttack: false,
+    allowWerewolfSkipAttack: true,
+  },
+  {
+    id: "default-10",
+    name: "10人基本",
+    playerCount: 10,
+    roles: { werewolf: 2, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 0, cat: 0, madman_hunter: 0, teruteru: 0, villager: 4 },
+    seerInitialWhiteEnabled: true,
+    allowConsecutiveGuard: false,
+    allowWerewolfSelfAttack: false,
+    allowWerewolfSkipAttack: true,
+  },
+  {
+    id: "default-11",
+    name: "11人基本",
+    playerCount: 11,
+    roles: { werewolf: 2, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 1, cat: 0, madman_hunter: 0, teruteru: 0, villager: 4 },
+    seerInitialWhiteEnabled: true,
+    allowConsecutiveGuard: false,
+    allowWerewolfSelfAttack: false,
+    allowWerewolfSkipAttack: true,
+  },
+  {
+    id: "default-12a",
+    name: "12A",
+    playerCount: 12,
+    roles: { werewolf: 2, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 1, cat: 0, madman_hunter: 0, teruteru: 0, villager: 5 },
+    seerInitialWhiteEnabled: true,
+    allowConsecutiveGuard: false,
+    allowWerewolfSelfAttack: false,
+    allowWerewolfSkipAttack: true,
+  },
+  {
+    id: "default-12-cat",
+    name: "12人猫又",
+    playerCount: 12,
+    roles: { werewolf: 2, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 0, cat: 1, madman_hunter: 0, teruteru: 0, villager: 5 },
+    seerInitialWhiteEnabled: true,
+    allowConsecutiveGuard: false,
+    allowWerewolfSelfAttack: false,
+    allowWerewolfSkipAttack: true,
+  },
+  {
+    id: "default-13b",
+    name: "13B",
+    playerCount: 13,
+    roles: { werewolf: 3, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 1, cat: 0, madman_hunter: 0, teruteru: 0, villager: 5 },
+    seerInitialWhiteEnabled: true,
+    allowConsecutiveGuard: false,
+    allowWerewolfSelfAttack: false,
+    allowWerewolfSkipAttack: true,
+  },
+  {
+    id: "default-13-madman-hunter",
+    name: "13人狂人ハンター",
+    playerCount: 13,
+    roles: { werewolf: 2, madman: 0, seer: 1, medium: 1, knight: 1, hunter: 1, cat: 0, madman_hunter: 1, teruteru: 0, villager: 6 },
+    seerInitialWhiteEnabled: true,
+    allowConsecutiveGuard: false,
+    allowWerewolfSelfAttack: false,
+    allowWerewolfSkipAttack: true,
+  },
+  {
+    id: "default-14",
+    name: "14人村",
+    playerCount: 14,
+    roles: { werewolf: 3, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 1, cat: 1, madman_hunter: 0, teruteru: 0, villager: 5 },
+    seerInitialWhiteEnabled: true,
+    allowConsecutiveGuard: false,
+    allowWerewolfSelfAttack: false,
+    allowWerewolfSkipAttack: true,
+  },
+  {
+    id: "default-15",
+    name: "15人村",
+    playerCount: 15,
+    roles: { werewolf: 3, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 1, cat: 1, madman_hunter: 0, teruteru: 0, villager: 6 },
+    seerInitialWhiteEnabled: true,
+    allowConsecutiveGuard: false,
+    allowWerewolfSelfAttack: false,
+    allowWerewolfSkipAttack: true,
+  },
+];
+
 const state = {
   players: [],
   roles: DEFAULT_ROLES.map((role) => ({ ...role })),
   enabledRoleIds: [...DEFAULT_ENABLED_ROLE_IDS],
+  regulations: DEFAULT_REGULATIONS.map((reg) => ({ ...reg, roles: { ...reg.roles } })),
+  selectedRegulationId: "",
   seerInitialWhiteEnabled: true,
   allowConsecutiveGuard: false,
   allowWerewolfSelfAttack: false,
@@ -221,6 +326,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     "matchNumberInput",
     "matchNumberPrevious",
     "matchNumberNext",
+    "saveRegulationBtn",
+    "regulationPresetList",
+    "roleBreakdownList",
+    "roleBreakdownSummary",
     "allowWerewolfSelfAttackInput",
     "allowWerewolfSkipAttackInput",
     "progressBadge",
@@ -379,6 +488,7 @@ function bindEvents() {
   ].forEach((input) => {
     input?.addEventListener("change", updateGameRules);
   });
+  els.saveRegulationBtn?.addEventListener("click", handleSaveRegulationClick);
   els.presetBtn?.addEventListener("click", applyPreset);
   els.assignBtn?.addEventListener("click", assignRoles);
   els.clearDeathsBtn?.addEventListener("click", () => {
@@ -627,11 +737,138 @@ function bindMatchNumberStepper(button, input, delta) {
 function updateGameRules() {
   const enabledRoleIds = Array.from(document.querySelectorAll("[data-role-rule]:checked"), (input) => input.dataset.roleRule);
   state.enabledRoleIds = normalizeEnabledRoleIds(enabledRoleIds);
+  state.roles.forEach((role) => {
+    if (role.id === "villager") return;
+    if (!state.enabledRoleIds.includes(role.id)) {
+      role.count = 0;
+    } else if (role.count === 0) {
+      role.count = 1;
+    }
+  });
+  const activeCount = getActivePlayers().length;
+  if (activeCount > 0) {
+    const nonVillagerTotal = state.roles
+      .filter((r) => r.id !== "villager")
+      .reduce((sum, r) => sum + (r.count || 0), 0);
+    const villagerRole = state.roles.find((r) => r.id === "villager");
+    if (villagerRole) {
+      villagerRole.count = Math.max(0, activeCount - nonVillagerTotal);
+    }
+  }
   state.seerInitialWhiteEnabled = document.querySelector("[data-seer-white-rule]:checked")?.value !== "none";
   state.allowConsecutiveGuard = document.querySelector("[data-guard-repeat-rule]:checked")?.value === "allow";
   state.allowWerewolfSelfAttack = els.allowWerewolfSelfAttackInput?.checked === true;
   state.allowWerewolfSkipAttack = els.allowWerewolfSkipAttackInput?.checked !== false;
+  state.selectedRegulationId = "";
   renderAndStore();
+}
+
+function normalizeRegulations(raw) {
+  if (!Array.isArray(raw) || !raw.length) {
+    return DEFAULT_REGULATIONS.map((reg) => ({
+      ...reg,
+      roles: { ...reg.roles },
+    }));
+  }
+  return raw.map((reg, index) => ({
+    id: String(reg.id || `reg-${index + 1}`),
+    name: String(reg.name || "名称未設定"),
+    playerCount: Number.isInteger(Number(reg.playerCount)) ? Math.max(3, Number(reg.playerCount)) : 12,
+    roles: reg.roles && typeof reg.roles === "object" ? { ...reg.roles } : {},
+    seerInitialWhiteEnabled: reg.seerInitialWhiteEnabled !== false,
+    allowConsecutiveGuard: reg.allowConsecutiveGuard === true,
+    allowWerewolfSelfAttack: reg.allowWerewolfSelfAttack === true,
+    allowWerewolfSkipAttack: reg.allowWerewolfSkipAttack !== false,
+  }));
+}
+
+function applyRegulation(regulationOrId) {
+  const reg = typeof regulationOrId === "object" && regulationOrId !== null
+    ? regulationOrId
+    : state.regulations.find((r) => r.id === regulationOrId);
+  if (!reg) return;
+
+  state.selectedRegulationId = reg.id;
+  const roleCounts = reg.roles || {};
+  state.roles.forEach((role) => {
+    if (roleCounts[role.id] !== undefined) {
+      role.count = Number(roleCounts[role.id]) || 0;
+    }
+  });
+
+  const enabled = new Set();
+  state.roles.forEach((role) => {
+    if (role.count > 0 || role.id === "werewolf" || role.id === "villager") {
+      enabled.add(role.id);
+    }
+  });
+  state.enabledRoleIds = Array.from(enabled);
+
+  state.seerInitialWhiteEnabled = reg.seerInitialWhiteEnabled !== false;
+  state.allowConsecutiveGuard = reg.allowConsecutiveGuard === true;
+  state.allowWerewolfSelfAttack = reg.allowWerewolfSelfAttack === true;
+  state.allowWerewolfSkipAttack = reg.allowWerewolfSkipAttack !== false;
+
+  if (typeof addLog === "function") addLog(`レギュレーション「${reg.name}」（${reg.playerCount}人）を適用した`);
+  if (typeof renderAndStore === "function") renderAndStore();
+}
+
+function saveCurrentAsRegulation(name, customPlayerCount) {
+  const trimmedName = String(name || "").trim();
+  if (!trimmedName) return;
+
+  const count = Number(customPlayerCount) || (typeof getActivePlayers === "function" ? getActivePlayers().length : 0) || 12;
+  const rolesMap = Object.fromEntries(state.roles.map((r) => [r.id, r.count || 0]));
+
+  const existingIndex = state.regulations.findIndex((r) => r.name === trimmedName && r.playerCount === count);
+  const uid = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : String(Date.now());
+  const newReg = {
+    id: existingIndex >= 0 ? state.regulations[existingIndex].id : `reg-${uid}`,
+    name: trimmedName,
+    playerCount: count,
+    roles: rolesMap,
+    seerInitialWhiteEnabled: state.seerInitialWhiteEnabled,
+    allowConsecutiveGuard: state.allowConsecutiveGuard,
+    allowWerewolfSelfAttack: state.allowWerewolfSelfAttack,
+    allowWerewolfSkipAttack: state.allowWerewolfSkipAttack,
+  };
+
+  if (existingIndex >= 0) {
+    state.regulations[existingIndex] = newReg;
+  } else {
+    state.regulations.push(newReg);
+  }
+
+  state.selectedRegulationId = newReg.id;
+  if (typeof addLog === "function") addLog(`レギュレーション「${newReg.name}」（${newReg.playerCount}人）を保存した`);
+  if (typeof renderAndStore === "function") renderAndStore();
+}
+
+function deleteRegulation(id) {
+  const index = state.regulations.findIndex((r) => r.id === id);
+  if (index === -1) return;
+  const reg = state.regulations[index];
+  if (typeof confirm === "function" && !confirm(`レギュレーション「${reg.name}」を削除しますか？`)) return;
+  state.regulations.splice(index, 1);
+  if (state.selectedRegulationId === id) {
+    state.selectedRegulationId = "";
+  }
+  if (typeof addLog === "function") addLog(`レギュレーション「${reg.name}」を削除した`);
+  if (typeof renderAndStore === "function") renderAndStore();
+}
+
+function handleSaveRegulationClick() {
+  const activeCount = getActivePlayers().length || 12;
+  const currentReg = state.regulations.find((r) => r.id === state.selectedRegulationId);
+  const defaultName = currentReg ? currentReg.name : `${activeCount}人カスタム`;
+  const name = prompt("レギュレーション名を入力してください（例: 12A, 13B）", defaultName);
+  if (name === null) return;
+  const trimmed = name.trim();
+  if (!trimmed) {
+    alert("レギュレーション名を入力してください。");
+    return;
+  }
+  saveCurrentAsRegulation(trimmed, activeCount);
 }
 
 function beginNewMatch({ createId = true } = {}) {
@@ -810,12 +1047,33 @@ function getStandardRoleCounts(count) {
   return next;
 }
 
+function getRoleDealCounts(playerCount) {
+  const counts = {};
+  state.roles.forEach((role) => {
+    counts[role.id] = Number(role.count) || 0;
+  });
+  if (counts.werewolf === undefined || counts.werewolf <= 0) {
+    counts.werewolf = 1;
+  }
+  const count = Number(playerCount) || (typeof getActivePlayers === "function" ? getActivePlayers().length : 0);
+  if (count > 0) {
+    const nonVillagerSum = Object.entries(counts)
+      .filter(([id]) => id !== "villager")
+      .reduce((sum, [, c]) => sum + (c || 0), 0);
+    const villagerRole = state.roles.find((r) => r.id === "villager");
+    if (villagerRole) {
+      counts.villager = Math.max(0, count - nonVillagerSum);
+    }
+  }
+  return counts;
+}
+
 function startRoleDeal() {
   const players = getActivePlayers();
   if (!players.length) return;
   if (state.participationCountedForDeal && !confirm("新しい卓として参加数をもう一度記録して配役を始めますか？")) return;
   pushUndoSnapshot("配役開始");
-  const counts = getStandardRoleCounts(players.length);
+  const counts = getRoleDealCounts(players.length);
   recordParticipationsForDeal(players);
   state.roles.forEach((role) => {
     role.count = counts[role.id] ?? 0;
@@ -823,7 +1081,7 @@ function startRoleDeal() {
   state.players.forEach((player) => {
     if (isActivePlayer(player)) player.roleId = "";
   });
-  state.roleDealQueue = STANDARD_ROLE_ORDER.filter((id) => counts[id] > 0);
+  state.roleDealQueue = STANDARD_ROLE_ORDER.filter((id) => (counts[id] || 0) > 0);
   state.roleDealIndex = 0;
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
@@ -889,8 +1147,32 @@ function assignRoles() {
 function setRoleCount(id, delta) {
   const role = state.roles.find((item) => item.id === id);
   if (!role) return;
-  role.count = Math.max(0, role.count + delta);
-  renderAndStore();
+  const minCount = id === "werewolf" ? 1 : 0;
+  const nextCount = Math.max(minCount, (role.count || 0) + delta);
+  if (role.count === nextCount) return;
+  role.count = nextCount;
+
+  const activeCount = typeof getActivePlayers === "function" ? getActivePlayers().length : 0;
+  if (activeCount > 0 && id !== "villager") {
+    const nonVillagerTotal = state.roles
+      .filter((r) => r.id !== "villager")
+      .reduce((sum, r) => sum + (r.count || 0), 0);
+    const villagerRole = state.roles.find((r) => r.id === "villager");
+    if (villagerRole) {
+      villagerRole.count = Math.max(0, activeCount - nonVillagerTotal);
+    }
+  }
+
+  const enabled = new Set();
+  state.roles.forEach((r) => {
+    if (r.count > 0 || r.id === "werewolf" || r.id === "villager") {
+      enabled.add(r.id);
+    }
+  });
+  state.enabledRoleIds = Array.from(enabled);
+  state.selectedRegulationId = "";
+
+  if (typeof renderAndStore === "function") renderAndStore();
 }
 
 function setPhase(phase) {
@@ -2435,6 +2717,148 @@ function renderGameRuleInputs() {
   document.querySelector(".guard-repeat-rule-options")?.classList.toggle("disabled", !knightEnabled);
   if (els.allowWerewolfSelfAttackInput) els.allowWerewolfSelfAttackInput.checked = state.allowWerewolfSelfAttack;
   if (els.allowWerewolfSkipAttackInput) els.allowWerewolfSkipAttackInput.checked = state.allowWerewolfSkipAttack;
+  if (typeof renderRegulationPresets === "function") renderRegulationPresets();
+  if (typeof renderRoleBreakdown === "function") renderRoleBreakdown();
+}
+
+function renderRegulationPresets() {
+  if (!els.regulationPresetList) return;
+  els.regulationPresetList.innerHTML = "";
+
+  const activeCount = getActivePlayers().length || 12;
+  const matchingRegulations = state.regulations.filter((r) => r.playerCount === activeCount);
+  const otherRegulations = state.regulations.filter((r) => r.playerCount !== activeCount);
+
+  const container = document.createElement("div");
+  container.className = "regulation-preset-container";
+
+  const matchingGroup = document.createElement("div");
+  matchingGroup.className = "regulation-matching-group";
+  const label = document.createElement("span");
+  label.className = "regulation-group-badge";
+  label.textContent = `${activeCount}人のレギュ:`;
+  matchingGroup.appendChild(label);
+
+  if (matchingRegulations.length) {
+    matchingRegulations.forEach((reg) => {
+      const chip = createRegulationChip(reg);
+      matchingGroup.appendChild(chip);
+    });
+  } else {
+    const emptySpan = document.createElement("span");
+    emptySpan.className = "regulation-empty-note";
+    emptySpan.textContent = "未登録（現在の設定を保存可能）";
+    matchingGroup.appendChild(emptySpan);
+  }
+  container.appendChild(matchingGroup);
+
+  if (otherRegulations.length) {
+    const details = document.createElement("details");
+    details.className = "regulation-other-details";
+    const summary = document.createElement("summary");
+    summary.textContent = `他の人数のレギュレーション（全${otherRegulations.length}件）`;
+    details.appendChild(summary);
+
+    const otherGrid = document.createElement("div");
+    otherGrid.className = "regulation-other-grid";
+    const sorted = [...otherRegulations].sort((a, b) => a.playerCount - b.playerCount || a.name.localeCompare(b.name, "ja"));
+    sorted.forEach((reg) => {
+      const chip = createRegulationChip(reg, { showCount: true });
+      otherGrid.appendChild(chip);
+    });
+    details.appendChild(otherGrid);
+    container.appendChild(details);
+  }
+
+  els.regulationPresetList.appendChild(container);
+}
+
+function createRegulationChip(reg, { showCount = false } = {}) {
+  const wrapper = document.createElement("div");
+  wrapper.className = `regulation-chip-wrapper ${reg.id === state.selectedRegulationId ? "active" : ""}`;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "regulation-chip-btn";
+  button.textContent = showCount ? `${reg.playerCount}人: ${reg.name}` : reg.name;
+  button.title = `${reg.playerCount}人用「${reg.name}」を適用`;
+  button.addEventListener("click", () => applyRegulation(reg.id));
+  wrapper.appendChild(button);
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "regulation-delete-btn";
+  deleteBtn.setAttribute("aria-label", `${reg.name}を削除`);
+  deleteBtn.textContent = "×";
+  deleteBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    deleteRegulation(reg.id);
+  });
+  wrapper.appendChild(deleteBtn);
+
+  return wrapper;
+}
+
+function renderRoleBreakdown() {
+  if (!els.roleBreakdownList) return;
+  els.roleBreakdownList.innerHTML = "";
+
+  state.roles.forEach((role) => {
+    const item = document.createElement("div");
+    item.className = `role-breakdown-item ${role.count > 0 ? "active" : ""} ${getRoleColorClass(role.id)}`;
+
+    const meta = document.createElement("span");
+    meta.className = "role-breakdown-name";
+    meta.textContent = role.name;
+    item.appendChild(meta);
+
+    const stepper = document.createElement("div");
+    stepper.className = "role-breakdown-stepper";
+
+    const minusBtn = document.createElement("button");
+    minusBtn.type = "button";
+    minusBtn.className = "role-breakdown-step";
+    minusBtn.setAttribute("aria-label", `${role.name}を減らす`);
+    minusBtn.textContent = "−";
+    minusBtn.disabled = role.id === "werewolf" ? role.count <= 1 : role.count <= 0;
+    minusBtn.addEventListener("click", () => setRoleCount(role.id, -1));
+
+    const valueSpan = document.createElement("span");
+    valueSpan.className = "role-breakdown-value";
+    valueSpan.textContent = String(role.count || 0);
+
+    const plusBtn = document.createElement("button");
+    plusBtn.type = "button";
+    plusBtn.className = "role-breakdown-step";
+    plusBtn.setAttribute("aria-label", `${role.name}を増やす`);
+    plusBtn.textContent = "＋";
+    plusBtn.addEventListener("click", () => setRoleCount(role.id, 1));
+
+    stepper.appendChild(minusBtn);
+    stepper.appendChild(valueSpan);
+    stepper.appendChild(plusBtn);
+    item.appendChild(stepper);
+
+    els.roleBreakdownList.appendChild(item);
+  });
+
+  if (els.roleBreakdownSummary) {
+    const totalCount = state.roles.reduce((sum, r) => sum + (r.count || 0), 0);
+    const activeCount = getActivePlayers().length;
+    const isMatched = totalCount === activeCount;
+    els.roleBreakdownSummary.classList.toggle("summary-matched", isMatched);
+    els.roleBreakdownSummary.classList.toggle("summary-mismatched", !isMatched && activeCount > 0);
+    if (activeCount > 0) {
+      if (isMatched) {
+        els.roleBreakdownSummary.textContent = `合計: ${totalCount}人 (参加: ${activeCount}人と一致 ✓)`;
+      } else {
+        const diff = totalCount - activeCount;
+        els.roleBreakdownSummary.textContent = `合計: ${totalCount}人 (参加: ${activeCount}人 / ${diff > 0 ? `+${diff}` : diff}人)`;
+      }
+    } else {
+      els.roleBreakdownSummary.textContent = `内訳合計: ${totalCount}人`;
+    }
+  }
 }
 
 function renderParticipantViewMode() {
@@ -5646,6 +6070,8 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     players: state.players,
     roles: state.roles,
     enabledRoleIds: state.enabledRoleIds,
+    regulations: state.regulations,
+    selectedRegulationId: state.selectedRegulationId,
     seerInitialWhiteEnabled: state.seerInitialWhiteEnabled,
     allowConsecutiveGuard: state.allowConsecutiveGuard,
     allowWerewolfSelfAttack: state.allowWerewolfSelfAttack,
@@ -5875,6 +6301,8 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.players = normalizePlayers(saved.players || []);
   state.roles = mergeRoles(saved.roles || []);
   state.enabledRoleIds = normalizeEnabledRoleIds(saved.enabledRoleIds);
+  state.regulations = normalizeRegulations(saved.regulations);
+  state.selectedRegulationId = typeof saved.selectedRegulationId === "string" ? saved.selectedRegulationId : "";
   state.seerInitialWhiteEnabled = saved.seerInitialWhiteEnabled !== false;
   state.allowConsecutiveGuard = saved.allowConsecutiveGuard === true;
   state.allowWerewolfSelfAttack = saved.allowWerewolfSelfAttack === true;
