@@ -646,11 +646,11 @@ test("ログの1日は朝から夜行動完了までにする", () => {
 
 test("通常投票の投票先は直前の投票先を初期選択として維持する", () => {
   const targets = [{ id: "A" }, { id: "B" }, { id: "C" }];
-  const getPreferred = (candidateList, currentId, lastId) =>
+  const getPreferred = (candidateList, currentId, lastId, fallbackId = "") =>
     runFunctions(
       ["getPreferredVoteTargetId"],
       {},
-      `getPreferredVoteTargetId(${JSON.stringify(candidateList)}, ${JSON.stringify(currentId)}, ${JSON.stringify(lastId)})`,
+      `getPreferredVoteTargetId(${JSON.stringify(candidateList)}, ${JSON.stringify(currentId)}, ${JSON.stringify(lastId)}, ${JSON.stringify(fallbackId)})`,
     );
 
   // 現在手動選択中の対象が候補にあれば最優先
@@ -659,12 +659,50 @@ test("通常投票の投票先は直前の投票先を初期選択として維�
   assert.equal(getPreferred(targets, "", "B"), "B");
   // 手動選択が無効で直前の投票先が候補にあれば直前の投票先を維持
   assert.equal(getPreferred(targets, "INVALID", "B"), "B");
-  // 直前の投票先が候補にない（自分自身など）場合は先頭の候補
+  // 直前投票先が無効でも直前選択フォールバックがあればそれを維持
+  assert.equal(getPreferred(targets, "", "INVALID", "C"), "C");
+  // 直前の投票先・フォールバックが候補にない（自分自身など）場合は先頭の候補
   assert.equal(getPreferred(targets, "", "SELF_OR_ABSENT"), "A");
   // 直前投票先もなく初回の場合は先頭の候補
   assert.equal(getPreferred(targets, "", ""), "A");
   // 候補が空の場合は空文字
   assert.equal(getPreferred([], "", "B"), "");
+});
+
+test("直前の投票先取得は次の投票者自身を除外して直近の有効な投票対象を遡って取得する", () => {
+  const players = [
+    { id: "A", name: "A", alive: true },
+    { id: "B", name: "B", alive: true },
+    { id: "C", name: "C", alive: true },
+    { id: "D", name: "D", alive: true },
+    { id: "X", name: "X", alive: false },
+  ];
+  const context = {
+    state: {
+      voteRecords: [
+        { order: 1, voterId: "A", targetId: "D" },
+        { order: 2, voterId: "B", targetId: "D" },
+        { order: 3, voterId: "C", targetId: "B" },
+      ],
+    },
+    findPlayer: (id) => players.find((p) => p.id === id),
+  };
+
+  // voterIdを指定しない場合は最後のレコードの対象（B）
+  assert.equal(runFunctions(["getLastVoteRecordTargetId"], context, "getLastVoteRecordTargetId()"), "B");
+  // 次の投票者がBの場合、B自身を除外して直近のDを取得
+  assert.equal(runFunctions(["getLastVoteRecordTargetId"], context, 'getLastVoteRecordTargetId("B")'), "D");
+  // 死亡しているプレイヤーはスキップする
+  const deadContext = {
+    state: {
+      voteRecords: [
+        { order: 1, voterId: "A", targetId: "C" },
+        { order: 2, voterId: "B", targetId: "X" },
+      ],
+    },
+    findPlayer: (id) => players.find((p) => p.id === id),
+  };
+  assert.equal(runFunctions(["getLastVoteRecordTargetId"], deadContext, "getLastVoteRecordTargetId()"), "C");
 });
 
 test("夜遷移の演出待機時間は5〜6人のとき最大10秒まで拡張する", () => {

@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.50.0";
+const APP_VERSION = "v1.51.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -195,6 +195,7 @@ const state = {
   voteRecords: [],
   voteVoterId: "",
   voteTargetId: "",
+  lastSelectedVoteTargetId: "",
   editingVoteRecordIndex: -1,
   revoteCandidateIds: [],
   revoteAssignIndex: 0,
@@ -562,10 +563,17 @@ function bindEvents() {
   els.exileBtn.addEventListener("click", handleExileButton);
   els.voteVoterSelect?.addEventListener("change", () => {
     state.voteVoterId = els.voteVoterSelect.value;
+    const targets = getVoteTargetPlayers();
+    if (!targets.some((player) => player.id === state.voteTargetId)) {
+      state.voteTargetId = "";
+    }
     renderAndStore();
   });
   els.voteTargetSelect?.addEventListener("change", () => {
     state.voteTargetId = els.voteTargetSelect.value;
+    if (state.voteTargetId) {
+      state.lastSelectedVoteTargetId = state.voteTargetId;
+    }
     renderAndStore();
   });
   els.recordVoteBtn?.addEventListener("click", recordVote);
@@ -2172,6 +2180,7 @@ function resetVoteSession() {
   state.voteRecords = [];
   state.voteVoterId = "";
   state.voteTargetId = "";
+  state.lastSelectedVoteTargetId = "";
   state.editingVoteRecordIndex = -1;
   state.revoteCandidateIds = [];
   state.revoteAssignIndex = 0;
@@ -2203,6 +2212,7 @@ function recordVote() {
   }
   syncVoteCountsFromRecords();
   addLog(`${editIndex >= 0 ? "投票修正" : "投票"}${order}: ${voter.name} → ${target.name}`);
+  state.lastSelectedVoteTargetId = target.id;
   state.voteVoterId = "";
   state.voteTargetId = "";
   state.editingVoteRecordIndex = -1;
@@ -2496,18 +2506,34 @@ function getFirstRevoteTargetIdExcept(voterId) {
   return state.revoteCandidateIds.find((id) => id !== voterId) || "";
 }
 
-function getLastVoteRecordTargetId() {
-  const lastRecord = state.voteRecords[state.voteRecords.length - 1];
-  return lastRecord?.targetId || "";
+function getLastVoteRecordTargetId(exceptVoterId = "") {
+  if (!Array.isArray(state.voteRecords)) return "";
+  for (let i = state.voteRecords.length - 1; i >= 0; i--) {
+    const targetId = state.voteRecords[i]?.targetId;
+    if (targetId && targetId !== exceptVoterId) {
+      if (typeof findPlayer === "function") {
+        const target = findPlayer(targetId);
+        if (target && target.alive !== false) {
+          return targetId;
+        }
+      } else {
+        return targetId;
+      }
+    }
+  }
+  return "";
 }
 
-function getPreferredVoteTargetId(targets, currentTargetId = "", lastVoteTargetId = "") {
+function getPreferredVoteTargetId(targets, currentTargetId = "", lastVoteTargetId = "", fallbackTargetId = "") {
   if (!Array.isArray(targets) || !targets.length) return "";
   if (currentTargetId && targets.some((player) => player.id === currentTargetId)) {
     return currentTargetId;
   }
   if (lastVoteTargetId && targets.some((player) => player.id === lastVoteTargetId)) {
     return lastVoteTargetId;
+  }
+  if (fallbackTargetId && targets.some((player) => player.id === fallbackTargetId)) {
+    return fallbackTargetId;
   }
   return targets[0]?.id || "";
 }
@@ -3547,7 +3573,13 @@ function renderVoteControls() {
   if (!revoteMode && !state.voteVoterId && voters.length) state.voteVoterId = voters[0].id;
   let targets = getVoteTargetPlayers();
   if (!revoteMode && state.voteVoterId && targets.length) {
-    state.voteTargetId = getPreferredVoteTargetId(targets, state.voteTargetId, getLastVoteRecordTargetId());
+    const preferredLastTarget = getLastVoteRecordTargetId(state.voteVoterId);
+    state.voteTargetId = getPreferredVoteTargetId(
+      targets,
+      state.voteTargetId,
+      preferredLastTarget,
+      state.lastSelectedVoteTargetId !== state.voteVoterId ? state.lastSelectedVoteTargetId : "",
+    );
   } else if (!targets.some((player) => player.id === state.voteTargetId)) {
     state.voteTargetId = "";
   }
@@ -6361,6 +6393,7 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     voteRecords: state.voteRecords,
     voteVoterId: state.voteVoterId,
     voteTargetId: state.voteTargetId,
+    lastSelectedVoteTargetId: state.lastSelectedVoteTargetId,
     editingVoteRecordIndex: state.editingVoteRecordIndex,
     revoteCandidateIds: state.revoteCandidateIds,
     revoteAssignIndex: state.revoteAssignIndex,
@@ -6605,6 +6638,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.voteRecords = Array.isArray(saved.voteRecords) ? saved.voteRecords : [];
   state.voteVoterId = saved.voteVoterId || "";
   state.voteTargetId = saved.voteTargetId || "";
+  state.lastSelectedVoteTargetId = saved.lastSelectedVoteTargetId || "";
   state.editingVoteRecordIndex = Number.isInteger(saved.editingVoteRecordIndex) ? saved.editingVoteRecordIndex : -1;
   state.revoteCandidateIds = Array.isArray(saved.revoteCandidateIds) ? saved.revoteCandidateIds : [];
   state.revoteAssignIndex = Number.isInteger(saved.revoteAssignIndex) ? saved.revoteAssignIndex : 0;
