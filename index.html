@@ -18,7 +18,7 @@
         <div class="header-identity">
           <div class="title-row">
             <p class="eyebrow">Werewolf Game Master</p>
-            <span id="appVersionBadge" class="version-badge">v1.49.3</span>
+            <span id="appVersionBadge" class="version-badge">v1.50.0</span>
             <span id="progressBadge" class="progress-badge">準備中</span>
           </div>
           <div id="headerMatchInfo" class="header-match-info" hidden>
@@ -105,11 +105,13 @@
               <span id="tournamentEditionLabel" class="match-number-label">第何回</span>
               <div class="match-number-control" role="group" aria-labelledby="tournamentEditionLabel">
                 <button id="tournamentEditionMinus" class="match-number-step" type="button" aria-label="回数を1減らす">−</button>
-                <label class="match-number-value">
+                <button id="tournamentEditionPadBtn" class="match-number-value match-number-value-button" type="button" aria-label="大会の回数を電卓で入力">
                   <span aria-hidden="true">第</span>
-                  <input id="tournamentEditionInput" type="number" min="1" max="999" inputmode="numeric" aria-label="大会の回数" />
+                  <span id="tournamentEditionDisplay" class="match-number-display-text">1</span>
                   <span aria-hidden="true">回</span>
-                </label>
+                  <span class="match-number-keypad-icon" aria-hidden="true">🧮</span>
+                </button>
+                <input id="tournamentEditionInput" type="hidden" />
                 <button id="tournamentEditionPlus" class="match-number-step" type="button" aria-label="回数を1増やす">＋</button>
               </div>
             </div>
@@ -117,11 +119,13 @@
               <span id="matchNumberLabel" class="match-number-label">第何試合</span>
               <div class="match-number-control match-number-dial" role="group" aria-labelledby="matchNumberLabel">
                 <button id="matchNumberPrevious" class="match-number-step" type="button" aria-label="前の試合番号">‹</button>
-                <label class="match-number-value">
+                <button id="matchNumberPadBtn" class="match-number-value match-number-value-button" type="button" aria-label="試合番号を電卓で入力">
                   <span aria-hidden="true">第</span>
-                  <input id="matchNumberInput" type="number" min="1" max="999" inputmode="numeric" aria-label="試合番号" />
+                  <span id="matchNumberDisplay" class="match-number-display-text">1</span>
                   <span aria-hidden="true">試合</span>
-                </label>
+                  <span class="match-number-keypad-icon" aria-hidden="true">🧮</span>
+                </button>
+                <input id="matchNumberInput" type="hidden" />
                 <button id="matchNumberNext" class="match-number-step" type="button" aria-label="次の試合番号">›</button>
               </div>
             </div>
@@ -409,6 +413,44 @@
         <p id="roleDialogTeam" class="dialog-team"></p>
         <button class="primary-button wide">閉じる</button>
       </form>
+    </dialog>
+
+    <dialog id="numberPadDialog" class="number-pad-dialog">
+      <div class="number-pad-container">
+        <div class="number-pad-header">
+          <h3 id="numberPadTitle">第何回の入力</h3>
+          <button id="numberPadCloseBtn" class="dialog-close-btn" type="button" aria-label="閉じる">×</button>
+        </div>
+        <div class="number-pad-display">
+          <span id="numberPadPrefix" class="number-pad-affix" aria-hidden="true">第</span>
+          <span id="numberPadValue" class="number-pad-value">1</span>
+          <span id="numberPadSuffix" class="number-pad-affix" aria-hidden="true">回</span>
+        </div>
+        <div class="number-pad-quick-actions">
+          <button class="number-pad-quick-btn" type="button" data-pad-delta="-10">−10</button>
+          <button class="number-pad-quick-btn" type="button" data-pad-delta="-1">−1</button>
+          <button class="number-pad-quick-btn" type="button" data-pad-delta="1">＋1</button>
+          <button class="number-pad-quick-btn" type="button" data-pad-delta="10">＋10</button>
+        </div>
+        <div class="number-pad-grid">
+          <button class="number-pad-btn" type="button" data-pad-key="7">7</button>
+          <button class="number-pad-btn" type="button" data-pad-key="8">8</button>
+          <button class="number-pad-btn" type="button" data-pad-key="9">9</button>
+          <button class="number-pad-btn" type="button" data-pad-key="4">4</button>
+          <button class="number-pad-btn" type="button" data-pad-key="5">5</button>
+          <button class="number-pad-btn" type="button" data-pad-key="6">6</button>
+          <button class="number-pad-btn" type="button" data-pad-key="1">1</button>
+          <button class="number-pad-btn" type="button" data-pad-key="2">2</button>
+          <button class="number-pad-btn" type="button" data-pad-key="3">3</button>
+          <button class="number-pad-btn number-pad-action-btn" type="button" data-pad-key="C">C</button>
+          <button class="number-pad-btn" type="button" data-pad-key="0">0</button>
+          <button class="number-pad-btn number-pad-action-btn" type="button" data-pad-key="BS">⌫</button>
+        </div>
+        <div class="number-pad-actions">
+          <button id="numberPadCancelBtn" class="secondary-button" type="button">キャンセル</button>
+          <button id="numberPadSubmitBtn" class="primary-button" type="button">決定</button>
+        </div>
+      </div>
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

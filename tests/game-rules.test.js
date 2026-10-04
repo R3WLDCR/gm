@@ -2256,3 +2256,123 @@ test("開催日の日付シフトと今日ボタンで日付を素早く変更�
   assert.equal(state.tournamentDate, "2026-10-03");
   assert.equal(els.tournamentDateInput.value, "2026-10-03");
 });
+
+test("電卓ダイアログのキー入力で数値が直接編集でき1〜999に収まる", () => {
+  const functions = ["applyNumberPadKey", "applyNumberPadDelta"];
+
+  // 初回入力の上書き
+  let res = runFunctions(functions, {}, 'applyNumberPadKey(124, "5", true)');
+  assert.equal(res.value, 5);
+  assert.equal(res.isFirstInput, false);
+
+  // 2桁目の追加
+  res = runFunctions(functions, {}, `applyNumberPadKey(${res.value}, "0", ${res.isFirstInput})`);
+  assert.equal(res.value, 50);
+  assert.equal(res.isFirstInput, false);
+
+  // 3桁目の追加
+  res = runFunctions(functions, {}, `applyNumberPadKey(${res.value}, "8", ${res.isFirstInput})`);
+  assert.equal(res.value, 508);
+  assert.equal(res.isFirstInput, false);
+
+  // 4桁目は999を超えるため追加されない
+  res = runFunctions(functions, {}, `applyNumberPadKey(${res.value}, "9", ${res.isFirstInput})`);
+  assert.equal(res.value, 508);
+  assert.equal(res.isFirstInput, false);
+
+  // 一文字削除（BS）
+  res = runFunctions(functions, {}, `applyNumberPadKey(${res.value}, "BS", false)`);
+  assert.equal(res.value, 50);
+  assert.equal(res.isFirstInput, false);
+
+  res = runFunctions(functions, {}, `applyNumberPadKey(${res.value}, "BS", false)`);
+  assert.equal(res.value, 5);
+  assert.equal(res.isFirstInput, false);
+
+  res = runFunctions(functions, {}, `applyNumberPadKey(${res.value}, "BS", false)`);
+  assert.equal(res.value, 0);
+  assert.equal(res.isFirstInput, true);
+
+  // クリア（C）
+  res = runFunctions(functions, {}, 'applyNumberPadKey(789, "C", false)');
+  assert.equal(res.value, 0);
+  assert.equal(res.isFirstInput, true);
+
+  // クイック増減とクランプ（1〜999）
+  assert.equal(runFunctions(functions, {}, "applyNumberPadDelta(50, 10)"), 60);
+  assert.equal(runFunctions(functions, {}, "applyNumberPadDelta(50, -10)"), 40);
+  assert.equal(runFunctions(functions, {}, "applyNumberPadDelta(5, -10)"), 1);
+  assert.equal(runFunctions(functions, {}, "applyNumberPadDelta(995, 10)"), 999);
+});
+
+test("電卓ダイアログの決定で大会回数と試合番号が反映される", () => {
+  const functions = [
+    "openNumberPad",
+    "closeNumberPad",
+    "renderNumberPadDisplay",
+    "applyNumberPadKey",
+    "applyNumberPadDelta",
+    "handleNumberPadKey",
+    "handleNumberPadDelta",
+    "submitNumberPad",
+  ];
+
+  const state = { tournamentEdition: 12, matchNumber: 3 };
+  const els = {
+    numberPadTitle: { textContent: "" },
+    numberPadPrefix: { textContent: "" },
+    numberPadSuffix: { textContent: "" },
+    numberPadValue: { textContent: "" },
+    tournamentEditionInput: { value: "12" },
+    matchNumberInput: { value: "3" },
+    numberPadDialog: {
+      showModal: () => {},
+      close: () => {},
+    },
+  };
+  const numberPadState = {
+    open: false,
+    target: "edition",
+    currentValue: 1,
+    isFirstInput: true,
+  };
+
+  const context = {
+    state,
+    els,
+    numberPadState,
+    renderAndStore: () => {},
+  };
+
+  // 大会回数の編集と決定
+  runFunctions(functions, context, 'openNumberPad("edition")');
+  assert.equal(numberPadState.open, true);
+  assert.equal(numberPadState.currentValue, 12);
+  assert.equal(els.numberPadTitle.textContent, "第何回の入力");
+  assert.equal(els.numberPadSuffix.textContent, "回");
+
+  runFunctions(functions, context, 'handleNumberPadKey("1")');
+  runFunctions(functions, context, 'handleNumberPadKey("5")');
+  runFunctions(functions, context, 'handleNumberPadKey("0")');
+  assert.equal(numberPadState.currentValue, 150);
+
+  runFunctions(functions, context, "submitNumberPad()");
+  assert.equal(state.tournamentEdition, 150);
+  assert.equal(els.tournamentEditionInput.value, "150");
+  assert.equal(numberPadState.open, false);
+
+  // 試合番号の編集と決定
+  runFunctions(functions, context, 'openNumberPad("match")');
+  assert.equal(numberPadState.open, true);
+  assert.equal(numberPadState.currentValue, 3);
+  assert.equal(els.numberPadTitle.textContent, "第何試合の入力");
+  assert.equal(els.numberPadSuffix.textContent, "試合");
+
+  runFunctions(functions, context, 'handleNumberPadKey("C")');
+  runFunctions(functions, context, 'handleNumberPadKey("7")');
+  assert.equal(numberPadState.currentValue, 7);
+
+  runFunctions(functions, context, "submitNumberPad()");
+  assert.equal(state.matchNumber, 7);
+  assert.equal(els.matchNumberInput.value, "7");
+});

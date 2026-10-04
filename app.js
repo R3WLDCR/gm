@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.49.3";
+const APP_VERSION = "v1.50.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -321,6 +321,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     "addPlayerBtn",
     "tournamentNameInput",
     "tournamentEditionInput",
+    "tournamentEditionPadBtn",
+    "tournamentEditionDisplay",
     "tournamentEditionMinus",
     "tournamentEditionPlus",
     "tournamentDateInput",
@@ -328,6 +330,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     "tournamentDateNext",
     "tournamentDateTodayBtn",
     "matchNumberInput",
+    "matchNumberPadBtn",
+    "matchNumberDisplay",
     "matchNumberPrevious",
     "matchNumberNext",
     "saveRegulationBtn",
@@ -416,6 +420,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     "roleDialogName",
     "roleDialogRole",
     "roleDialogTeam",
+    "numberPadDialog",
+    "numberPadTitle",
+    "numberPadCloseBtn",
+    "numberPadPrefix",
+    "numberPadValue",
+    "numberPadSuffix",
+    "numberPadCancelBtn",
+    "numberPadSubmitBtn",
     "syncPanel",
     "syncStatusBadge",
     "syncStatusText",
@@ -481,8 +493,20 @@ function bindEvents() {
   });
   bindMatchNumberStepper(els.tournamentEditionMinus, els.tournamentEditionInput, -1);
   bindMatchNumberStepper(els.tournamentEditionPlus, els.tournamentEditionInput, 1);
+  els.tournamentEditionPadBtn?.addEventListener("click", () => openNumberPad("edition"));
   bindMatchNumberStepper(els.matchNumberPrevious, els.matchNumberInput, -1);
   bindMatchNumberStepper(els.matchNumberNext, els.matchNumberInput, 1);
+  els.matchNumberPadBtn?.addEventListener("click", () => openNumberPad("match"));
+  els.numberPadCloseBtn?.addEventListener("click", closeNumberPad);
+  els.numberPadCancelBtn?.addEventListener("click", closeNumberPad);
+  els.numberPadSubmitBtn?.addEventListener("click", submitNumberPad);
+  document.querySelectorAll("[data-pad-key]").forEach((btn) => {
+    btn.addEventListener("click", () => handleNumberPadKey(btn.dataset.padKey));
+  });
+  document.querySelectorAll("[data-pad-delta]").forEach((btn) => {
+    btn.addEventListener("click", () => handleNumberPadDelta(Number(btn.dataset.padDelta)));
+  });
+  els.numberPadDialog?.addEventListener("keydown", handleNumberPadKeyDown);
   bindMatchDateStepper(els.tournamentDatePrevious, -1);
   bindMatchDateStepper(els.tournamentDateNext, 1);
   els.tournamentDateTodayBtn?.addEventListener("click", setTournamentDateToday);
@@ -797,6 +821,130 @@ function bindMatchDateStepper(button, delta) {
   button.addEventListener("click", (event) => {
     if (event.detail === 0) stepTournamentDate(delta);
   });
+}
+
+const numberPadState = {
+  open: false,
+  target: "edition",
+  currentValue: 1,
+  isFirstInput: true,
+};
+
+function openNumberPad(target) {
+  numberPadState.open = true;
+  numberPadState.target = target === "match" ? "match" : "edition";
+  const currentNum = numberPadState.target === "edition" ? state.tournamentEdition : state.matchNumber;
+  numberPadState.currentValue = currentNum > 0 ? currentNum : 1;
+  numberPadState.isFirstInput = true;
+
+  if (els.numberPadTitle) {
+    els.numberPadTitle.textContent = numberPadState.target === "edition" ? "第何回の入力" : "第何試合の入力";
+  }
+  if (els.numberPadPrefix) {
+    els.numberPadPrefix.textContent = "第";
+  }
+  if (els.numberPadSuffix) {
+    els.numberPadSuffix.textContent = numberPadState.target === "edition" ? "回" : "試合";
+  }
+  renderNumberPadDisplay();
+  if (typeof els.numberPadDialog?.showModal === "function") {
+    els.numberPadDialog.showModal();
+  } else {
+    els.numberPadDialog?.setAttribute("open", "");
+  }
+}
+
+function closeNumberPad() {
+  numberPadState.open = false;
+  if (typeof els.numberPadDialog?.close === "function") {
+    els.numberPadDialog.close();
+  } else {
+    els.numberPadDialog?.removeAttribute("open");
+  }
+}
+
+function renderNumberPadDisplay() {
+  if (els.numberPadValue) {
+    els.numberPadValue.textContent = String(numberPadState.currentValue);
+  }
+}
+
+function applyNumberPadKey(currentValue, key, isFirstInput) {
+  if (key === "C") {
+    return { value: 0, isFirstInput: true };
+  }
+  if (key === "BS") {
+    const str = String(currentValue);
+    if (str.length <= 1 || currentValue === 0) {
+      return { value: 0, isFirstInput: true };
+    }
+    return { value: Number(str.slice(0, -1)), isFirstInput: false };
+  }
+  if (/^[0-9]$/.test(key)) {
+    if (isFirstInput) {
+      return { value: Number(key), isFirstInput: false };
+    }
+    const nextStr = `${currentValue === 0 ? "" : currentValue}${key}`;
+    const nextNum = Number(nextStr);
+    if (nextNum <= 999) {
+      return { value: nextNum, isFirstInput: false };
+    }
+    return { value: currentValue, isFirstInput: false };
+  }
+  return { value: currentValue, isFirstInput };
+}
+
+function applyNumberPadDelta(currentValue, delta) {
+  const base = Number(currentValue) || 0;
+  return Math.max(1, Math.min(999, base + delta));
+}
+
+function handleNumberPadKey(key) {
+  const nextState = applyNumberPadKey(numberPadState.currentValue, key, numberPadState.isFirstInput);
+  numberPadState.currentValue = nextState.value;
+  numberPadState.isFirstInput = nextState.isFirstInput;
+  renderNumberPadDisplay();
+}
+
+function handleNumberPadDelta(delta) {
+  numberPadState.currentValue = applyNumberPadDelta(numberPadState.currentValue, delta);
+  numberPadState.isFirstInput = false;
+  renderNumberPadDisplay();
+}
+
+function submitNumberPad() {
+  const finalVal = Math.max(1, Math.min(999, numberPadState.currentValue || 1));
+  if (numberPadState.target === "edition") {
+    state.tournamentEdition = finalVal;
+    if (els.tournamentEditionInput) els.tournamentEditionInput.value = String(finalVal);
+  } else {
+    state.matchNumber = finalVal;
+    if (els.matchNumberInput) els.matchNumberInput.value = String(finalVal);
+  }
+  closeNumberPad();
+  if (typeof renderAndStore === "function") {
+    renderAndStore();
+  }
+}
+
+function handleNumberPadKeyDown(event) {
+  if (!numberPadState.open) return;
+  if (event.key >= "0" && event.key <= "9") {
+    event.preventDefault();
+    handleNumberPadKey(event.key);
+  } else if (event.key === "Backspace") {
+    event.preventDefault();
+    handleNumberPadKey("BS");
+  } else if (event.key === "Delete" || event.key === "c" || event.key === "C") {
+    event.preventDefault();
+    handleNumberPadKey("C");
+  } else if (event.key === "Enter") {
+    event.preventDefault();
+    submitNumberPad();
+  } else if (event.key === "Escape") {
+    event.preventDefault();
+    closeNumberPad();
+  }
 }
 
 function updateGameRules() {
@@ -2763,8 +2911,14 @@ function render() {
 function renderMatchInfoInputs() {
   if (els.tournamentNameInput) els.tournamentNameInput.value = state.tournamentName;
   if (els.tournamentEditionInput) els.tournamentEditionInput.value = state.tournamentEdition ? String(state.tournamentEdition) : "";
+  if (els.tournamentEditionDisplay) {
+    els.tournamentEditionDisplay.textContent = state.tournamentEdition ? String(state.tournamentEdition) : "1";
+  }
   if (els.tournamentDateInput) els.tournamentDateInput.value = state.tournamentDate;
   if (els.matchNumberInput) els.matchNumberInput.value = state.matchNumber ? String(state.matchNumber) : "";
+  if (els.matchNumberDisplay) {
+    els.matchNumberDisplay.textContent = state.matchNumber ? String(state.matchNumber) : "1";
+  }
 }
 
 function renderGameRuleInputs() {
