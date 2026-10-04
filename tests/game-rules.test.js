@@ -1277,6 +1277,7 @@ test("ハンターの道連れ選択待ちを保存データへ含める", () =>
     {
       showHunterShot: true,
       hunterShotActorId: "H",
+      hunterShotStage: "intro",
       hunterShotSelectedPlayerId: "A",
       hunterShotQueue: [{ actorId: "H2", context: "attack" }],
       hunterShotContext: "exile",
@@ -1295,6 +1296,7 @@ test("ハンターの道連れ選択待ちを保存データへ含める", () =>
 
   assert.equal(payload.showHunterShot, true);
   assert.equal(payload.hunterShotActorId, "H");
+  assert.equal(payload.hunterShotStage, "intro");
   assert.equal(payload.hunterShotSelectedPlayerId, "A");
   assert.deepEqual(Array.from(payload.hunterShotQueue, (item) => ({ ...item })), [{ actorId: "H2", context: "attack" }]);
   assert.equal(payload.hunterShotContext, "exile");
@@ -1320,6 +1322,7 @@ test("保存したハンター道連れ画面を同じ進行位置へ復元す�
     `applySavedHunterShotState(${JSON.stringify({
       showHunterShot: true,
       hunterShotActorId: "H",
+      hunterShotStage: "select",
       hunterShotSelectedPlayerId: "A",
       hunterShotQueue: [{ actorId: "H2", context: "attack" }],
       hunterShotContext: "attack",
@@ -1328,6 +1331,7 @@ test("保存したハンター道連れ画面を同じ進行位置へ復元す�
 
   assert.equal(state.showHunterShot, true);
   assert.equal(state.hunterShotActorId, "H");
+  assert.equal(state.hunterShotStage, "select");
   assert.equal(state.hunterShotSelectedPlayerId, "A");
   assert.deepEqual(Array.from(state.hunterShotQueue, (item) => ({ ...item })), [{ actorId: "H2", context: "attack" }]);
   assert.equal(state.hunterShotContext, "attack");
@@ -1336,22 +1340,211 @@ test("保存したハンター道連れ画面を同じ進行位置へ復元す�
   assert.equal(state.showVoteTable, false);
 });
 
-test("ハンター道連れ画面で戻るを押すと直前のスナップショットが復元される", () => {
-  let restored = false;
-  let restoredPayload = null;
+test("ハンター死亡時は「ハンター発動」案内画面から開始し、OK押下で道連れ対象選択画面へ進む", () => {
+  const players = [
+    { id: "H", name: "太郎", roleId: "hunter", alive: false },
+    { id: "A", name: "次郎", roleId: "villager", alive: true },
+    { id: "W", name: "三郎", roleId: "werewolf", alive: true },
+  ];
+  const state = {
+    screen: "table",
+    players,
+    showHunterShot: false,
+    hunterShotActorId: "",
+    hunterShotStage: "intro",
+    hunterShotSelectedPlayerId: "",
+    hunterShotQueue: [{ actorId: "H", context: "exile" }],
+    hunterShotContext: "exile",
+    undoHistory: [],
+  };
+  const createMockEls = () => ({
+    hunterShotView: { hidden: true, classList: { toggle: () => {} } },
+    hunterShotLead: { textContent: "" },
+    hunterShotTitle: { textContent: "" },
+    hunterShotReadyBtn: { hidden: true, disabled: true },
+    hunterShotConfirmBtn: { hidden: true, disabled: true },
+    hunterShotTable: { hidden: true, innerHTML: "", appendChild: () => {} },
+    hunterShotBackBtn: { disabled: true },
+  });
+  const els = createMockEls();
+
+  runFunctions(
+    ["processNextHunterShot", "renderHunterShotView", "proceedHunterShotToSelect", "isCatRole", "getDeathAbilityRoleName", "getLivingPlayers", "getActivePlayers", "isActivePlayer", "getRoleColorClass"],
+    {
+      state,
+      els,
+      findPlayer: (id) => players.find((p) => p.id === id),
+      getActivePlayers: () => players,
+      getLivingPlayers: () => players.filter((p) => p.alive),
+      getGameResult: () => ({ ended: false, winner: "" }),
+      stopAllLiveTimers: () => {},
+      renderAndStore: () => {},
+    },
+    `processNextHunterShot();
+     renderHunterShotView();`,
+  );
+
+  assert.equal(state.showHunterShot, true);
+  assert.equal(state.hunterShotStage, "intro");
+  assert.equal(els.hunterShotLead.textContent, "ハンター（太郎）の道連れ");
+  assert.equal(els.hunterShotTitle.textContent, "ハンター発動");
+  assert.equal(els.hunterShotReadyBtn.hidden, false);
+  assert.equal(els.hunterShotReadyBtn.disabled, false);
+  assert.equal(els.hunterShotConfirmBtn.hidden, true);
+  assert.equal(els.hunterShotTable.hidden, true);
+
+  const mockDocument = {
+    createElement: (tag) => ({
+      type: tag,
+      classList: { add: () => {}, toggle: () => {} },
+      appendChild: () => {},
+      addEventListener: () => {},
+    }),
+  };
+
+  // OKを押すとselect段階へ進む
+  runFunctions(
+    ["proceedHunterShotToSelect", "renderHunterShotView", "isCatRole", "getDeathAbilityRoleName", "getLivingPlayers", "getActivePlayers", "isActivePlayer", "getRoleColorClass"],
+    {
+      state,
+      els,
+      document: mockDocument,
+      findPlayer: (id) => players.find((p) => p.id === id),
+      getActivePlayers: () => players,
+      getLivingPlayers: () => players.filter((p) => p.alive),
+      renderAndStore: () => {},
+    },
+    `proceedHunterShotToSelect();
+     renderHunterShotView();`,
+  );
+
+  assert.equal(state.hunterShotStage, "select");
+  assert.equal(els.hunterShotTitle.textContent, "道連れにする対象を選択");
+  assert.equal(els.hunterShotReadyBtn.hidden, true);
+  assert.equal(els.hunterShotConfirmBtn.hidden, false);
+  assert.equal(els.hunterShotConfirmBtn.disabled, true);
+  assert.equal(els.hunterShotTable.hidden, false);
+});
+
+test("狂人ハンター死亡時は「狂人ハンター発動」と表示される", () => {
+  const players = [
+    { id: "MH", name: "花子", roleId: "madman_hunter", alive: false },
+    { id: "A", name: "次郎", roleId: "villager", alive: true },
+  ];
+  const state = {
+    screen: "table",
+    showHunterShot: true,
+    hunterShotActorId: "MH",
+    hunterShotStage: "intro",
+    hunterShotSelectedPlayerId: "",
+    undoHistory: [],
+  };
+  const els = {
+    hunterShotView: { hidden: true, classList: { toggle: () => {} } },
+    hunterShotLead: { textContent: "" },
+    hunterShotTitle: { textContent: "" },
+    hunterShotReadyBtn: { hidden: true, disabled: true },
+    hunterShotConfirmBtn: { hidden: true, disabled: true },
+    hunterShotTable: { hidden: true, innerHTML: "" },
+    hunterShotBackBtn: { disabled: true },
+  };
+
+  runFunctions(
+    ["renderHunterShotView", "isCatRole", "getDeathAbilityRoleName"],
+    {
+      state,
+      els,
+      findPlayer: (id) => players.find((p) => p.id === id),
+      getLivingPlayers: () => players.filter((p) => p.alive),
+    },
+    "renderHunterShotView()",
+  );
+
+  assert.equal(els.hunterShotLead.textContent, "狂人ハンター（花子）の道連れ");
+  assert.equal(els.hunterShotTitle.textContent, "狂人ハンター発動");
+  assert.equal(els.hunterShotReadyBtn.hidden, false);
+});
+
+test("猫又の道連れ確認は発動案内を挟まず直接対象確認画面へ進む", () => {
+  const players = [
+    { id: "C", name: "猫", roleId: "cat", alive: false },
+    { id: "A", name: "村人", roleId: "villager", alive: true },
+  ];
+  const state = {
+    showHunterShot: false,
+    hunterShotActorId: "",
+    hunterShotStage: "intro",
+    hunterShotSelectedPlayerId: "",
+    hunterShotQueue: [{ actorId: "C", context: "exile" }],
+    hunterShotContext: "exile",
+  };
+  runFunctions(
+    ["processNextHunterShot", "isCatRole", "getCatLinkedDeathCandidates", "pickRandomPlayer"],
+    {
+      state,
+      findPlayer: (id) => players.find((p) => p.id === id),
+      getLivingPlayers: () => players.filter((p) => p.alive),
+      getGameResult: () => ({ ended: false, winner: "" }),
+      stopAllLiveTimers: () => {},
+      renderAndStore: () => {},
+    },
+    "processNextHunterShot()",
+  );
+
+  assert.equal(state.showHunterShot, true);
+  assert.equal(state.hunterShotStage, "select");
+  assert.equal(state.hunterShotSelectedPlayerId, "A");
+});
+
+test("道連れ選択画面で戻るを押すと発動案内画面へ戻り、選択状態が解除される", () => {
+  const players = [{ id: "H", roleId: "hunter", alive: false }];
   const state = {
     showHunterShot: true,
     hunterShotActorId: "H",
+    hunterShotStage: "select",
     hunterShotSelectedPlayerId: "A",
+    undoHistory: [{ label: "追放", payload: { showVoteTable: true } }],
+  };
+  let restored = false;
+  runFunctions(
+    ["backFromHunterShot", "isCatRole"],
+    {
+      state,
+      findPlayer: (id) => players.find((p) => p.id === id),
+      applyRestoredPayload: () => {
+        restored = true;
+      },
+      markLargeStateDirty: () => {},
+      renderAndStore: () => {},
+    },
+    "backFromHunterShot()",
+  );
+
+  assert.equal(state.hunterShotStage, "intro");
+  assert.equal(state.hunterShotSelectedPlayerId, "");
+  assert.equal(restored, false);
+  assert.equal(state.undoHistory.length, 1);
+});
+
+test("発動案内画面で戻るを押すと直前の進行（スナップショット）が復元される", () => {
+  let restored = false;
+  let restoredPayload = null;
+  const players = [{ id: "H", roleId: "hunter", alive: false }];
+  const state = {
+    showHunterShot: true,
+    hunterShotActorId: "H",
+    hunterShotStage: "intro",
+    hunterShotSelectedPlayerId: "",
     hunterShotQueue: [],
     undoHistory: [
       { label: "追放", payload: { showVoteTable: true, voteSelectedPlayerId: "H" } },
     ],
   };
   runFunctions(
-    ["backFromHunterShot"],
+    ["backFromHunterShot", "isCatRole"],
     {
       state,
+      findPlayer: (id) => players.find((p) => p.id === id),
       applyRestoredPayload: (payload) => {
         restored = true;
         restoredPayload = payload;
@@ -1367,20 +1560,23 @@ test("ハンター道連れ画面で戻るを押すと直前のスナップシ�
   assert.equal(state.undoHistory.length, 0);
 });
 
-test("undo履歴がないハンター道連れ画面では戻るを押しても進行を変更しない", () => {
+test("undo履歴がないハンター発動案内画面では戻るを押しても進行を変更しない", () => {
+  const players = [{ id: "H", roleId: "hunter", alive: false }];
   const state = {
     showHunterShot: true,
     hunterShotActorId: "H",
-    hunterShotSelectedPlayerId: "A",
+    hunterShotStage: "intro",
+    hunterShotSelectedPlayerId: "",
     hunterShotQueue: [{ actorId: "H2", context: "exile" }],
     hunterShotContext: "exile",
     undoHistory: [],
   };
   const before = JSON.stringify(state);
   runFunctions(
-    ["backFromHunterShot"],
+    ["backFromHunterShot", "isCatRole"],
     {
       state,
+      findPlayer: (id) => players.find((p) => p.id === id),
       applyRestoredPayload: () => {},
       markLargeStateDirty: () => {},
       renderAndStore: () => {},
@@ -1712,15 +1908,23 @@ test("使用役職にボディガードが含まれない場合、連続護衛�
   assert.equal(guardOptionsDisabled, false);
 });
 
-test("ハンター画面の戻るは履歴がある場合だけ有効になる", () => {
+test("ハンター画面の戻るは発動案内では履歴がある場合だけ有効になり、選択段階では常に有効になる", () => {
   for (const history of [[], [{ payload: {} }]]) {
-    const button = { disabled: false };
+    const buttonIntro = { disabled: false };
     runFunctions(["renderHunterShotView", "isCatRole", "getDeathAbilityRoleName"], {
-      state: { screen: "table", showHunterShot: true, hunterShotActorId: "H", undoHistory: history },
-      els: { hunterShotView: {}, hunterShotBackBtn: button },
+      state: { screen: "table", showHunterShot: true, hunterShotActorId: "H", hunterShotStage: "intro", undoHistory: history },
+      els: { hunterShotView: { classList: { toggle: () => {} } }, hunterShotBackBtn: buttonIntro },
       findPlayer: () => ({ id: "H", roleId: "hunter" }),
     }, "renderHunterShotView()");
-    assert.equal(button.disabled, history.length === 0);
+    assert.equal(buttonIntro.disabled, history.length === 0);
+
+    const buttonSelect = { disabled: false };
+    runFunctions(["renderHunterShotView", "isCatRole", "getDeathAbilityRoleName"], {
+      state: { screen: "table", showHunterShot: true, hunterShotActorId: "H", hunterShotStage: "select", undoHistory: history },
+      els: { hunterShotView: { classList: { toggle: () => {} } }, hunterShotBackBtn: buttonSelect },
+      findPlayer: () => ({ id: "H", roleId: "hunter" }),
+    }, "renderHunterShotView()");
+    assert.equal(buttonSelect.disabled, false);
   }
 });
 

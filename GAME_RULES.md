@@ -101,7 +101,7 @@
 - てるてるが死亡した場合はてるてる陣営の勝利（複数人いる場合は全員が死亡した時点で勝利）。
 - 生存している人狼が0人なら市民陣営の勝利（てるてるが生存していても市民勝利）。
 - 生存している人狼の人数が、それ以外の生存者数以上なら人狼陣営の勝利（てるてるが生存していても人狼勝利）。
-- ハンターまたは狂人ハンターが死亡した際、その死亡で勝敗が決まっていなければ必ず生存者1名を道連れにし、その後に勝敗判定を行う。
+- ハンターまたは狂人ハンターが死亡した際、その死亡で勝敗が決まっていなければまず「ハンター発動」（狂人ハンターの場合は「狂人ハンター発動」）案内画面とOKボタンを表示し、OK押下後に道連れ対象の選択画面へ進む。選択画面で「戻る」を押すと発動案内画面へ戻り、発動案内画面で「戻る」を押すと直前の進行（スナップショット）へ復元する。道連れ確定後に勝敗判定を行う。
 - 道連れされた対象がハンターまたは狂人ハンターの場合、勝敗が決まっていなければ連鎖して道連れが発動する。
 - 道連れされた対象がてるてるで、てるてるが全員死亡した場合、てるてる陣営の勝利となる。
 - 猫又の道連れ先はアプリがランダムに決め、対象だけを確認画面へ表示してGMが確定する。猫又の道連れで死亡した猫又の能力は連鎖しない。
@@ -146,7 +146,7 @@
 | 襲撃対象 | `canSelectActionTarget()` / `getAttackResultDay()` / `finishVictoryAttackResult()` | 襲撃なし、自噛み、襲撃結果、朝の勝敗確定時遷移、襲撃日の円卓表示、日別ログ、勝敗判定 |
 | 通常勝敗 | `getGameResult()` | 追放後、襲撃後、勝利画面、ログ |
 | てるてる勝敗 | `getGameResultAfterExile()` / `finishNightActions()` | 追放確定、襲撃結果、勝利画面、ログ、詰み判定 |
-| ハンター道連れ | `startHunterShotFlow()` / `confirmHunterShot()` / `backFromHunterShot()` / `applySavedHunterShotState()` | 追放後、襲撃後、連鎖道連れ、てるてる道連れ、勝敗判定、円卓表示、戻るボタン、ログ、保存・同期・復元 |
+| ハンター道連れ | `startHunterShotFlow()` / `proceedHunterShotToSelect()` / `confirmHunterShot()` / `backFromHunterShot()` / `applySavedHunterShotState()` | 追放後、襲撃後、連鎖道連れ、発動案内とOK遷移、てるてる道連れ、勝敗判定、円卓表示、戻るボタン、ログ、保存・同期・復元 |
 | 猫又道連れ | `getCatLinkedDeathCandidates()` / `resolveAttackedCatLinkedDeath()` / `getAttackResultDeathPlayerIds()` / `startHunterShotFlow()` / `confirmHunterShot()` / `getGameResultAfterHypotheticalNightAttack()` | 追放、襲撃、襲撃時の自動確定、死亡者のランダム表示順、ハンター連鎖、詰み判定、円卓表示、ログ、保存・同期・復元 |
 | 追放後の詰み | `isForcedWerewolfWinNextNight()` | 襲撃・護衛ルール、勝利画面、ログ |
 

@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.49.2";
+const APP_VERSION = "v1.49.3";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -222,6 +222,7 @@ const state = {
   attackResultOkSeconds: ATTACK_RESULT_OK_DELAY_SECONDS,
   showHunterShot: false,
   hunterShotActorId: "",
+  hunterShotStage: "intro",
   hunterShotSelectedPlayerId: "",
   hunterShotQueue: [],
   hunterShotContext: "exile",
@@ -449,6 +450,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "hunterShotTitle",
     "hunterShotLead",
     "hunterShotTable",
+    "hunterShotReadyBtn",
     "hunterShotConfirmBtn",
     "hunterShotBackBtn",
   ].forEach((id) => {
@@ -573,6 +575,7 @@ function bindEvents() {
   els.copyLogBtn.addEventListener("click", copyLog);
   els.victoryBackBtn?.addEventListener("click", dismissVictoryFullscreen);
   els.prepareNextMatchBtn?.addEventListener("click", prepareNextMatch);
+  els.hunterShotReadyBtn?.addEventListener("click", proceedHunterShotToSelect);
   els.hunterShotConfirmBtn?.addEventListener("click", confirmHunterShot);
   els.hunterShotBackBtn?.addEventListener("click", backFromHunterShot);
   els.progressStartBtn.addEventListener("click", startProgress);
@@ -656,6 +659,7 @@ function startRoundTable() {
   state.catLinkedPlayerDays = {};
   state.showHunterShot = false;
   state.hunterShotActorId = "";
+  state.hunterShotStage = "intro";
   state.hunterShotSelectedPlayerId = "";
   state.hunterShotQueue = [];
   state.actionComplete = false;
@@ -2662,6 +2666,7 @@ function resetGame() {
   state.catLinkedPlayerDays = {};
   state.showHunterShot = false;
   state.hunterShotActorId = "";
+  state.hunterShotStage = "intro";
   state.hunterShotSelectedPlayerId = "";
   state.hunterShotQueue = [];
   state.playerSortMode = "manual";
@@ -2695,6 +2700,7 @@ function resetToFirstNight() {
   state.catLinkedPlayerDays = {};
   state.showHunterShot = false;
   state.hunterShotActorId = "";
+  state.hunterShotStage = "intro";
   state.hunterShotSelectedPlayerId = "";
   state.hunterShotQueue = [];
   state.showVoteTable = false;
@@ -3760,14 +3766,23 @@ function processNextHunterShot() {
   state.hunterShotSelectedPlayerId = "";
   const actor = findPlayer(state.hunterShotActorId);
   if (isCatRole(actor?.roleId)) {
+    state.hunterShotStage = "select";
     const target = pickRandomPlayer(getCatLinkedDeathCandidates(getLivingPlayers(), state.hunterShotContext));
     if (!target) {
       processNextHunterShot();
       return;
     }
     state.hunterShotSelectedPlayerId = target.id;
+  } else {
+    state.hunterShotStage = "intro";
   }
   stopAllLiveTimers();
+  renderAndStore();
+}
+
+function proceedHunterShotToSelect() {
+  if (!state.showHunterShot || state.hunterShotStage !== "intro") return;
+  state.hunterShotStage = "select";
   renderAndStore();
 }
 
@@ -3808,6 +3823,13 @@ function confirmHunterShot() {
 }
 
 function backFromHunterShot() {
+  const actor = findPlayer(state.hunterShotActorId);
+  if (state.hunterShotStage === "select" && !isCatRole(actor?.roleId)) {
+    state.hunterShotStage = "intro";
+    state.hunterShotSelectedPlayerId = "";
+    renderAndStore();
+    return;
+  }
   if (state.undoHistory.length) {
     const [snapshot, ...rest] = state.undoHistory;
     applyRestoredPayload(snapshot.payload);
@@ -3824,26 +3846,44 @@ function renderHunterShotView() {
   els.hunterShotView.hidden = !visible;
   if (!visible) return;
 
-  if (els.hunterShotBackBtn) {
-    els.hunterShotBackBtn.disabled = !state.undoHistory.length;
-  }
-
   const actor = findPlayer(state.hunterShotActorId);
   const catLinkedDeath = isCatRole(actor?.roleId);
   const roleName = getDeathAbilityRoleName(actor?.roleId);
+  const isIntro = state.hunterShotStage === "intro" && !catLinkedDeath;
+
+  els.hunterShotView.classList.toggle("hunter-shot-intro-stage", isIntro);
+
+  if (els.hunterShotBackBtn) {
+    const canBackToIntro = state.hunterShotStage === "select" && !catLinkedDeath;
+    const hasUndo = Boolean(state.undoHistory && state.undoHistory.length);
+    els.hunterShotBackBtn.disabled = !canBackToIntro && !hasUndo;
+  }
+
   if (els.hunterShotLead) {
     els.hunterShotLead.textContent = `${roleName}（${actor ? actor.name : ""}）の道連れ`;
   }
   if (els.hunterShotTitle) {
-    els.hunterShotTitle.textContent = catLinkedDeath ? "ランダムで選ばれた対象" : "道連れにする対象を選択";
+    if (isIntro) {
+      els.hunterShotTitle.textContent = `${roleName}発動`;
+    } else {
+      els.hunterShotTitle.textContent = catLinkedDeath ? "ランダムで選ばれた対象" : "道連れにする対象を選択";
+    }
+  }
+
+  if (els.hunterShotReadyBtn) {
+    els.hunterShotReadyBtn.hidden = !isIntro;
+    els.hunterShotReadyBtn.disabled = !isIntro;
   }
 
   if (els.hunterShotConfirmBtn) {
-    els.hunterShotConfirmBtn.disabled = !state.hunterShotSelectedPlayerId;
+    els.hunterShotConfirmBtn.hidden = isIntro;
+    els.hunterShotConfirmBtn.disabled = isIntro || !state.hunterShotSelectedPlayerId;
   }
 
   if (!els.hunterShotTable) return;
+  els.hunterShotTable.hidden = isIntro;
   els.hunterShotTable.innerHTML = "";
+  if (isIntro) return;
 
   const livingPlayers = catLinkedDeath
     ? getLivingPlayers().filter((player) => player.id === state.hunterShotSelectedPlayerId)
@@ -5008,6 +5048,7 @@ function prepareNextMatch() {
   state.catLinkedPlayerDays = {};
   state.showHunterShot = false;
   state.hunterShotActorId = "";
+  state.hunterShotStage = "intro";
   state.hunterShotSelectedPlayerId = "";
   state.hunterShotQueue = [];
   state.roleDealQueue = [];
@@ -6193,6 +6234,7 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     attackResultOkSeconds: state.attackResultOkSeconds,
     showHunterShot: state.showHunterShot,
     hunterShotActorId: state.hunterShotActorId,
+    hunterShotStage: state.hunterShotStage || "intro",
     hunterShotSelectedPlayerId: state.hunterShotSelectedPlayerId,
     hunterShotQueue: state.hunterShotQueue,
     hunterShotContext: state.hunterShotContext,
@@ -6571,6 +6613,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
 function applySavedHunterShotState(saved) {
   state.showHunterShot = saved.showHunterShot === true;
   state.hunterShotActorId = typeof saved.hunterShotActorId === "string" ? saved.hunterShotActorId : "";
+  state.hunterShotStage = saved.hunterShotStage === "select" ? "select" : "intro";
   state.hunterShotSelectedPlayerId = typeof saved.hunterShotSelectedPlayerId === "string" ? saved.hunterShotSelectedPlayerId : "";
   state.hunterShotQueue = Array.isArray(saved.hunterShotQueue)
     ? saved.hunterShotQueue
@@ -6582,14 +6625,19 @@ function applySavedHunterShotState(saved) {
   if (!state.showHunterShot || !findPlayer(state.hunterShotActorId)) {
     state.showHunterShot = false;
     state.hunterShotActorId = "";
+    state.hunterShotStage = "intro";
     state.hunterShotSelectedPlayerId = "";
     state.hunterShotQueue = [];
     return;
   }
 
+  const actor = findPlayer(state.hunterShotActorId);
+  if (isCatRole(actor?.roleId)) {
+    state.hunterShotStage = "select";
+  }
+
   const selectedPlayer = findPlayer(state.hunterShotSelectedPlayerId);
   if (!selectedPlayer?.alive) {
-    const actor = findPlayer(state.hunterShotActorId);
     const target = isCatRole(actor?.roleId)
       ? pickRandomPlayer(getCatLinkedDeathCandidates(getLivingPlayers(), state.hunterShotContext))
       : null;
