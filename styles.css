@@ -1049,106 +1049,51 @@ body.teruteru-victory-view .victory-banner.victory-teruteru.victory-reveal-winne
   border-radius: 6px;
 }
 
-.regulation-preset-container {
-  display: grid;
+.regulation-select-row {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.regulation-matching-group {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.regulation-group-badge {
-  color: var(--muted);
-  font-size: 0.82rem;
-  font-weight: 800;
-}
-
-.regulation-empty-note {
-  color: var(--muted);
-  font-size: 0.8rem;
-  font-style: italic;
-}
-
-.regulation-chip-wrapper {
-  display: inline-flex;
-  align-items: stretch;
+.regulation-select {
+  flex: 1;
+  min-height: 40px;
+  padding: 6px 10px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 8px;
   background: white;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition: all 0.15s ease;
-}
-
-.regulation-chip-wrapper.active {
-  border-color: var(--accent);
-  background: #e7f4ee;
-  box-shadow: 0 0 0 2px rgba(12, 122, 103, 0.25);
-}
-
-.regulation-chip-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 10px;
-  border: none;
-  background: transparent;
   color: var(--ink);
-  font-size: 0.88rem;
+  font-size: 0.92rem;
+  font-weight: 800;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.regulation-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(12, 122, 103, 0.15);
+  outline: none;
+}
+
+.regulation-select optgroup {
   font-weight: 900;
-  cursor: pointer;
-}
-
-.regulation-chip-wrapper.active .regulation-chip-btn {
-  color: var(--accent-strong);
-}
-
-.regulation-delete-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 6px;
-  border: none;
-  border-left: 1px solid var(--line);
-  background: transparent;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-style: normal;
+  padding: 4px 0;
+}
+
+.regulation-select option {
   font-weight: 700;
-  cursor: pointer;
-  opacity: 0.6;
+  color: var(--ink);
+  padding: 4px 8px;
 }
 
-.regulation-delete-btn:hover {
-  opacity: 1;
-  color: var(--danger, #d9383a);
-  background: rgba(217, 56, 58, 0.08);
-}
-
-.regulation-other-details {
-  border: 1px dashed var(--line);
-  border-radius: 6px;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.5);
-}
-
-.regulation-other-details summary {
-  cursor: pointer;
-  color: var(--muted);
+.regulation-delete-button {
+  min-height: 40px;
+  padding: 0 12px;
   font-size: 0.82rem;
   font-weight: 800;
-  user-select: none;
-}
-
-.regulation-other-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px solid var(--line);
+  border-radius: 8px;
+  white-space: nowrap;
 }
 
 /* 役職内訳グリッド */

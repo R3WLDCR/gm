@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.51.0";
+const APP_VERSION = "v1.52.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -336,7 +336,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     "matchNumberPrevious",
     "matchNumberNext",
     "saveRegulationBtn",
-    "regulationPresetList",
+    "regulationSelect",
+    "deleteRegulationBtn",
     "roleBreakdownList",
     "roleBreakdownSummary",
     "allowWerewolfSelfAttackInput",
@@ -522,6 +523,8 @@ function bindEvents() {
     input?.addEventListener("change", updateGameRules);
   });
   els.saveRegulationBtn?.addEventListener("click", handleSaveRegulationClick);
+  els.regulationSelect?.addEventListener("change", handleRegulationSelectChange);
+  els.deleteRegulationBtn?.addEventListener("click", handleDeleteRegulationClick);
   els.presetBtn?.addEventListener("click", applyPreset);
   els.assignBtn?.addEventListener("click", assignRoles);
   els.clearDeathsBtn?.addEventListener("click", () => {
@@ -1090,6 +1093,21 @@ function handleSaveRegulationClick() {
     return;
   }
   saveCurrentAsRegulation(trimmed, activeCount);
+}
+
+function handleRegulationSelectChange() {
+  const selectedId = els.regulationSelect?.value;
+  if (!selectedId) {
+    state.selectedRegulationId = "";
+    renderAndStore();
+    return;
+  }
+  applyRegulation(selectedId);
+}
+
+function handleDeleteRegulationClick() {
+  if (!state.selectedRegulationId) return;
+  deleteRegulation(state.selectedRegulationId);
 }
 
 function beginNewMatch({ createId = true } = {}) {
@@ -2969,81 +2987,43 @@ function renderGameRuleInputs() {
 }
 
 function renderRegulationPresets() {
-  if (!els.regulationPresetList) return;
-  els.regulationPresetList.innerHTML = "";
+  if (!els.regulationSelect) return;
+  const currentVal = state.selectedRegulationId || "";
+  els.regulationSelect.innerHTML = "";
 
-  const activeCount = getActivePlayers().length || 12;
-  const matchingRegulations = state.regulations.filter((r) => r.playerCount === activeCount);
-  const otherRegulations = state.regulations.filter((r) => r.playerCount !== activeCount);
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = "レギュセットを選択...";
+  els.regulationSelect.appendChild(defaultOption);
 
-  const container = document.createElement("div");
-  container.className = "regulation-preset-container";
-
-  const matchingGroup = document.createElement("div");
-  matchingGroup.className = "regulation-matching-group";
-  const label = document.createElement("span");
-  label.className = "regulation-group-badge";
-  label.textContent = `${activeCount}人のレギュ:`;
-  matchingGroup.appendChild(label);
-
-  if (matchingRegulations.length) {
-    matchingRegulations.forEach((reg) => {
-      const chip = createRegulationChip(reg);
-      matchingGroup.appendChild(chip);
-    });
-  } else {
-    const emptySpan = document.createElement("span");
-    emptySpan.className = "regulation-empty-note";
-    emptySpan.textContent = "未登録（現在の設定を保存可能）";
-    matchingGroup.appendChild(emptySpan);
-  }
-  container.appendChild(matchingGroup);
-
-  if (otherRegulations.length) {
-    const details = document.createElement("details");
-    details.className = "regulation-other-details";
-    const summary = document.createElement("summary");
-    summary.textContent = `他の人数のレギュレーション（全${otherRegulations.length}件）`;
-    details.appendChild(summary);
-
-    const otherGrid = document.createElement("div");
-    otherGrid.className = "regulation-other-grid";
-    const sorted = [...otherRegulations].sort((a, b) => a.playerCount - b.playerCount || a.name.localeCompare(b.name, "ja"));
-    sorted.forEach((reg) => {
-      const chip = createRegulationChip(reg, { showCount: true });
-      otherGrid.appendChild(chip);
-    });
-    details.appendChild(otherGrid);
-    container.appendChild(details);
-  }
-
-  els.regulationPresetList.appendChild(container);
-}
-
-function createRegulationChip(reg, { showCount = false } = {}) {
-  const wrapper = document.createElement("div");
-  wrapper.className = `regulation-chip-wrapper ${reg.id === state.selectedRegulationId ? "active" : ""}`;
-
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "regulation-chip-btn";
-  button.textContent = showCount ? `${reg.playerCount}人: ${reg.name}` : reg.name;
-  button.title = `${reg.playerCount}人用「${reg.name}」を適用`;
-  button.addEventListener("click", () => applyRegulation(reg.id));
-  wrapper.appendChild(button);
-
-  const deleteBtn = document.createElement("button");
-  deleteBtn.type = "button";
-  deleteBtn.className = "regulation-delete-btn";
-  deleteBtn.setAttribute("aria-label", `${reg.name}を削除`);
-  deleteBtn.textContent = "×";
-  deleteBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    deleteRegulation(reg.id);
+  const byPlayerCount = new Map();
+  state.regulations.forEach((reg) => {
+    const count = Number(reg.playerCount) || 0;
+    if (!byPlayerCount.has(count)) {
+      byPlayerCount.set(count, []);
+    }
+    byPlayerCount.get(count).push(reg);
   });
-  wrapper.appendChild(deleteBtn);
 
-  return wrapper;
+  const sortedCounts = Array.from(byPlayerCount.keys()).sort((a, b) => a - b);
+  sortedCounts.forEach((count) => {
+    const group = document.createElement("optgroup");
+    group.label = `${count}人`;
+    const regs = byPlayerCount.get(count).sort((a, b) => a.name.localeCompare(b.name, "ja"));
+    regs.forEach((reg) => {
+      const option = document.createElement("option");
+      option.value = reg.id;
+      option.textContent = reg.name;
+      group.appendChild(option);
+    });
+    els.regulationSelect.appendChild(group);
+  });
+
+  els.regulationSelect.value = currentVal;
+
+  if (els.deleteRegulationBtn) {
+    els.deleteRegulationBtn.hidden = !currentVal;
+  }
 }
 
 function renderRoleBreakdown() {

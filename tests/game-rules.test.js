@@ -2414,3 +2414,53 @@ test("電卓ダイアログの決定で大会回数と試合番号が反映さ�
   assert.equal(state.matchNumber, 7);
   assert.equal(els.matchNumberInput.value, "7");
 });
+
+test("レギュレーション一覧はセレクトボックスに人数別に整理されて描画される", () => {
+  const selectChildren = [];
+  const fakeSelect = {
+    innerHTML: "",
+    value: "",
+    appendChild: (child) => selectChildren.push(child),
+  };
+  const fakeDeleteBtn = { hidden: true };
+
+  const state = {
+    selectedRegulationId: "reg-13b",
+    regulations: [
+      { id: "reg-12a", name: "12A", playerCount: 12 },
+      { id: "reg-13a", name: "13A", playerCount: 13 },
+      { id: "reg-13b", name: "13B", playerCount: 13 },
+      { id: "reg-9", name: "9人基本", playerCount: 9 },
+    ],
+  };
+
+  const fakeDocument = {
+    createElement: (tag) => {
+      const el = { tag, children: [] };
+      el.appendChild = (child) => el.children.push(child);
+      return el;
+    },
+  };
+
+  const context = {
+    state,
+    els: {
+      regulationSelect: fakeSelect,
+      deleteRegulationBtn: fakeDeleteBtn,
+    },
+    document: fakeDocument,
+  };
+
+  runFunctions(["renderRegulationPresets"], context, "renderRegulationPresets()");
+
+  assert.equal(fakeSelect.value, "reg-13b");
+  assert.equal(fakeDeleteBtn.hidden, false);
+  assert.equal(selectChildren.length, 4);
+  assert.equal(selectChildren[0].value, "");
+  assert.equal(selectChildren[1].label, "9人");
+  assert.equal(selectChildren[2].label, "12人");
+  assert.equal(selectChildren[3].label, "13人");
+  assert.equal(selectChildren[3].children.length, 2);
+  assert.equal(selectChildren[3].children[0].textContent, "13A");
+  assert.equal(selectChildren[3].children[1].textContent, "13B");
+});

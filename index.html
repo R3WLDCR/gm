@@ -18,7 +18,7 @@
         <div class="header-identity">
           <div class="title-row">
             <p class="eyebrow">Werewolf Game Master</p>
-            <span id="appVersionBadge" class="version-badge">v1.51.0</span>
+            <span id="appVersionBadge" class="version-badge">v1.52.0</span>
             <span id="progressBadge" class="progress-badge">準備中</span>
           </div>
           <div id="headerMatchInfo" class="header-match-info" hidden>
@@ -146,10 +146,15 @@
             <legend>レギュレーション・ゲームルール</legend>
             <div class="regulation-section">
               <div class="regulation-section-header">
-                <span class="regulation-title">レギュセット（人数別）</span>
+                <span class="regulation-title">レギュセット</span>
                 <button id="saveRegulationBtn" class="secondary-button regulation-save-button" type="button">現在の設定を保存</button>
               </div>
-              <div id="regulationPresetList" class="regulation-preset-list" aria-label="レギュレーション一覧"></div>
+              <div class="regulation-select-row">
+                <select id="regulationSelect" class="regulation-select" aria-label="レギュレーション一覧から選択">
+                  <option value="">レギュセットを選択...</option>
+                </select>
+                <button id="deleteRegulationBtn" class="secondary-button danger regulation-delete-button" type="button" aria-label="選択中のレギュセットを削除" title="選択中のレギュセットを削除" hidden>削除</button>
+              </div>
             </div>
 
             <div class="role-breakdown-section">
