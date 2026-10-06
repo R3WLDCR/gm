@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.52.2";
+const APP_VERSION = "v1.52.3";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -2895,6 +2895,24 @@ function renderRegulationPresets() {
 function renderRoleBreakdown() {
   if (!els.roleBreakdownList) return;
   els.roleBreakdownList.innerHTML = "";
+  const factionGrids = new Map();
+  ["人狼陣営", "市民陣営", "第3陣営"].forEach((team, index) => {
+    const group = document.createElement("section");
+    group.className = `role-breakdown-faction faction-${index}`;
+    group.setAttribute("aria-label", team);
+    const heading = document.createElement("h3");
+    heading.className = "role-breakdown-faction-heading";
+    heading.textContent = team;
+    const total = document.createElement("span");
+    total.textContent = `${state.roles.filter((role) => role.team === team).reduce((sum, role) => sum + (role.count || 0), 0)}人`;
+    heading.appendChild(total);
+    const grid = document.createElement("div");
+    grid.className = "role-breakdown-grid";
+    group.appendChild(heading);
+    group.appendChild(grid);
+    els.roleBreakdownList.appendChild(group);
+    factionGrids.set(team, grid);
+  });
 
   state.roles.forEach((role) => {
     const item = document.createElement("div");
@@ -2932,7 +2950,7 @@ function renderRoleBreakdown() {
     stepper.appendChild(plusBtn);
     item.appendChild(stepper);
 
-    els.roleBreakdownList.appendChild(item);
+    factionGrids.get(role.team)?.appendChild(item);
   });
 
   if (els.roleBreakdownSummary) {

@@ -1135,9 +1135,33 @@ body.teruteru-victory-view .victory-banner.victory-teruteru.victory-reveal-winne
   box-shadow: inset 0 0 0 1px rgba(199, 139, 43, 0.4);
 }
 
+.role-breakdown-groups {
+  display: grid;
+  gap: 12px;
+}
+
+.role-breakdown-faction-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 6px;
+  padding-left: 8px;
+  border-left: 3px solid currentColor;
+  font-size: 0.9rem;
+  color: #a62b38;
+}
+
+.faction-1 .role-breakdown-faction-heading { color: #08735d; }
+.faction-2 .role-breakdown-faction-heading { color: #76549b; }
+
+.role-breakdown-faction-heading span {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .role-breakdown-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
   gap: 6px;
 }
 
@@ -1163,11 +1187,10 @@ body.teruteru-victory-view .victory-banner.victory-teruteru.victory-reveal-winne
   font-weight: 900;
   color: var(--ink);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .role-breakdown-stepper {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 4px;
