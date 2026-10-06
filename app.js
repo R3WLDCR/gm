@@ -12,7 +12,7 @@ const DEFAULT_ROLES = [
 ];
 
 const RULE_SELECTABLE_ROLE_IDS = ["werewolf", "madman", "seer", "medium", "knight", "hunter", "cat", "madman_hunter", "teruteru"];
-const DEFAULT_ENABLED_ROLE_IDS = ["werewolf", "madman", "seer", "medium", "knight", "hunter", "cat", "madman_hunter", "teruteru", "villager"];
+const DEFAULT_ENABLED_ROLE_IDS = DEFAULT_ROLES.filter((role) => role.count > 0 || role.id === "villager").map((role) => role.id);
 const STANDARD_ROLE_ORDER = ["werewolf", "seer", "medium", "knight", "hunter", "madman", "madman_hunter", "teruteru", "cat"];
 const ACTION_ROLE_ORDER = ["medium", "knight", "seer", "werewolf"];
 const ACTION_ROLE_LABELS = {
@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.52.0";
+const APP_VERSION = "v1.52.1";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -512,9 +512,6 @@ function bindEvents() {
   bindMatchDateStepper(els.tournamentDatePrevious, -1);
   bindMatchDateStepper(els.tournamentDateNext, 1);
   els.tournamentDateTodayBtn?.addEventListener("click", setTournamentDateToday);
-  document.querySelectorAll("[data-role-rule]").forEach((input) => {
-    input.addEventListener("change", updateGameRules);
-  });
   [
     els.allowWerewolfSelfAttackInput,
     els.allowWerewolfSkipAttackInput,
@@ -959,26 +956,7 @@ function handleNumberPadKeyDown(event) {
 }
 
 function updateGameRules() {
-  const enabledRoleIds = Array.from(document.querySelectorAll("[data-role-rule]:checked"), (input) => input.dataset.roleRule);
-  state.enabledRoleIds = normalizeEnabledRoleIds(enabledRoleIds);
-  state.roles.forEach((role) => {
-    if (role.id === "villager") return;
-    if (!state.enabledRoleIds.includes(role.id)) {
-      role.count = 0;
-    } else if (role.count === 0) {
-      role.count = 1;
-    }
-  });
-  const activeCount = getActivePlayers().length;
-  if (activeCount > 0) {
-    const nonVillagerTotal = state.roles
-      .filter((r) => r.id !== "villager")
-      .reduce((sum, r) => sum + (r.count || 0), 0);
-    const villagerRole = state.roles.find((r) => r.id === "villager");
-    if (villagerRole) {
-      villagerRole.count = Math.max(0, activeCount - nonVillagerTotal);
-    }
-  }
+  state.enabledRoleIds = getEnabledRoleIdsFromCounts(state.roles);
   state.seerInitialWhiteEnabled = document.querySelector("[data-seer-white-rule]:checked")?.value !== "none";
   state.allowConsecutiveGuard = document.querySelector("[data-guard-repeat-rule]:checked")?.value === "allow";
   state.allowWerewolfSelfAttack = els.allowWerewolfSelfAttackInput?.checked === true;
@@ -1020,13 +998,7 @@ function applyRegulation(regulationOrId) {
     }
   });
 
-  const enabled = new Set();
-  state.roles.forEach((role) => {
-    if (role.count > 0 || role.id === "werewolf" || role.id === "villager") {
-      enabled.add(role.id);
-    }
-  });
-  state.enabledRoleIds = Array.from(enabled);
+  state.enabledRoleIds = getEnabledRoleIdsFromCounts(state.roles);
 
   state.seerInitialWhiteEnabled = reg.seerInitialWhiteEnabled !== false;
   state.allowConsecutiveGuard = reg.allowConsecutiveGuard === true;
@@ -1402,13 +1374,7 @@ function setRoleCount(id, delta) {
     }
   }
 
-  const enabled = new Set();
-  state.roles.forEach((r) => {
-    if (r.count > 0 || r.id === "werewolf" || r.id === "villager") {
-      enabled.add(r.id);
-    }
-  });
-  state.enabledRoleIds = Array.from(enabled);
+  state.enabledRoleIds = getEnabledRoleIdsFromCounts(state.roles);
   state.selectedRegulationId = "";
 
   if (typeof renderAndStore === "function") renderAndStore();
@@ -2966,15 +2932,10 @@ function renderMatchInfoInputs() {
 }
 
 function renderGameRuleInputs() {
-  const enabledRoleIds = new Set(normalizeEnabledRoleIds(state.enabledRoleIds));
-  document.querySelectorAll("[data-role-rule]").forEach((input) => {
-    input.checked = enabledRoleIds.has(input.dataset.roleRule);
-    input.disabled = input.dataset.roleRule === "werewolf";
-  });
   document.querySelectorAll("[data-seer-white-rule]").forEach((input) => {
     input.checked = input.value === (state.seerInitialWhiteEnabled ? "white" : "none");
   });
-  const knightEnabled = enabledRoleIds.has("knight");
+  const knightEnabled = (state.roles.find((role) => role.id === "knight")?.count || 0) > 0;
   document.querySelectorAll("[data-guard-repeat-rule]").forEach((input) => {
     input.checked = input.value === (state.allowConsecutiveGuard ? "allow" : "deny");
     input.disabled = !knightEnabled;
@@ -6571,7 +6532,7 @@ function restore() {
 function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.players = normalizePlayers(saved.players || []);
   state.roles = mergeRoles(saved.roles || []);
-  state.enabledRoleIds = normalizeEnabledRoleIds(saved.enabledRoleIds);
+  state.enabledRoleIds = getEnabledRoleIdsFromCounts(state.roles);
   state.regulations = normalizeRegulations(saved.regulations);
   state.selectedRegulationId = typeof saved.selectedRegulationId === "string" ? saved.selectedRegulationId : "";
   state.seerInitialWhiteEnabled = saved.seerInitialWhiteEnabled !== false;
@@ -6915,9 +6876,17 @@ function mergeRoles(savedRoles) {
 
 function normalizeEnabledRoleIds(roleIds) {
   const selectable = new Set(RULE_SELECTABLE_ROLE_IDS);
-  const normalized = Array.isArray(roleIds) ? roleIds.filter((id) => selectable.has(id)) : [...RULE_SELECTABLE_ROLE_IDS];
+  const normalized = Array.isArray(roleIds) ? roleIds.filter((id) => selectable.has(id)) : [...DEFAULT_ENABLED_ROLE_IDS];
   if (!normalized.includes("werewolf")) normalized.unshift("werewolf");
   return [...new Set([...normalized, "villager"])];
+}
+
+function getEnabledRoleIdsFromCounts(roles) {
+  const enabled = (Array.isArray(roles) ? roles : [])
+    .filter((role) => role.id !== "villager" && Number(role.count) > 0)
+    .map((role) => role.id);
+  if (!enabled.includes("werewolf")) enabled.unshift("werewolf");
+  return [...new Set([...enabled, "villager"])];
 }
 
 function renderAndStore() {

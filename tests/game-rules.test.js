@@ -1867,11 +1867,7 @@ test("停止した襲撃結果は勝敗確定時もゲーム継続時もOKボタ
   assert.equal(elsOngoing.attackResultOkBtn.hidden, false);
 });
 
-test("使用役職にボディガードが含まれない場合、連続護衛ルールは無効化（disabled）される", () => {
-  const roleInputs = [
-    { dataset: { roleRule: "werewolf" }, checked: true, disabled: false },
-    { dataset: { roleRule: "knight" }, checked: false, disabled: false },
-  ];
+test("ボディガード人数が0人の場合、連続護衛ルールは無効化（disabled）される", () => {
   const seerInputs = [{ value: "white", checked: false }];
   const guardInputs = [
     { value: "allow", checked: false, disabled: false },
@@ -1880,7 +1876,6 @@ test("使用役職にボディガードが含まれない場合、連続護衛�
   let guardOptionsDisabled = false;
   const mockDocument = {
     querySelectorAll: (selector) => {
-      if (selector === "[data-role-rule]") return roleInputs;
       if (selector === "[data-seer-white-rule]") return seerInputs;
       if (selector === "[data-guard-repeat-rule]") return guardInputs;
       return [];
@@ -1900,7 +1895,7 @@ test("使用役職にボディガードが含まれない場合、連続護衛�
   };
 
   const stateWithoutKnight = {
-    enabledRoleIds: ["werewolf", "seer", "villager"],
+    roles: [{ id: "werewolf", count: 1 }, { id: "knight", count: 0 }],
     seerInitialWhiteEnabled: true,
     allowConsecutiveGuard: false,
     allowWerewolfSelfAttack: false,
@@ -1908,12 +1903,11 @@ test("使用役職にボディガードが含まれない場合、連続護衛�
   };
 
   runFunctions(
-    ["renderGameRuleInputs", "normalizeEnabledRoleIds"],
+    ["renderGameRuleInputs"],
     {
       state: stateWithoutKnight,
       document: mockDocument,
       els: {},
-      RULE_SELECTABLE_ROLE_IDS: ["werewolf", "madman", "seer", "medium", "knight", "hunter", "cat", "madman_hunter", "teruteru"],
     },
     "renderGameRuleInputs()",
   );
@@ -1923,7 +1917,7 @@ test("使用役職にボディガードが含まれない場合、連続護衛�
   assert.equal(guardOptionsDisabled, true);
 
   const stateWithKnight = {
-    enabledRoleIds: ["werewolf", "knight", "villager"],
+    roles: [{ id: "werewolf", count: 1 }, { id: "knight", count: 1 }],
     seerInitialWhiteEnabled: true,
     allowConsecutiveGuard: true,
     allowWerewolfSelfAttack: false,
@@ -1931,12 +1925,11 @@ test("使用役職にボディガードが含まれない場合、連続護衛�
   };
 
   runFunctions(
-    ["renderGameRuleInputs", "normalizeEnabledRoleIds"],
+    ["renderGameRuleInputs"],
     {
       state: stateWithKnight,
       document: mockDocument,
       els: {},
-      RULE_SELECTABLE_ROLE_IDS: ["werewolf", "madman", "seer", "medium", "knight", "hunter", "cat", "madman_hunter", "teruteru"],
     },
     "renderGameRuleInputs()",
   );
@@ -1944,6 +1937,50 @@ test("使用役職にボディガードが含まれない場合、連続護衛�
   assert.equal(guardInputs[0].disabled, false);
   assert.equal(guardInputs[1].disabled, false);
   assert.equal(guardOptionsDisabled, false);
+});
+
+test("ゲームルール変更時も役職人数を保持し、使用役職は人数から決める", () => {
+  const roles = [
+    { id: "werewolf", count: 2 },
+    { id: "seer", count: 1 },
+    { id: "medium", count: 0 },
+    { id: "knight", count: 1 },
+    { id: "villager", count: 4 },
+  ];
+  const state = {
+    roles,
+    enabledRoleIds: ["werewolf", "medium", "villager"],
+    seerInitialWhiteEnabled: true,
+    allowConsecutiveGuard: false,
+    allowWerewolfSelfAttack: false,
+    allowWerewolfSkipAttack: true,
+    selectedRegulationId: "saved-regulation",
+  };
+  const document = {
+    querySelector: (selector) => {
+      if (selector === "[data-seer-white-rule]:checked") return { value: "none" };
+      if (selector === "[data-guard-repeat-rule]:checked") return { value: "allow" };
+      return null;
+    },
+  };
+  const els = {
+    allowWerewolfSelfAttackInput: { checked: true },
+    allowWerewolfSkipAttackInput: { checked: false },
+  };
+
+  runFunctions(
+    ["updateGameRules", "getEnabledRoleIdsFromCounts"],
+    { state, document, els, renderAndStore: () => {} },
+    "updateGameRules()",
+  );
+
+  assert.deepEqual(Array.from(state.roles, (role) => role.count), [2, 1, 0, 1, 4]);
+  assert.deepEqual(Array.from(state.enabledRoleIds), ["werewolf", "seer", "knight", "villager"]);
+  assert.equal(state.seerInitialWhiteEnabled, false);
+  assert.equal(state.allowConsecutiveGuard, true);
+  assert.equal(state.allowWerewolfSelfAttack, true);
+  assert.equal(state.allowWerewolfSkipAttack, false);
+  assert.equal(state.selectedRegulationId, "");
 });
 
 test("ハンター画面の戻るは発動案内では履歴がある場合だけ有効になり、選択段階では常に有効になる", () => {
@@ -2143,7 +2180,7 @@ test("レギュレーションを適用すると役職内訳とルール設定�
 
   const logs = [];
   runFunctions(
-    ["applyRegulation"],
+    ["applyRegulation", "getEnabledRoleIdsFromCounts"],
     {
       state,
       addLog: (text) => logs.push(text),
@@ -2231,14 +2268,14 @@ test("役職内訳で人数を変更すると市民人数が自動計算され�
   };
 
   // ハンターを1人増やす
-  runFunctions(["setRoleCount"], context, 'setRoleCount("hunter", 1)');
+  runFunctions(["setRoleCount", "getEnabledRoleIdsFromCounts"], context, 'setRoleCount("hunter", 1)');
   assert.equal(state.roles.find((r) => r.id === "hunter").count, 1);
   assert.equal(state.roles.find((r) => r.id === "villager").count, 10);
   assert.equal(state.enabledRoleIds.includes("hunter"), true);
   assert.equal(state.selectedRegulationId, "");
 
   // 人狼を2人に増やす
-  runFunctions(["setRoleCount"], context, 'setRoleCount("werewolf", 1)');
+  runFunctions(["setRoleCount", "getEnabledRoleIdsFromCounts"], context, 'setRoleCount("werewolf", 1)');
   assert.equal(state.roles.find((r) => r.id === "werewolf").count, 2);
   assert.equal(state.roles.find((r) => r.id === "villager").count, 9);
 });
