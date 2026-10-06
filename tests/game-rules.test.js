@@ -2243,6 +2243,31 @@ test("現在の役職設定を新しいレギュレーション名で保存・�
   assert.equal(state.regulations[0].roles.werewolf, 3);
 });
 
+test("レギュセットは空から開始し、旧標準セットだけを読み込み時に廃止する", () => {
+  const legacyIds = new Set(["default-8", "default-12a"]);
+  const functions = ["normalizeRegulations"];
+
+  assert.deepEqual(
+    Array.from(runFunctions(functions, { LEGACY_DEFAULT_REGULATION_IDS: legacyIds }, "normalizeRegulations(undefined)")),
+    [],
+  );
+
+  const saved = [
+    { id: "default-12a", name: "12A", playerCount: 12, roles: { werewolf: 2 } },
+    { id: "reg-custom", name: "自作13人", playerCount: 13, roles: { werewolf: 3, villager: 10 } },
+  ];
+  const normalized = runFunctions(
+    functions,
+    { LEGACY_DEFAULT_REGULATION_IDS: legacyIds },
+    `normalizeRegulations(${JSON.stringify(saved)})`,
+  );
+
+  assert.equal(normalized.length, 1);
+  assert.equal(normalized[0].id, "reg-custom");
+  assert.equal(normalized[0].name, "自作13人");
+  assert.equal(normalized[0].roles.werewolf, 3);
+});
+
 test("役職内訳で人数を変更すると市民人数が自動計算され有効役職が連動する", () => {
   const state = {
     roles: [

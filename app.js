@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.52.1";
+const APP_VERSION = "v1.52.2";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -56,114 +56,24 @@ const CAT_LINK_REVEAL_SECONDS = 5;
 const VOTE_START_DELAY_SECONDS = 5;
 const DEBUG_HISTORY_LIMIT = 10;
 
-const DEFAULT_REGULATIONS = [
-  {
-    id: "default-8",
-    name: "8人基本",
-    playerCount: 8,
-    roles: { werewolf: 2, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 0, cat: 0, madman_hunter: 0, teruteru: 0, villager: 2 },
-    seerInitialWhiteEnabled: true,
-    allowConsecutiveGuard: false,
-    allowWerewolfSelfAttack: false,
-    allowWerewolfSkipAttack: true,
-  },
-  {
-    id: "default-9",
-    name: "9人基本",
-    playerCount: 9,
-    roles: { werewolf: 2, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 0, cat: 0, madman_hunter: 0, teruteru: 0, villager: 3 },
-    seerInitialWhiteEnabled: true,
-    allowConsecutiveGuard: false,
-    allowWerewolfSelfAttack: false,
-    allowWerewolfSkipAttack: true,
-  },
-  {
-    id: "default-10",
-    name: "10人基本",
-    playerCount: 10,
-    roles: { werewolf: 2, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 0, cat: 0, madman_hunter: 0, teruteru: 0, villager: 4 },
-    seerInitialWhiteEnabled: true,
-    allowConsecutiveGuard: false,
-    allowWerewolfSelfAttack: false,
-    allowWerewolfSkipAttack: true,
-  },
-  {
-    id: "default-11",
-    name: "11人基本",
-    playerCount: 11,
-    roles: { werewolf: 2, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 1, cat: 0, madman_hunter: 0, teruteru: 0, villager: 4 },
-    seerInitialWhiteEnabled: true,
-    allowConsecutiveGuard: false,
-    allowWerewolfSelfAttack: false,
-    allowWerewolfSkipAttack: true,
-  },
-  {
-    id: "default-12a",
-    name: "12A",
-    playerCount: 12,
-    roles: { werewolf: 2, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 1, cat: 0, madman_hunter: 0, teruteru: 0, villager: 5 },
-    seerInitialWhiteEnabled: true,
-    allowConsecutiveGuard: false,
-    allowWerewolfSelfAttack: false,
-    allowWerewolfSkipAttack: true,
-  },
-  {
-    id: "default-12-cat",
-    name: "12人猫又",
-    playerCount: 12,
-    roles: { werewolf: 2, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 0, cat: 1, madman_hunter: 0, teruteru: 0, villager: 5 },
-    seerInitialWhiteEnabled: true,
-    allowConsecutiveGuard: false,
-    allowWerewolfSelfAttack: false,
-    allowWerewolfSkipAttack: true,
-  },
-  {
-    id: "default-13b",
-    name: "13B",
-    playerCount: 13,
-    roles: { werewolf: 3, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 1, cat: 0, madman_hunter: 0, teruteru: 0, villager: 5 },
-    seerInitialWhiteEnabled: true,
-    allowConsecutiveGuard: false,
-    allowWerewolfSelfAttack: false,
-    allowWerewolfSkipAttack: true,
-  },
-  {
-    id: "default-13-madman-hunter",
-    name: "13人狂人ハンター",
-    playerCount: 13,
-    roles: { werewolf: 2, madman: 0, seer: 1, medium: 1, knight: 1, hunter: 1, cat: 0, madman_hunter: 1, teruteru: 0, villager: 6 },
-    seerInitialWhiteEnabled: true,
-    allowConsecutiveGuard: false,
-    allowWerewolfSelfAttack: false,
-    allowWerewolfSkipAttack: true,
-  },
-  {
-    id: "default-14",
-    name: "14人村",
-    playerCount: 14,
-    roles: { werewolf: 3, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 1, cat: 1, madman_hunter: 0, teruteru: 0, villager: 5 },
-    seerInitialWhiteEnabled: true,
-    allowConsecutiveGuard: false,
-    allowWerewolfSelfAttack: false,
-    allowWerewolfSkipAttack: true,
-  },
-  {
-    id: "default-15",
-    name: "15人村",
-    playerCount: 15,
-    roles: { werewolf: 3, madman: 1, seer: 1, medium: 1, knight: 1, hunter: 1, cat: 1, madman_hunter: 0, teruteru: 0, villager: 6 },
-    seerInitialWhiteEnabled: true,
-    allowConsecutiveGuard: false,
-    allowWerewolfSelfAttack: false,
-    allowWerewolfSkipAttack: true,
-  },
-];
+const LEGACY_DEFAULT_REGULATION_IDS = new Set([
+  "default-8",
+  "default-9",
+  "default-10",
+  "default-11",
+  "default-12a",
+  "default-12-cat",
+  "default-13b",
+  "default-13-madman-hunter",
+  "default-14",
+  "default-15",
+]);
 
 const state = {
   players: [],
   roles: DEFAULT_ROLES.map((role) => ({ ...role })),
   enabledRoleIds: [...DEFAULT_ENABLED_ROLE_IDS],
-  regulations: DEFAULT_REGULATIONS.map((reg) => ({ ...reg, roles: { ...reg.roles } })),
+  regulations: [],
   selectedRegulationId: "",
   seerInitialWhiteEnabled: true,
   allowConsecutiveGuard: false,
@@ -966,13 +876,8 @@ function updateGameRules() {
 }
 
 function normalizeRegulations(raw) {
-  if (!Array.isArray(raw) || !raw.length) {
-    return DEFAULT_REGULATIONS.map((reg) => ({
-      ...reg,
-      roles: { ...reg.roles },
-    }));
-  }
-  return raw.map((reg, index) => ({
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((reg) => !LEGACY_DEFAULT_REGULATION_IDS.has(String(reg?.id || ""))).map((reg, index) => ({
     id: String(reg.id || `reg-${index + 1}`),
     name: String(reg.name || "名称未設定"),
     playerCount: Number.isInteger(Number(reg.playerCount)) ? Math.max(3, Number(reg.playerCount)) : 12,
@@ -1056,7 +961,7 @@ function deleteRegulation(id) {
 function handleSaveRegulationClick() {
   const activeCount = getActivePlayers().length || 12;
   const currentReg = state.regulations.find((r) => r.id === state.selectedRegulationId);
-  const defaultName = currentReg ? currentReg.name : `${activeCount}人カスタム`;
+  const defaultName = currentReg ? currentReg.name : "";
   const name = prompt("レギュレーション名を入力してください（例: 12A, 13B）", defaultName);
   if (name === null) return;
   const trimmed = name.trim();
@@ -6534,7 +6439,8 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.roles = mergeRoles(saved.roles || []);
   state.enabledRoleIds = getEnabledRoleIdsFromCounts(state.roles);
   state.regulations = normalizeRegulations(saved.regulations);
-  state.selectedRegulationId = typeof saved.selectedRegulationId === "string" ? saved.selectedRegulationId : "";
+  const selectedRegulationId = typeof saved.selectedRegulationId === "string" ? saved.selectedRegulationId : "";
+  state.selectedRegulationId = state.regulations.some((reg) => reg.id === selectedRegulationId) ? selectedRegulationId : "";
   state.seerInitialWhiteEnabled = saved.seerInitialWhiteEnabled !== false;
   state.allowConsecutiveGuard = saved.allowConsecutiveGuard === true;
   state.allowWerewolfSelfAttack = saved.allowWerewolfSelfAttack === true;
