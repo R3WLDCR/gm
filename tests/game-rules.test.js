@@ -1836,7 +1836,7 @@ test("停止した襲撃結果は勝敗確定時もゲーム継続時もOKボタ
   );
   assert.equal(elsWinner.attackResultOkBtn.hidden, false);
   assert.equal(elsWinner.attackResultOkBtn.disabled, false);
-  assert.equal(elsWinner.attackResultMessage.textContent, "本日の死亡者は");
+  assert.equal(elsWinner.attackResultMessage.textContent, "昨晩の犠牲者は");
 
   const elsOngoing = createMockEls();
   const stateOngoing = {

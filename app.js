@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.52.3";
+const APP_VERSION = "v1.52.4";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -3669,7 +3669,7 @@ function renderAttackResultView() {
     els.attackResultName.classList.toggle("no-victim", nameVisible && deathPlayerIds.length === 0);
   }
   if (els.attackResultMessage) {
-    const messageText = catBridgeVisible ? "そして" : "本日の死亡者は";
+    const messageText = catBridgeVisible ? "そして" : "昨晩の犠牲者は";
     els.attackResultMessage.textContent = messageText;
     els.attackResultMessage.hidden = !promptVisible && !catBridgeVisible;
   }
