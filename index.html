@@ -18,7 +18,7 @@
         <div class="header-identity">
           <div class="title-row">
             <p class="eyebrow">Werewolf Game Master</p>
-            <span id="appVersionBadge" class="version-badge">v1.54.0</span>
+            <span id="appVersionBadge" class="version-badge">v1.55.0</span>
             <span id="progressBadge" class="progress-badge">準備中</span>
           </div>
           <div id="headerMatchInfo" class="header-match-info" hidden>
@@ -175,10 +175,17 @@
               <label><input data-guard-repeat-rule type="radio" name="consecutiveGuard" value="allow" />あり</label>
               <label><input data-guard-repeat-rule type="radio" name="consecutiveGuard" value="deny" checked />なし</label>
             </div>
-            <div class="seer-white-rule-options" aria-label="決選投票の同票処理">
-              <span>決選投票の同票処理</span>
-              <label><input data-revote-tie-rule type="radio" name="revoteTie" value="skip" checked />再投票2回で処刑なし</label>
-              <label><input data-revote-tie-rule type="radio" name="revoteTie" value="continue" />再投票を続ける</label>
+            <div class="revote-rule-options" aria-label="決選投票の同票処理">
+              <label>同票時の処理
+                <select data-revote-tie-action aria-label="同票時の処理">
+                  <option value="skip">処刑なし</option>
+                  <option value="random">ランダム処刑</option>
+                  <option value="continue">再投票を続ける</option>
+                </select>
+              </label>
+              <label>再投票の上限
+                <input data-revote-limit type="number" min="0" max="99" step="1" inputmode="numeric" value="2" aria-label="再投票の上限回数" />回
+              </label>
             </div>
             <div class="attack-rule-options">
               <label><input id="allowWerewolfSelfAttackInput" type="checkbox" />人狼の自噛みを許可</label>

@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.54.0";
+const APP_VERSION = "v1.55.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -77,7 +77,8 @@ const state = {
   selectedRegulationId: "",
   seerInitialWhiteEnabled: true,
   allowConsecutiveGuard: false,
-  skipExileAfterTwoRevotes: true,
+  revoteTieAction: "skip",
+  revoteLimit: 2,
   revoteRound: 0,
   lastNoExileDay: 0,
   allowWerewolfSelfAttack: false,
@@ -428,7 +429,7 @@ function bindEvents() {
   [
     els.allowWerewolfSelfAttackInput,
     els.allowWerewolfSkipAttackInput,
-    ...document.querySelectorAll("[data-seer-white-rule], [data-guard-repeat-rule], [data-revote-tie-rule]"),
+    ...document.querySelectorAll("[data-seer-white-rule], [data-guard-repeat-rule], [data-revote-tie-action], [data-revote-limit]"),
   ].forEach((input) => {
     input?.addEventListener("change", updateGameRules);
   });
@@ -872,11 +873,23 @@ function updateGameRules() {
   state.enabledRoleIds = getEnabledRoleIdsFromCounts(state.roles);
   state.seerInitialWhiteEnabled = document.querySelector("[data-seer-white-rule]:checked")?.value !== "none";
   state.allowConsecutiveGuard = document.querySelector("[data-guard-repeat-rule]:checked")?.value === "allow";
-  state.skipExileAfterTwoRevotes = document.querySelector("[data-revote-tie-rule]:checked")?.value !== "continue";
+  Object.assign(state, getRevoteRule({
+    revoteTieAction: document.querySelector("[data-revote-tie-action]")?.value,
+    revoteLimit: document.querySelector("[data-revote-limit]")?.value,
+  }));
   state.allowWerewolfSelfAttack = els.allowWerewolfSelfAttackInput?.checked === true;
   state.allowWerewolfSkipAttack = els.allowWerewolfSkipAttackInput?.checked !== false;
   state.selectedRegulationId = "";
   renderAndStore();
+}
+
+function getRevoteRule(source = state) {
+  const revoteTieAction = ["skip", "random", "continue"].includes(source.revoteTieAction)
+    ? source.revoteTieAction : source.skipExileAfterTwoRevotes === false ? "continue" : "skip";
+  const limit = Number(source.revoteLimit);
+  const revoteLimit = source.revoteLimit != null && source.revoteLimit !== "" && Number.isInteger(limit)
+    ? Math.max(0, Math.min(99, limit)) : 2;
+  return { revoteTieAction, revoteLimit };
 }
 
 function normalizeRegulations(raw) {
@@ -889,7 +902,7 @@ function normalizeRegulations(raw) {
     roles: reg.roles && typeof reg.roles === "object" ? { ...reg.roles } : {},
     seerInitialWhiteEnabled: reg.seerInitialWhiteEnabled !== false,
     allowConsecutiveGuard: reg.allowConsecutiveGuard === true,
-    skipExileAfterTwoRevotes: reg.skipExileAfterTwoRevotes !== false,
+    ...getRevoteRule(reg),
     allowWerewolfSelfAttack: reg.allowWerewolfSelfAttack === true,
     allowWerewolfSkipAttack: reg.allowWerewolfSkipAttack !== false,
   }));
@@ -917,7 +930,7 @@ function applyRegulation(regulationOrId) {
 
   state.seerInitialWhiteEnabled = reg.seerInitialWhiteEnabled !== false;
   state.allowConsecutiveGuard = reg.allowConsecutiveGuard === true;
-  state.skipExileAfterTwoRevotes = reg.skipExileAfterTwoRevotes !== false;
+  Object.assign(state, getRevoteRule(reg));
   state.allowWerewolfSelfAttack = reg.allowWerewolfSelfAttack === true;
   state.allowWerewolfSkipAttack = reg.allowWerewolfSkipAttack !== false;
 
@@ -943,7 +956,7 @@ function saveCurrentAsRegulation(name, customPlayerCount) {
     roles: rolesMap,
     seerInitialWhiteEnabled: state.seerInitialWhiteEnabled,
     allowConsecutiveGuard: state.allowConsecutiveGuard,
-    skipExileAfterTwoRevotes: state.skipExileAfterTwoRevotes !== false,
+    ...getRevoteRule(),
     allowWerewolfSelfAttack: state.allowWerewolfSelfAttack,
     allowWerewolfSkipAttack: state.allowWerewolfSkipAttack,
   };
@@ -2195,6 +2208,7 @@ function startRevoteIfCompletedTie() {
   const topIds = getTopVotedPlayerIds();
   if (topIds.length > 1) {
     state.pendingRevotePleaCandidateIds = topIds;
+    resolveCompletedVoteTie(topIds);
   } else {
     state.pendingRevotePleaCandidateIds = [];
   }
@@ -2362,16 +2376,7 @@ function finalizeRevoteAssignment() {
     state.revoteAssignIndex = 0;
     state.revoteTargetSelectMode = false;
     state.pendingRevotePleaCandidateIds = topIds;
-    if (shouldSkipExileAfterRevote(topIds)) {
-      state.pendingRevotePleaCandidateIds = [];
-      state.lastNoExileDay = state.day;
-      state.voteSelectedPlayerId = "";
-      addLog("決選投票2回でも同票のため、処刑なしで夜へ");
-      startNightTransition(getGameResult());
-      markLatestLogRestorable();
-      renderAndStore();
-      return;
-    }
+    if (resolveCompletedVoteTie(topIds)) return;
     renderAndStore();
     return;
   }
@@ -2382,8 +2387,30 @@ function finalizeRevoteAssignment() {
   confirmSelectedPlayerExile();
 }
 
-function shouldSkipExileAfterRevote(topIds) {
-  return state.skipExileAfterTwoRevotes !== false && state.revoteRound >= 2 && topIds.length > 1;
+function resolveCompletedVoteTie(topIds) {
+  const rule = getRevoteRule();
+  if (topIds.length <= 1 || rule.revoteTieAction === "continue" || (state.revoteRound || 0) < rule.revoteLimit) return false;
+  const candidates = topIds.filter((id) => {
+    const player = findPlayer(id);
+    return player && player.alive;
+  });
+  if (candidates.length <= 1) return false;
+  state.pendingRevotePleaCandidateIds = [];
+  const prefix = `再投票${state.revoteRound || 0}回・同票のため`;
+  if (rule.revoteTieAction === "random") {
+    const selectedId = candidates[Math.floor(Math.random() * candidates.length)];
+    state.voteSelectedPlayerId = selectedId;
+    addLog(`${prefix}、${findPlayer(selectedId).name} をランダム処刑に決定`);
+    confirmSelectedPlayerExile();
+  } else {
+    state.lastNoExileDay = state.day;
+    state.voteSelectedPlayerId = "";
+    addLog(`${prefix}、処刑なしで夜へ`);
+    startNightTransition(getGameResult());
+    markLatestLogRestorable();
+    renderAndStore();
+  }
+  return true;
 }
 
 function formatVoteResultLog(label, topIds = getTopVotedPlayerIds()) {
@@ -2705,7 +2732,8 @@ function resetGame() {
   state.enabledRoleIds = [...DEFAULT_ENABLED_ROLE_IDS];
   state.seerInitialWhiteEnabled = true;
   state.allowConsecutiveGuard = false;
-  state.skipExileAfterTwoRevotes = true;
+  state.revoteTieAction = "skip";
+  state.revoteLimit = 2;
   state.allowWerewolfSelfAttack = false;
   state.allowWerewolfSkipAttack = true;
   state.screen = "setup";
@@ -2873,9 +2901,13 @@ function renderMatchInfoInputs() {
 }
 
 function renderGameRuleInputs() {
-  document.querySelectorAll("[data-revote-tie-rule]").forEach((input) => {
-    input.checked = input.value === (state.skipExileAfterTwoRevotes !== false ? "skip" : "continue");
-  });
+  const tieAction = document.querySelector("[data-revote-tie-action]");
+  const limitInput = document.querySelector("[data-revote-limit]");
+  if (tieAction) tieAction.value = state.revoteTieAction;
+  if (limitInput) {
+    limitInput.value = String(state.revoteLimit);
+    limitInput.disabled = state.revoteTieAction === "continue";
+  }
   document.querySelectorAll("[data-seer-white-rule]").forEach((input) => {
     input.checked = input.value === (state.seerInitialWhiteEnabled ? "white" : "none");
   });
@@ -6268,7 +6300,7 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     enabledRoleIds: state.enabledRoleIds,
     regulations: state.regulations,
     selectedRegulationId: state.selectedRegulationId,
-    skipExileAfterTwoRevotes: state.skipExileAfterTwoRevotes !== false,
+    ...getRevoteRule(),
     revoteRound: state.revoteRound,
     lastNoExileDay: state.lastNoExileDay,
     seerInitialWhiteEnabled: state.seerInitialWhiteEnabled,
@@ -6507,7 +6539,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.selectedRegulationId = state.regulations.some((reg) => reg.id === selectedRegulationId) ? selectedRegulationId : "";
   state.seerInitialWhiteEnabled = saved.seerInitialWhiteEnabled !== false;
   state.allowConsecutiveGuard = saved.allowConsecutiveGuard === true;
-  state.skipExileAfterTwoRevotes = saved.skipExileAfterTwoRevotes !== false;
+  Object.assign(state, getRevoteRule(saved));
   state.revoteRound = Number.isInteger(saved.revoteRound) ? Math.max(0, saved.revoteRound) : 0;
   state.lastNoExileDay = Number.isInteger(saved.lastNoExileDay) ? Math.max(0, saved.lastNoExileDay) : 0;
   state.allowWerewolfSelfAttack = saved.allowWerewolfSelfAttack === true;

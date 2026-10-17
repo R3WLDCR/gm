@@ -1234,6 +1234,33 @@ body.teruteru-victory-view .victory-banner.victory-teruteru.victory-reveal-winne
   font-weight: 800;
 }
 
+.revote-rule-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+}
+
+.revote-rule-options label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.revote-rule-options select {
+  width: auto;
+  max-width: 100%;
+  min-height: 40px;
+}
+
+.revote-rule-options input {
+  width: 72px;
+  min-height: 40px;
+}
+
 .seer-white-rule-options,
 .guard-repeat-rule-options,
 .attack-rule-options {

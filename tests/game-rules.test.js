@@ -19,12 +19,18 @@ function runFunctions(names, context, expression) {
   return sandbox.result;
 }
 
-test("決選2回目以降の同票だけを処刑なしにし、継続設定なら制限しない", () => {
-  for (const enabled of [true, false]) {
-    for (const round of [0, 1, 2, 3]) {
-      for (const topIds of [["A"], ["A", "B"]]) {
-        const result = runFunctions(["shouldSkipExileAfterRevote"], { state: { skipExileAfterTwoRevotes: enabled, revoteRound: round } }, `shouldSkipExileAfterRevote(${JSON.stringify(topIds)})`);
-        assert.equal(result, enabled && round >= 2 && topIds.length > 1);
+test("指定回数以降の同票だけを解決し、無制限設定なら継続する", () => {
+  for (const action of ["skip", "random", "continue"]) {
+    for (const limit of [0, 1, 2, 5]) {
+      for (const round of [0, 1, 2, 3]) {
+        for (const topIds of [["A"], ["A", "B"]]) {
+          const state = { revoteTieAction: action, revoteLimit: limit, revoteRound: round, day: 3 };
+          const context = { state, findPlayer: (id) => ({ id, name: id, alive: true }), addLog: () => {},
+            confirmSelectedPlayerExile: () => {}, getGameResult: () => ({ ended: false }),
+            startNightTransition: () => {}, markLatestLogRestorable: () => {}, renderAndStore: () => {} };
+          const result = runFunctions(["resolveCompletedVoteTie", "getRevoteRule"], context, `resolveCompletedVoteTie(${JSON.stringify(topIds)})`);
+          assert.equal(result, action !== "continue" && round >= limit && topIds.length > 1);
+        }
       }
     }
   }
@@ -47,6 +53,71 @@ test("決選投票の開始でだけ回数を進め、新しい投票ではリ�
   assert.equal(state.revoteRound, 0);
 });
 
+test("上限0回でも通常投票が完了するまでは同票処理を発動しない", () => {
+  const state = { voteRecords: [{ voterId: "A" }], pendingRevotePleaCandidateIds: [] };
+  let resolved = 0;
+  const context = { state, isRevoteAssignmentMode: () => false,
+    getLivingPlayers: () => [{ id: "A" }, { id: "B" }], getTopVotedPlayerIds: () => ["A", "B"],
+    resolveCompletedVoteTie: () => { resolved += 1; } };
+  runFunctions(["startRevoteIfCompletedTie"], context, "startRevoteIfCompletedTie()");
+  assert.equal(resolved, 0);
+  state.voteRecords.push({ voterId: "B" });
+  runFunctions(["startRevoteIfCompletedTie"], context, "startRevoteIfCompletedTie()");
+  assert.equal(resolved, 1);
+});
+
+test("ランダム処刑は生存中の同票最多者だけを抽選し通常の処刑・道連れへ接続する", () => {
+  for (const roleId of ["villager", "cat", "hunter", "madman_hunter", "teruteru"]) {
+    for (const random of [0, 0.999999]) {
+      const players = [
+        { id: "A", name: "Aさん", roleId, alive: true },
+        { id: "B", name: "Bさん", roleId, alive: true },
+        { id: "C", name: "圏外", roleId, alive: true },
+        { id: "D", name: "死亡済み", roleId, alive: false },
+      ];
+      const state = { revoteTieAction: "random", revoteLimit: 0, revoteRound: 0, day: 3,
+        exiledPlayerIds: [], exiledPlayerDays: {}, lastNoExileDay: 3 };
+      let shot = "";
+      let checkedWinner = false;
+      const logs = [];
+      const context = { state, findPlayer: (id) => players.find((p) => p.id === id),
+        Math: { random: () => random, floor: Math.floor, min: Math.min, max: Math.max },
+        addLog: (text) => logs.push(text), pushUndoSnapshot: () => {},
+        startHunterShotFlow: (player) => { shot = player.id; },
+        getGameResultAfterExile: () => { checkedWinner = true; return { ended: false }; },
+        startNightTransition: () => {}, markLatestLogRestorable: () => {}, renderAndStore: () => {} };
+      runFunctions(["resolveCompletedVoteTie", "getRevoteRule", "confirmSelectedPlayerExile", "isHunterRole", "isCatRole"], context,
+        'resolveCompletedVoteTie(["A", "D", "B"])');
+      const chosenId = random === 0 ? "A" : "B";
+      assert.deepEqual(state.exiledPlayerIds, [chosenId]);
+      assert.equal(state.exiledPlayerDays[chosenId], 3);
+      assert.equal(players.find((p) => p.id === chosenId).alive, false);
+      assert.equal(players[2].alive, true);
+      assert.equal(state.lastNoExileDay, 0);
+      assert.match(logs[0], /ランダム処刑に決定/);
+      const linkedRole = ["cat", "hunter", "madman_hunter"].includes(roleId);
+      assert.equal(shot, linkedRole ? chosenId : "");
+      assert.equal(checkedWinner, !linkedRole);
+    }
+  }
+});
+
+test("再投票設定の範囲と旧形式を正規化する", () => {
+  const cases = [
+    [{}, "skip", 2], [{ skipExileAfterTwoRevotes: false }, "continue", 2],
+    [{ revoteTieAction: "random", revoteLimit: "0" }, "random", 0],
+    [{ revoteTieAction: "skip", revoteLimit: 99 }, "skip", 99],
+    [{ revoteTieAction: "random", revoteLimit: 100 }, "random", 99],
+    [{ revoteLimit: -1 }, "skip", 0], [{ revoteLimit: 1.5 }, "skip", 2],
+    [{ revoteLimit: "" }, "skip", 2], [{ revoteTieAction: "unknown" }, "skip", 2],
+  ];
+  for (const [source, action, limit] of cases) {
+    const rule = runFunctions(["getRevoteRule"], {}, `getRevoteRule(${JSON.stringify(source)})`);
+    assert.equal(rule.revoteTieAction, action);
+    assert.equal(rule.revoteLimit, limit);
+  }
+});
+
 test("決選集計で2回同票なら死亡者を増やさず夜へ、単独最多は処刑する", () => {
   for (const [enabled, round, topIds] of [[true, 1, ["A", "B"]], [true, 2, ["A", "B"]], [false, 2, ["A", "B"]], [true, 2, ["A"]]]) {
     const state = { day: 3, skipExileAfterTwoRevotes: enabled, revoteRound: round, voteRecords: [], exiledPlayerIds: ["old"] };
@@ -55,13 +126,14 @@ test("決選集計で2回同票なら死亡者を増やさず夜へ、単独最�
     let exile = false;
     const context = {
       state, getLastRevoteTargetId: () => "B", getVoteVoterPlayers: () => [{ id: "C" }],
+      findPlayer: (id) => ({ id, name: id, alive: true }),
       syncVoteCountsFromRecords: () => {}, getTopVotedPlayerIds: () => topIds,
       formatVoteResultLog: () => "決選投票結果", addLog: (text) => logs.push(text),
       markLatestLogRestorable: () => {}, renderAndStore: () => {},
       getGameResult: () => ({ ended: false }), startNightTransition: () => { night = true; },
       confirmSelectedPlayerExile: () => { exile = true; },
     };
-    runFunctions(["finalizeRevoteAssignment", "shouldSkipExileAfterRevote"], context, "finalizeRevoteAssignment()");
+    runFunctions(["finalizeRevoteAssignment", "resolveCompletedVoteTie", "getRevoteRule"], context, "finalizeRevoteAssignment()");
     assert.equal(night, enabled && round >= 2 && topIds.length > 1);
     assert.equal(exile, topIds.length === 1);
     assert.deepEqual(state.exiledPlayerIds, ["old"]);
@@ -82,26 +154,32 @@ test("処刑なしの夜には前日の霊媒結果を繰り返さない", () =>
   assert.equal(runFunctions(["getLastExiledPlayer"], context, "getLastExiledPlayer()"), player);
 });
 
-test("決選ルールはセットに保存・復元され、旧セットは2回同票で処刑なしになる", () => {
-  for (const enabled of [true, false]) {
-    const state = { roles: [{ id: "werewolf", count: 1 }], regulations: [], skipExileAfterTwoRevotes: enabled };
+test("同票処理と回数はセットに保存・復元され、旧セットも引き継ぐ", () => {
+  for (const action of ["skip", "random", "continue"]) {
+    const state = { roles: [{ id: "werewolf", count: 1 }], regulations: [], revoteTieAction: action, revoteLimit: 4 };
     const context = { state, LEGACY_DEFAULT_REGULATION_IDS: new Set() };
-    const functions = ["saveCurrentAsRegulation", "normalizeRegulations", "applyRegulation", "isRegulationAvailable", "getEnabledRoleIdsFromCounts"];
+    const functions = ["saveCurrentAsRegulation", "normalizeRegulations", "applyRegulation", "isRegulationAvailable", "getEnabledRoleIdsFromCounts", "getRevoteRule"];
     runFunctions(functions, context, 'saveCurrentAsRegulation("基本", 9)');
-    assert.equal(state.regulations[0].skipExileAfterTwoRevotes, enabled);
+    assert.equal(state.regulations[0].revoteTieAction, action);
+    assert.equal(state.regulations[0].revoteLimit, 4);
     state.regulations = runFunctions(functions, context, `normalizeRegulations(${JSON.stringify(state.regulations)})`);
-    state.skipExileAfterTwoRevotes = !enabled;
+    state.revoteTieAction = "changed";
+    state.revoteLimit = 9;
     runFunctions(functions, context, `applyRegulation(${JSON.stringify(state.regulations[0].id)})`);
-    assert.equal(state.skipExileAfterTwoRevotes, enabled);
+    assert.equal(state.revoteTieAction, action);
+    assert.equal(state.revoteLimit, 4);
   }
-  const regs = runFunctions(["normalizeRegulations"], { LEGACY_DEFAULT_REGULATION_IDS: new Set() }, 'normalizeRegulations([{ id: "old" }])');
-  assert.equal(regs[0].skipExileAfterTwoRevotes, true);
+  const regs = runFunctions(["normalizeRegulations", "getRevoteRule"], { LEGACY_DEFAULT_REGULATION_IDS: new Set() }, 'normalizeRegulations([{ id: "old" }, {id: "unlimited", skipExileAfterTwoRevotes: false}])');
+  assert.equal(regs[0].revoteTieAction, "skip");
+  assert.equal(regs[0].revoteLimit, 2);
+  assert.equal(regs[1].revoteTieAction, "continue");
 });
 
 test("決選回数・処刑なしの日付・ルールを保存と同期のペイロードに含める", () => {
   const state = { skipExileAfterTwoRevotes: false, revoteRound: 2, lastNoExileDay: 3 };
-  const payload = runFunctions(["getStatePayload"], { state }, "getStatePayload({includeUndoHistory: false, includeLogRestorePoints: false, includeMatchHistory: false})");
-  assert.equal(payload.skipExileAfterTwoRevotes, false);
+  const payload = runFunctions(["getStatePayload", "getRevoteRule"], { state }, "getStatePayload({includeUndoHistory: false, includeLogRestorePoints: false, includeMatchHistory: false})");
+  assert.equal(payload.revoteTieAction, "continue");
+  assert.equal(payload.revoteLimit, 2);
   assert.equal(payload.revoteRound, 2);
   assert.equal(payload.lastNoExileDay, 3);
 });
@@ -1414,7 +1492,7 @@ test("ハンターの道連れ選択待ちを保存データへ含める", () =>
     { get: (target, property) => target[property] },
   );
   const payload = runFunctions(
-    ["getStatePayload"],
+    ["getStatePayload", "getRevoteRule"],
     { state },
     "getStatePayload({ includeUndoHistory: false, includeLogRestorePoints: false, includeMatchHistory: false })",
   );
@@ -2056,7 +2134,7 @@ test("ゲームルール変更時も役職人数を保持し、使用役職は�
   };
 
   runFunctions(
-    ["updateGameRules", "getEnabledRoleIdsFromCounts"],
+    ["updateGameRules", "getEnabledRoleIdsFromCounts", "getRevoteRule"],
     { state, document, els, renderAndStore: () => {} },
     "updateGameRules()",
   );
@@ -2267,7 +2345,7 @@ test("レギュレーションを適用すると役職内訳とルール設定�
 
   const logs = [];
   runFunctions(
-    ["applyRegulation", "isRegulationAvailable", "getEnabledRoleIdsFromCounts"],
+    ["applyRegulation", "isRegulationAvailable", "getEnabledRoleIdsFromCounts", "getRevoteRule"],
     {
       state,
       addLog: (text) => logs.push(text),
@@ -2315,7 +2393,7 @@ test("現在の役職設定を新しいレギュレーション名で保存・�
     renderAndStore: () => {},
   };
 
-  runFunctions(["saveCurrentAsRegulation"], context, 'saveCurrentAsRegulation("13人猫又村", 13)');
+  runFunctions(["saveCurrentAsRegulation", "getRevoteRule"], context, 'saveCurrentAsRegulation("13人猫又村", 13)');
   assert.equal(state.regulations.length, 1);
   assert.equal(state.regulations[0].name, "13人猫又村");
   assert.equal(state.regulations[0].playerCount, 13);
@@ -2325,14 +2403,14 @@ test("現在の役職設定を新しいレギュレーション名で保存・�
 
   // 同名・同人数の場合は上書き保存
   state.roles.find((r) => r.id === "werewolf").count = 3;
-  runFunctions(["saveCurrentAsRegulation"], context, 'saveCurrentAsRegulation("13人猫又村", 13)');
+  runFunctions(["saveCurrentAsRegulation", "getRevoteRule"], context, 'saveCurrentAsRegulation("13人猫又村", 13)');
   assert.equal(state.regulations.length, 1);
   assert.equal(state.regulations[0].roles.werewolf, 3);
 });
 
 test("レギュセットは空から開始し、旧標準セットだけを読み込み時に廃止する", () => {
   const legacyIds = new Set(["default-8", "default-12a"]);
-  const functions = ["normalizeRegulations"];
+  const functions = ["normalizeRegulations", "getRevoteRule"];
 
   assert.deepEqual(
     Array.from(runFunctions(functions, { LEGACY_DEFAULT_REGULATION_IDS: legacyIds }, "normalizeRegulations(undefined)")),
@@ -2366,7 +2444,7 @@ test("大会ごとに同名レギュセットを別保存し、その大会だ�
     state, crypto: { randomUUID: () => String(++id) },
     renderAndStore: () => {}, confirm: () => true,
   };
-  const functions = ["saveCurrentAsRegulation", "isRegulationAvailable", "applyRegulation", "deleteRegulation", "getEnabledRoleIdsFromCounts"];
+  const functions = ["saveCurrentAsRegulation", "isRegulationAvailable", "applyRegulation", "deleteRegulation", "getEnabledRoleIdsFromCounts", "getRevoteRule"];
   runFunctions(functions, context, 'saveCurrentAsRegulation("基本", 9)');
   const springId = state.selectedRegulationId;
   state.tournamentName = "夏大会";
@@ -2398,7 +2476,7 @@ test("大会名の紐づけを保存データから維持し、旧セットと�
     { id: "unnamed", name: "未設定", tournamentName: "" },
     { id: "spring", name: "大会用", tournamentName: " 春大会 " },
   ];
-  const regs = runFunctions(["normalizeRegulations"], { LEGACY_DEFAULT_REGULATION_IDS: new Set() }, `normalizeRegulations(${JSON.stringify(raw)})`);
+  const regs = runFunctions(["normalizeRegulations", "getRevoteRule"], { LEGACY_DEFAULT_REGULATION_IDS: new Set() }, `normalizeRegulations(${JSON.stringify(raw)})`);
   assert.equal(regs[2].tournamentName, "春大会");
   const functions = ["isRegulationAvailable"];
   for (const [tournamentName, expected] of [["春大会", [true, false, true]], ["夏大会", [true, false, false]], ["", [true, true, false]]]) {
@@ -2406,7 +2484,7 @@ test("大会名の紐づけを保存データから維持し、旧セットと�
     assert.deepEqual(available, expected);
   }
   const state = { tournamentName: "春大会", roles: [{ id: "werewolf", count: 2 }], regulations: regs };
-  runFunctions(["saveCurrentAsRegulation"], { state }, 'saveCurrentAsRegulation("共通", 12)');
+  runFunctions(["saveCurrentAsRegulation", "getRevoteRule"], { state }, 'saveCurrentAsRegulation("共通", 12)');
   assert.equal(state.regulations.length, 4);
   assert.equal(state.regulations[0].tournamentName, null);
   assert.equal(state.regulations[3].tournamentName, "春大会");
