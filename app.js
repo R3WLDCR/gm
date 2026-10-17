@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.55.0";
+const APP_VERSION = "v1.55.1";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -888,7 +888,7 @@ function getRevoteRule(source = state) {
     ? source.revoteTieAction : source.skipExileAfterTwoRevotes === false ? "continue" : "skip";
   const limit = Number(source.revoteLimit);
   const revoteLimit = source.revoteLimit != null && source.revoteLimit !== "" && Number.isInteger(limit)
-    ? Math.max(0, Math.min(99, limit)) : 2;
+    ? Math.max(0, Math.min(3, limit)) : 2;
   return { revoteTieAction, revoteLimit };
 }
 

@@ -21,7 +21,7 @@ function runFunctions(names, context, expression) {
 
 test("指定回数以降の同票だけを解決し、無制限設定なら継続する", () => {
   for (const action of ["skip", "random", "continue"]) {
-    for (const limit of [0, 1, 2, 5]) {
+    for (const limit of [0, 1, 2, 3]) {
       for (const round of [0, 1, 2, 3]) {
         for (const topIds of [["A"], ["A", "B"]]) {
           const state = { revoteTieAction: action, revoteLimit: limit, revoteRound: round, day: 3 };
@@ -106,8 +106,9 @@ test("再投票設定の範囲と旧形式を正規化する", () => {
   const cases = [
     [{}, "skip", 2], [{ skipExileAfterTwoRevotes: false }, "continue", 2],
     [{ revoteTieAction: "random", revoteLimit: "0" }, "random", 0],
-    [{ revoteTieAction: "skip", revoteLimit: 99 }, "skip", 99],
-    [{ revoteTieAction: "random", revoteLimit: 100 }, "random", 99],
+    [{ revoteTieAction: "skip", revoteLimit: 3 }, "skip", 3],
+    [{ revoteTieAction: "random", revoteLimit: 4 }, "random", 3],
+    [{ revoteTieAction: "random", revoteLimit: 99 }, "random", 3],
     [{ revoteLimit: -1 }, "skip", 0], [{ revoteLimit: 1.5 }, "skip", 2],
     [{ revoteLimit: "" }, "skip", 2], [{ revoteTieAction: "unknown" }, "skip", 2],
   ];
@@ -161,13 +162,13 @@ test("同票処理と回数はセットに保存・復元され、旧セット�
     const functions = ["saveCurrentAsRegulation", "normalizeRegulations", "applyRegulation", "isRegulationAvailable", "getEnabledRoleIdsFromCounts", "getRevoteRule"];
     runFunctions(functions, context, 'saveCurrentAsRegulation("基本", 9)');
     assert.equal(state.regulations[0].revoteTieAction, action);
-    assert.equal(state.regulations[0].revoteLimit, 4);
+    assert.equal(state.regulations[0].revoteLimit, 3);
     state.regulations = runFunctions(functions, context, `normalizeRegulations(${JSON.stringify(state.regulations)})`);
     state.revoteTieAction = "changed";
     state.revoteLimit = 9;
     runFunctions(functions, context, `applyRegulation(${JSON.stringify(state.regulations[0].id)})`);
     assert.equal(state.revoteTieAction, action);
-    assert.equal(state.revoteLimit, 4);
+    assert.equal(state.revoteLimit, 3);
   }
   const regs = runFunctions(["normalizeRegulations", "getRevoteRule"], { LEGACY_DEFAULT_REGULATION_IDS: new Set() }, 'normalizeRegulations([{ id: "old" }, {id: "unlimited", skipExileAfterTwoRevotes: false}])');
   assert.equal(regs[0].revoteTieAction, "skip");
