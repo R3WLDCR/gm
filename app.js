@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.52.4";
+const APP_VERSION = "v1.53.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -880,6 +880,7 @@ function normalizeRegulations(raw) {
   return raw.filter((reg) => !LEGACY_DEFAULT_REGULATION_IDS.has(String(reg?.id || ""))).map((reg, index) => ({
     id: String(reg.id || `reg-${index + 1}`),
     name: String(reg.name || "名称未設定"),
+    tournamentName: reg.tournamentName == null ? null : String(reg.tournamentName).trim().slice(0, 80),
     playerCount: Number.isInteger(Number(reg.playerCount)) ? Math.max(3, Number(reg.playerCount)) : 12,
     roles: reg.roles && typeof reg.roles === "object" ? { ...reg.roles } : {},
     seerInitialWhiteEnabled: reg.seerInitialWhiteEnabled !== false,
@@ -889,11 +890,15 @@ function normalizeRegulations(raw) {
   }));
 }
 
+function isRegulationAvailable(reg) {
+  return reg.tournamentName == null || reg.tournamentName === String(state.tournamentName || "").trim().slice(0, 80);
+}
+
 function applyRegulation(regulationOrId) {
   const reg = typeof regulationOrId === "object" && regulationOrId !== null
     ? regulationOrId
     : state.regulations.find((r) => r.id === regulationOrId);
-  if (!reg) return;
+  if (!reg || !isRegulationAvailable(reg)) return;
 
   state.selectedRegulationId = reg.id;
   const roleCounts = reg.roles || {};
@@ -921,11 +926,13 @@ function saveCurrentAsRegulation(name, customPlayerCount) {
   const count = Number(customPlayerCount) || (typeof getActivePlayers === "function" ? getActivePlayers().length : 0) || 12;
   const rolesMap = Object.fromEntries(state.roles.map((r) => [r.id, r.count || 0]));
 
-  const existingIndex = state.regulations.findIndex((r) => r.name === trimmedName && r.playerCount === count);
+  const tournamentName = String(state.tournamentName || "").trim().slice(0, 80);
+  const existingIndex = state.regulations.findIndex((r) => r.tournamentName === tournamentName && r.name === trimmedName && r.playerCount === count);
   const uid = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : String(Date.now());
   const newReg = {
     id: existingIndex >= 0 ? state.regulations[existingIndex].id : `reg-${uid}`,
     name: trimmedName,
+    tournamentName,
     playerCount: count,
     roles: rolesMap,
     seerInitialWhiteEnabled: state.seerInitialWhiteEnabled,
@@ -949,6 +956,7 @@ function deleteRegulation(id) {
   const index = state.regulations.findIndex((r) => r.id === id);
   if (index === -1) return;
   const reg = state.regulations[index];
+  if (!isRegulationAvailable(reg)) return;
   if (typeof confirm === "function" && !confirm(`レギュレーション「${reg.name}」を削除しますか？`)) return;
   state.regulations.splice(index, 1);
   if (state.selectedRegulationId === id) {
@@ -2854,16 +2862,18 @@ function renderGameRuleInputs() {
 
 function renderRegulationPresets() {
   if (!els.regulationSelect) return;
-  const currentVal = state.selectedRegulationId || "";
+  const availableRegs = state.regulations.filter(isRegulationAvailable);
+  const currentVal = availableRegs.some((reg) => reg.id === state.selectedRegulationId) ? state.selectedRegulationId : "";
+  state.selectedRegulationId = currentVal;
   els.regulationSelect.innerHTML = "";
 
   const defaultOption = document.createElement("option");
   defaultOption.value = "";
-  defaultOption.textContent = "レギュセットを選択...";
+  defaultOption.textContent = `${state.tournamentName || "大会名未設定"}のレギュセットを選択...`;
   els.regulationSelect.appendChild(defaultOption);
 
   const byPlayerCount = new Map();
-  state.regulations.forEach((reg) => {
+  availableRegs.forEach((reg) => {
     const count = Number(reg.playerCount) || 0;
     if (!byPlayerCount.has(count)) {
       byPlayerCount.set(count, []);
@@ -2879,7 +2889,7 @@ function renderRegulationPresets() {
     regs.forEach((reg) => {
       const option = document.createElement("option");
       option.value = reg.id;
-      option.textContent = reg.name;
+      option.textContent = `${reg.tournamentName == null ? "【共通】" : ""}${reg.name}`;
       group.appendChild(option);
     });
     els.regulationSelect.appendChild(group);
@@ -6606,6 +6616,9 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.currentMatchStartedAt = Number.isFinite(Number(saved.currentMatchStartedAt)) ? Number(saved.currentMatchStartedAt) : state.logs.length ? Date.now() : 0;
   state.currentMatchArchived = saved.currentMatchArchived === true;
   state.tournamentName = String(saved.tournamentName || "").trim().slice(0, 80);
+  if (!state.regulations.some((reg) => reg.id === state.selectedRegulationId && isRegulationAvailable(reg))) {
+    state.selectedRegulationId = "";
+  }
   state.tournamentEdition = normalizeMatchInfoNumber(saved.tournamentEdition);
   state.tournamentDate = /^\d{4}-\d{2}-\d{2}$/.test(saved.tournamentDate || "") ? saved.tournamentDate : "";
   state.matchNumber = normalizeMatchInfoNumber(saved.matchNumber);

@@ -2180,7 +2180,7 @@ test("レギュレーションを適用すると役職内訳とルール設定�
 
   const logs = [];
   runFunctions(
-    ["applyRegulation", "getEnabledRoleIdsFromCounts"],
+    ["applyRegulation", "isRegulationAvailable", "getEnabledRoleIdsFromCounts"],
     {
       state,
       addLog: (text) => logs.push(text),
@@ -2266,6 +2266,63 @@ test("レギュセットは空から開始し、旧標準セットだけを読�
   assert.equal(normalized[0].id, "reg-custom");
   assert.equal(normalized[0].name, "自作13人");
   assert.equal(normalized[0].roles.werewolf, 3);
+  assert.equal(normalized[0].tournamentName, null);
+});
+
+test("大会ごとに同名レギュセットを別保存し、その大会だけ上書き・適用・削除する", () => {
+  const state = {
+    tournamentName: "春大会", roles: [{ id: "werewolf", count: 1 }], regulations: [],
+    selectedRegulationId: "", seerInitialWhiteEnabled: true,
+  };
+  let id = 0;
+  const context = {
+    state, crypto: { randomUUID: () => String(++id) },
+    renderAndStore: () => {}, confirm: () => true,
+  };
+  const functions = ["saveCurrentAsRegulation", "isRegulationAvailable", "applyRegulation", "deleteRegulation", "getEnabledRoleIdsFromCounts"];
+  runFunctions(functions, context, 'saveCurrentAsRegulation("基本", 9)');
+  const springId = state.selectedRegulationId;
+  state.tournamentName = "夏大会";
+  state.roles[0].count = 2;
+  runFunctions(functions, context, 'saveCurrentAsRegulation("基本", 9)');
+  const summerId = state.selectedRegulationId;
+  assert.notEqual(springId, summerId);
+  assert.equal(state.regulations.length, 2);
+  state.roles[0].count = 3;
+  runFunctions(functions, context, 'saveCurrentAsRegulation("基本", 9)');
+  assert.equal(state.regulations.length, 2);
+  assert.equal(state.regulations[0].roles.werewolf, 1);
+  assert.equal(state.regulations[1].roles.werewolf, 3);
+  runFunctions(functions, context, `applyRegulation(${JSON.stringify(springId)})`);
+  assert.equal(state.roles[0].count, 3);
+  runFunctions(functions, context, `deleteRegulation(${JSON.stringify(springId)})`);
+  assert.equal(state.regulations.length, 2);
+  state.tournamentName = "春大会";
+  runFunctions(functions, context, `applyRegulation(${JSON.stringify(springId)})`);
+  assert.equal(state.roles[0].count, 1);
+  runFunctions(functions, context, `deleteRegulation(${JSON.stringify(springId)})`);
+  assert.equal(state.regulations.length, 1);
+  assert.equal(state.regulations[0].id, summerId);
+});
+
+test("大会名の紐づけを保存データから維持し、旧セットと未設定大会を区別する", () => {
+  const raw = [
+    { id: "old", name: "共通" },
+    { id: "unnamed", name: "未設定", tournamentName: "" },
+    { id: "spring", name: "大会用", tournamentName: " 春大会 " },
+  ];
+  const regs = runFunctions(["normalizeRegulations"], { LEGACY_DEFAULT_REGULATION_IDS: new Set() }, `normalizeRegulations(${JSON.stringify(raw)})`);
+  assert.equal(regs[2].tournamentName, "春大会");
+  const functions = ["isRegulationAvailable"];
+  for (const [tournamentName, expected] of [["春大会", [true, false, true]], ["夏大会", [true, false, false]], ["", [true, true, false]]]) {
+    const available = Array.from(regs, (reg) => runFunctions(functions, { state: { tournamentName }, reg }, "isRegulationAvailable(reg)"));
+    assert.deepEqual(available, expected);
+  }
+  const state = { tournamentName: "春大会", roles: [{ id: "werewolf", count: 2 }], regulations: regs };
+  runFunctions(["saveCurrentAsRegulation"], { state }, 'saveCurrentAsRegulation("共通", 12)');
+  assert.equal(state.regulations.length, 4);
+  assert.equal(state.regulations[0].tournamentName, null);
+  assert.equal(state.regulations[3].tournamentName, "春大会");
 });
 
 test("役職内訳で人数を変更すると市民人数が自動計算され有効役職が連動する", () => {
@@ -2488,10 +2545,12 @@ test("レギュレーション一覧はセレクトボックスに人数別に�
 
   const state = {
     selectedRegulationId: "reg-13b",
+    tournamentName: "春大会",
     regulations: [
       { id: "reg-12a", name: "12A", playerCount: 12 },
       { id: "reg-13a", name: "13A", playerCount: 13 },
-      { id: "reg-13b", name: "13B", playerCount: 13 },
+      { id: "reg-13b", name: "13B", playerCount: 13, tournamentName: "春大会" },
+      { id: "reg-other", name: "別大会", playerCount: 7, tournamentName: "夏大会" },
       { id: "reg-9", name: "9人基本", playerCount: 9 },
     ],
   };
@@ -2513,7 +2572,7 @@ test("レギュレーション一覧はセレクトボックスに人数別に�
     document: fakeDocument,
   };
 
-  runFunctions(["renderRegulationPresets"], context, "renderRegulationPresets()");
+  runFunctions(["renderRegulationPresets", "isRegulationAvailable"], context, "renderRegulationPresets()");
 
   assert.equal(fakeSelect.value, "reg-13b");
   assert.equal(fakeDeleteBtn.hidden, false);
@@ -2523,6 +2582,12 @@ test("レギュレーション一覧はセレクトボックスに人数別に�
   assert.equal(selectChildren[2].label, "12人");
   assert.equal(selectChildren[3].label, "13人");
   assert.equal(selectChildren[3].children.length, 2);
-  assert.equal(selectChildren[3].children[0].textContent, "13A");
+  assert.equal(selectChildren[3].children[0].textContent, "【共通】13A");
   assert.equal(selectChildren[3].children[1].textContent, "13B");
+  state.tournamentName = "夏大会";
+  selectChildren.length = 0;
+  runFunctions(["renderRegulationPresets", "isRegulationAvailable"], context, "renderRegulationPresets()");
+  assert.equal(state.selectedRegulationId, "");
+  assert.equal(fakeDeleteBtn.hidden, true);
+  assert.equal(selectChildren[1].label, "7人");
 });
