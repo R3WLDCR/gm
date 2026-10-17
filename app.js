@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.53.0";
+const APP_VERSION = "v1.54.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -77,6 +77,9 @@ const state = {
   selectedRegulationId: "",
   seerInitialWhiteEnabled: true,
   allowConsecutiveGuard: false,
+  skipExileAfterTwoRevotes: true,
+  revoteRound: 0,
+  lastNoExileDay: 0,
   allowWerewolfSelfAttack: false,
   allowWerewolfSkipAttack: true,
   screen: "setup",
@@ -425,7 +428,7 @@ function bindEvents() {
   [
     els.allowWerewolfSelfAttackInput,
     els.allowWerewolfSkipAttackInput,
-    ...document.querySelectorAll("[data-seer-white-rule], [data-guard-repeat-rule]"),
+    ...document.querySelectorAll("[data-seer-white-rule], [data-guard-repeat-rule], [data-revote-tie-rule]"),
   ].forEach((input) => {
     input?.addEventListener("change", updateGameRules);
   });
@@ -869,6 +872,7 @@ function updateGameRules() {
   state.enabledRoleIds = getEnabledRoleIdsFromCounts(state.roles);
   state.seerInitialWhiteEnabled = document.querySelector("[data-seer-white-rule]:checked")?.value !== "none";
   state.allowConsecutiveGuard = document.querySelector("[data-guard-repeat-rule]:checked")?.value === "allow";
+  state.skipExileAfterTwoRevotes = document.querySelector("[data-revote-tie-rule]:checked")?.value !== "continue";
   state.allowWerewolfSelfAttack = els.allowWerewolfSelfAttackInput?.checked === true;
   state.allowWerewolfSkipAttack = els.allowWerewolfSkipAttackInput?.checked !== false;
   state.selectedRegulationId = "";
@@ -885,6 +889,7 @@ function normalizeRegulations(raw) {
     roles: reg.roles && typeof reg.roles === "object" ? { ...reg.roles } : {},
     seerInitialWhiteEnabled: reg.seerInitialWhiteEnabled !== false,
     allowConsecutiveGuard: reg.allowConsecutiveGuard === true,
+    skipExileAfterTwoRevotes: reg.skipExileAfterTwoRevotes !== false,
     allowWerewolfSelfAttack: reg.allowWerewolfSelfAttack === true,
     allowWerewolfSkipAttack: reg.allowWerewolfSkipAttack !== false,
   }));
@@ -912,6 +917,7 @@ function applyRegulation(regulationOrId) {
 
   state.seerInitialWhiteEnabled = reg.seerInitialWhiteEnabled !== false;
   state.allowConsecutiveGuard = reg.allowConsecutiveGuard === true;
+  state.skipExileAfterTwoRevotes = reg.skipExileAfterTwoRevotes !== false;
   state.allowWerewolfSelfAttack = reg.allowWerewolfSelfAttack === true;
   state.allowWerewolfSkipAttack = reg.allowWerewolfSkipAttack !== false;
 
@@ -937,6 +943,7 @@ function saveCurrentAsRegulation(name, customPlayerCount) {
     roles: rolesMap,
     seerInitialWhiteEnabled: state.seerInitialWhiteEnabled,
     allowConsecutiveGuard: state.allowConsecutiveGuard,
+    skipExileAfterTwoRevotes: state.skipExileAfterTwoRevotes !== false,
     allowWerewolfSelfAttack: state.allowWerewolfSelfAttack,
     allowWerewolfSkipAttack: state.allowWerewolfSkipAttack,
   };
@@ -996,6 +1003,7 @@ function handleDeleteRegulationClick() {
 }
 
 function beginNewMatch({ createId = true } = {}) {
+  state.lastNoExileDay = 0;
   state.logs = [];
   state.logRestorePoints = {};
   state.nextLogId = 1;
@@ -2073,6 +2081,7 @@ function addVote() {
 }
 
 function resetVoteSession() {
+  state.revoteRound = 0;
   state.votes = {};
   state.voteRecords = [];
   state.voteVoterId = "";
@@ -2285,6 +2294,8 @@ function startRevoteAssignment(candidateIds) {
     const player = findPlayer(id);
     return player && player.alive && isActivePlayer(player);
   });
+  if (state.revoteCandidateIds.length <= 1) return;
+  state.revoteRound = (state.revoteRound || 0) + 1;
   state.screen = "table";
   state.phase = "vote";
   state.revoteAssignIndex = 0;
@@ -2295,7 +2306,7 @@ function startRevoteAssignment(candidateIds) {
   state.editingVoteRecordIndex = -1;
   state.showVoteTable = true;
   state.revoteTargetSelectMode = true;
-  addLog("同票のため再投票");
+  addLog(`同票のため再投票（${state.revoteRound}回目）`);
   markLatestLogRestorable();
 }
 
@@ -2351,6 +2362,16 @@ function finalizeRevoteAssignment() {
     state.revoteAssignIndex = 0;
     state.revoteTargetSelectMode = false;
     state.pendingRevotePleaCandidateIds = topIds;
+    if (shouldSkipExileAfterRevote(topIds)) {
+      state.pendingRevotePleaCandidateIds = [];
+      state.lastNoExileDay = state.day;
+      state.voteSelectedPlayerId = "";
+      addLog("決選投票2回でも同票のため、処刑なしで夜へ");
+      startNightTransition(getGameResult());
+      markLatestLogRestorable();
+      renderAndStore();
+      return;
+    }
     renderAndStore();
     return;
   }
@@ -2359,6 +2380,10 @@ function finalizeRevoteAssignment() {
   state.revoteTargetSelectMode = false;
   state.voteSelectedPlayerId = topIds[0];
   confirmSelectedPlayerExile();
+}
+
+function shouldSkipExileAfterRevote(topIds) {
+  return state.skipExileAfterTwoRevotes !== false && state.revoteRound >= 2 && topIds.length > 1;
 }
 
 function formatVoteResultLog(label, topIds = getTopVotedPlayerIds()) {
@@ -2668,6 +2693,7 @@ async function copyLog() {
 
 function resetGame() {
   if (!confirm("卓を初期化しますか？")) return;
+  state.lastNoExileDay = 0;
   stopTimer();
   stopTimerEndRevealCountdown();
   resetPleaTimerState();
@@ -2679,6 +2705,7 @@ function resetGame() {
   state.enabledRoleIds = [...DEFAULT_ENABLED_ROLE_IDS];
   state.seerInitialWhiteEnabled = true;
   state.allowConsecutiveGuard = false;
+  state.skipExileAfterTwoRevotes = true;
   state.allowWerewolfSelfAttack = false;
   state.allowWerewolfSkipAttack = true;
   state.screen = "setup";
@@ -2751,6 +2778,7 @@ function resetGame() {
 function resetToFirstNight() {
   if (!confirm("進行を初日夜に戻しますか？")) return;
   pushUndoSnapshot("初日へ戻す");
+  state.lastNoExileDay = 0;
   stopTimer();
   stopTimerEndRevealCountdown();
   resetPleaTimerState();
@@ -2845,6 +2873,9 @@ function renderMatchInfoInputs() {
 }
 
 function renderGameRuleInputs() {
+  document.querySelectorAll("[data-revote-tie-rule]").forEach((input) => {
+    input.checked = input.value === (state.skipExileAfterTwoRevotes !== false ? "skip" : "continue");
+  });
   document.querySelectorAll("[data-seer-white-rule]").forEach((input) => {
     input.checked = input.value === (state.seerInitialWhiteEnabled ? "white" : "none");
   });
@@ -4458,6 +4489,7 @@ function confirmPleaExile() {
 function confirmSelectedPlayerExile() {
   if (!state.voteSelectedPlayerId) return;
   pushUndoSnapshot("追放");
+  state.lastNoExileDay = 0;
   if (!state.exiledPlayerIds.includes(state.voteSelectedPlayerId)) {
     state.exiledPlayerIds.push(state.voteSelectedPlayerId);
   }
@@ -4940,6 +4972,7 @@ function getLivingPlayers() {
 }
 
 function getLastExiledPlayer() {
+  if (state.lastNoExileDay > 0 && state.lastNoExileDay === state.day) return null;
   for (let index = state.exiledPlayerIds.length - 1; index >= 0; index -= 1) {
     const player = findPlayer(state.exiledPlayerIds[index]);
     if (player) return player;
@@ -6235,6 +6268,9 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     enabledRoleIds: state.enabledRoleIds,
     regulations: state.regulations,
     selectedRegulationId: state.selectedRegulationId,
+    skipExileAfterTwoRevotes: state.skipExileAfterTwoRevotes !== false,
+    revoteRound: state.revoteRound,
+    lastNoExileDay: state.lastNoExileDay,
     seerInitialWhiteEnabled: state.seerInitialWhiteEnabled,
     allowConsecutiveGuard: state.allowConsecutiveGuard,
     allowWerewolfSelfAttack: state.allowWerewolfSelfAttack,
@@ -6471,6 +6507,9 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.selectedRegulationId = state.regulations.some((reg) => reg.id === selectedRegulationId) ? selectedRegulationId : "";
   state.seerInitialWhiteEnabled = saved.seerInitialWhiteEnabled !== false;
   state.allowConsecutiveGuard = saved.allowConsecutiveGuard === true;
+  state.skipExileAfterTwoRevotes = saved.skipExileAfterTwoRevotes !== false;
+  state.revoteRound = Number.isInteger(saved.revoteRound) ? Math.max(0, saved.revoteRound) : 0;
+  state.lastNoExileDay = Number.isInteger(saved.lastNoExileDay) ? Math.max(0, saved.lastNoExileDay) : 0;
   state.allowWerewolfSelfAttack = saved.allowWerewolfSelfAttack === true;
   state.allowWerewolfSkipAttack = saved.allowWerewolfSkipAttack !== false;
   state.screen = saved.screen || "setup";

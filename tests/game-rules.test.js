@@ -19,6 +19,93 @@ function runFunctions(names, context, expression) {
   return sandbox.result;
 }
 
+test("決選2回目以降の同票だけを処刑なしにし、継続設定なら制限しない", () => {
+  for (const enabled of [true, false]) {
+    for (const round of [0, 1, 2, 3]) {
+      for (const topIds of [["A"], ["A", "B"]]) {
+        const result = runFunctions(["shouldSkipExileAfterRevote"], { state: { skipExileAfterTwoRevotes: enabled, revoteRound: round } }, `shouldSkipExileAfterRevote(${JSON.stringify(topIds)})`);
+        assert.equal(result, enabled && round >= 2 && topIds.length > 1);
+      }
+    }
+  }
+});
+
+test("決選投票の開始でだけ回数を進め、新しい投票ではリセットする", () => {
+  const state = { revoteRound: 0 };
+  const context = {
+    state, findPlayer: (id) => ({ id, alive: true }), isActivePlayer: () => true,
+    addLog: () => {}, markLatestLogRestorable: () => {}, resetRevotePleaTimerState: () => {},
+  };
+  const functions = ["startRevoteAssignment", "resetVoteSession"];
+  runFunctions(functions, context, 'startRevoteAssignment(["A", "B"])');
+  assert.equal(state.revoteRound, 1);
+  runFunctions(functions, context, 'startRevoteAssignment(["A", "B"])');
+  assert.equal(state.revoteRound, 2);
+  runFunctions(functions, context, 'startRevoteAssignment([])');
+  assert.equal(state.revoteRound, 2);
+  runFunctions(functions, context, 'resetVoteSession()');
+  assert.equal(state.revoteRound, 0);
+});
+
+test("決選集計で2回同票なら死亡者を増やさず夜へ、単独最多は処刑する", () => {
+  for (const [enabled, round, topIds] of [[true, 1, ["A", "B"]], [true, 2, ["A", "B"]], [false, 2, ["A", "B"]], [true, 2, ["A"]]]) {
+    const state = { day: 3, skipExileAfterTwoRevotes: enabled, revoteRound: round, voteRecords: [], exiledPlayerIds: ["old"] };
+    const logs = [];
+    let night = false;
+    let exile = false;
+    const context = {
+      state, getLastRevoteTargetId: () => "B", getVoteVoterPlayers: () => [{ id: "C" }],
+      syncVoteCountsFromRecords: () => {}, getTopVotedPlayerIds: () => topIds,
+      formatVoteResultLog: () => "決選投票結果", addLog: (text) => logs.push(text),
+      markLatestLogRestorable: () => {}, renderAndStore: () => {},
+      getGameResult: () => ({ ended: false }), startNightTransition: () => { night = true; },
+      confirmSelectedPlayerExile: () => { exile = true; },
+    };
+    runFunctions(["finalizeRevoteAssignment", "shouldSkipExileAfterRevote"], context, "finalizeRevoteAssignment()");
+    assert.equal(night, enabled && round >= 2 && topIds.length > 1);
+    assert.equal(exile, topIds.length === 1);
+    assert.deepEqual(state.exiledPlayerIds, ["old"]);
+    if (night) {
+      assert.equal(state.lastNoExileDay, 3);
+      assert.equal(state.pendingRevotePleaCandidateIds.length, 0);
+      assert.match(logs.at(-1), /処刑なし/);
+    }
+  }
+});
+
+test("処刑なしの夜には前日の霊媒結果を繰り返さない", () => {
+  const state = { day: 3, lastNoExileDay: 3, exiledPlayerIds: ["A"] };
+  const player = { id: "A" };
+  const context = { state, findPlayer: () => player };
+  assert.equal(runFunctions(["getLastExiledPlayer"], context, "getLastExiledPlayer()"), null);
+  state.lastNoExileDay = 2;
+  assert.equal(runFunctions(["getLastExiledPlayer"], context, "getLastExiledPlayer()"), player);
+});
+
+test("決選ルールはセットに保存・復元され、旧セットは2回同票で処刑なしになる", () => {
+  for (const enabled of [true, false]) {
+    const state = { roles: [{ id: "werewolf", count: 1 }], regulations: [], skipExileAfterTwoRevotes: enabled };
+    const context = { state, LEGACY_DEFAULT_REGULATION_IDS: new Set() };
+    const functions = ["saveCurrentAsRegulation", "normalizeRegulations", "applyRegulation", "isRegulationAvailable", "getEnabledRoleIdsFromCounts"];
+    runFunctions(functions, context, 'saveCurrentAsRegulation("基本", 9)');
+    assert.equal(state.regulations[0].skipExileAfterTwoRevotes, enabled);
+    state.regulations = runFunctions(functions, context, `normalizeRegulations(${JSON.stringify(state.regulations)})`);
+    state.skipExileAfterTwoRevotes = !enabled;
+    runFunctions(functions, context, `applyRegulation(${JSON.stringify(state.regulations[0].id)})`);
+    assert.equal(state.skipExileAfterTwoRevotes, enabled);
+  }
+  const regs = runFunctions(["normalizeRegulations"], { LEGACY_DEFAULT_REGULATION_IDS: new Set() }, 'normalizeRegulations([{ id: "old" }])');
+  assert.equal(regs[0].skipExileAfterTwoRevotes, true);
+});
+
+test("決選回数・処刑なしの日付・ルールを保存と同期のペイロードに含める", () => {
+  const state = { skipExileAfterTwoRevotes: false, revoteRound: 2, lastNoExileDay: 3 };
+  const payload = runFunctions(["getStatePayload"], { state }, "getStatePayload({includeUndoHistory: false, includeLogRestorePoints: false, includeMatchHistory: false})");
+  assert.equal(payload.skipExileAfterTwoRevotes, false);
+  assert.equal(payload.revoteRound, 2);
+  assert.equal(payload.lastNoExileDay, 3);
+});
+
 test("準備中は昼タブと夜タブを開けない", () => {
   const functions = ["isScreenTabDisabled"];
   const context = { state: { phase: "setup", gameWinner: "" } };
