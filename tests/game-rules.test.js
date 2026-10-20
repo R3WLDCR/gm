@@ -19,6 +19,66 @@ function runFunctions(names, context, expression) {
   return sandbox.result;
 }
 
+test("決戦弁明の任意順は順序を保ち、ランダム順は重複なく抽選する", () => {
+  const candidateIds = ["A", "B", "C", "A"];
+  const context = { candidateIds, Math: { floor: Math.floor, random: () => 0 } };
+  const functions = ["getRevotePleaOrder", "shuffle"];
+  assert.deepEqual(Array.from(runFunctions(functions, context, 'getRevotePleaOrder(candidateIds, "manual")')), ["A", "B", "C"]);
+  assert.deepEqual(Array.from(runFunctions(functions, context, 'getRevotePleaOrder(candidateIds, "random")')), ["B", "C", "A"]);
+  assert.deepEqual(candidateIds, ["A", "B", "C", "A"]);
+});
+
+test("決戦弁明は候補だけを抽選して停止状態で開始し、次へ進んでも抽選し直さない", () => {
+  for (const mode of ["manual", "random"]) {
+    const state = { pendingRevotePleaCandidateIds: ["A", "dead", "B", "C", "inactive"], revotePleaOrderMode: mode, revoteRound: 1 };
+    const context = { state, PLEA_TIMER_SECONDS: 30,
+      findPlayer: (id) => ({ id, name: id, alive: id !== "dead" }),
+      isActivePlayer: (p) => p.id !== "inactive", pushUndoSnapshot: () => {},
+      stopRevotePleaTimer: () => { state.revotePleaRunning = false; }, renderAndStore: () => {},
+      Math: { floor: Math.floor, random: () => 0 } };
+    const functions = ["startPendingRevotePleaTimer", "getRevotePleaOrder", "shuffle", "startNextRevotePleaRound"];
+    runFunctions(functions, context, "startPendingRevotePleaTimer()");
+    const order = Array.from(state.revotePleaCandidateIds);
+    assert.deepEqual(order, mode === "random" ? ["B", "C", "A"] : ["A", "B", "C"]);
+    assert.equal(state.revotePleaSeconds, 30);
+    assert.equal(state.revotePleaRunning, false);
+    assert.equal(state.revoteRound, 1);
+    state.revotePleaRunning = true;
+    state.revotePleaSeconds = 12;
+    runFunctions(functions, context, "startNextRevotePleaRound()");
+    assert.equal(state.revotePleaRoundIndex, 1);
+    assert.equal(state.revotePleaRunning, false);
+    assert.equal(state.revotePleaSeconds, 30);
+    assert.deepEqual(Array.from(state.revotePleaCandidateIds), order);
+  }
+});
+
+test("任意順は名前なし、ランダム順だけ現在の弁明者を表示する", () => {
+  const state = { showRevotePleaTimer: true, revotePleaOrderMode: "random", revotePleaCandidateIds: ["B", "A"], revotePleaRoundIndex: 0, revotePleaSeconds: 30 };
+  const els = { revotePleaTimerView: { classList: { toggle: () => {} } }, revotePleaSpeakerName: {}, revotePleaProgress: {} };
+  const context = { state, els, findPlayer: (id) => ({ name: `${id}さん` }) };
+  const functions = ["renderRevotePleaTimerView", "getRevotePleaSpeakerName"];
+  runFunctions(functions, context, "renderRevotePleaTimerView()");
+  assert.equal(els.revotePleaSpeakerName.textContent, "Bさん");
+  state.revotePleaRoundIndex = 1;
+  runFunctions(functions, context, "renderRevotePleaTimerView()");
+  assert.equal(els.revotePleaSpeakerName.textContent, "Aさん");
+  assert.equal(els.revotePleaProgress.textContent, "2 / 2");
+  state.revotePleaOrderMode = "manual";
+  runFunctions(functions, context, "renderRevotePleaTimerView()");
+  assert.equal(els.revotePleaSpeakerName.hidden, true);
+  assert.equal(els.revotePleaSpeakerName.textContent, "");
+});
+
+test("抽選済み弁明順と現在位置・モードを保存と同期のデータへ含める", () => {
+  const state = { revotePleaOrderMode: "random", revotePleaCandidateIds: ["C", "A", "B"], revotePleaRoundIndex: 1 };
+  const payload = runFunctions(["getStatePayload", "getRevoteRule"], { state }, "getStatePayload({includeUndoHistory: false, includeLogRestorePoints: false, includeMatchHistory: false})");
+  const restored = JSON.parse(JSON.stringify(payload));
+  assert.equal(restored.revotePleaOrderMode, "random");
+  assert.deepEqual(restored.revotePleaCandidateIds, ["C", "A", "B"]);
+  assert.equal(restored.revotePleaRoundIndex, 1);
+});
+
 test("指定回数以降の同票だけを解決し、無制限設定なら継続する", () => {
   for (const action of ["skip", "random", "continue"]) {
     for (const limit of [0, 1, 2, 3]) {

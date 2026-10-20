@@ -18,7 +18,7 @@
         <div class="header-identity">
           <div class="title-row">
             <p class="eyebrow">Werewolf Game Master</p>
-            <span id="appVersionBadge" class="version-badge">v1.55.1</span>
+            <span id="appVersionBadge" class="version-badge">v1.56.0</span>
             <span id="progressBadge" class="progress-badge">準備中</span>
           </div>
           <div id="headerMatchInfo" class="header-match-info" hidden>
@@ -324,6 +324,12 @@
             </div>
             <div class="vote-panel-actions">
               <button id="clearVotesBtn" class="secondary-button" type="button">投票をクリア</button>
+              <label id="revotePleaOrderControl" class="revote-plea-order" hidden>弁明順
+                <select id="revotePleaOrderSelect" aria-label="決戦弁明の順番">
+                  <option value="manual">任意順</option>
+                  <option value="random">ランダム順</option>
+                </select>
+              </label>
               <button id="startRevotePleaTimerBtn" class="secondary-button" type="button" hidden>決戦弁明へ</button>
               <button id="startRevotePleaBtn" class="primary-button" type="button" hidden>決選投票へ</button>
             </div>
@@ -343,6 +349,7 @@
             <div class="plea-timer-content revote-plea-content">
               <p class="plea-kicker">決戦弁明</p>
               <small id="revotePleaProgress" class="revote-plea-progress">1 / 1</small>
+              <strong id="revotePleaSpeakerName" class="revote-plea-speaker-name" hidden></strong>
               <span id="revotePleaTimerDisplay" class="plea-timer-display">30</span>
               <button id="revotePleaTimerToggleBtn" class="secondary-button plea-timer-toggle-button" type="button">開始</button>
             </div>

@@ -3033,6 +3033,46 @@ textarea:focus {
   font-weight: 900;
 }
 
+.revote-plea-order {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.revote-plea-order select {
+  width: auto;
+  min-height: 40px;
+}
+
+.revote-plea-order[hidden],
+.revote-plea-speaker-name[hidden] {
+  display: none;
+}
+
+.revote-plea-speaker-name {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: 2.5rem;
+  line-height: 1.2;
+  color: white;
+}
+
+.revote-plea-timer-view.has-speaker .revote-plea-content {
+  gap: 6px;
+}
+
+body.revote-plea-fullscreen-view .revote-plea-timer-view.has-speaker .plea-timer-display {
+  font-size: min(38svh, 16rem);
+}
+
+@media (max-height: 500px) {
+  .revote-plea-speaker-name { font-size: 1.5rem; }
+}
+
 .plea-timer-display {
   display: block;
   font-family: "Bahnschrift", "Cascadia Mono", "Consolas", "DIN Alternate", monospace;

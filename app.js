@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.55.1";
+const APP_VERSION = "v1.56.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -120,6 +120,7 @@ const state = {
   revotePleaRoundIndex: 0,
   revotePleaSeconds: PLEA_TIMER_SECONDS,
   revotePleaRunning: false,
+  revotePleaOrderMode: "manual",
   showNightTransition: false,
   nightTransitionSeconds: NIGHT_TRANSITION_MIN_SECONDS,
   nightTransitionOkSeconds: NIGHT_TRANSITION_OK_DELAY_SECONDS,
@@ -296,6 +297,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     "clearVotesBtn",
     "startRevotePleaBtn",
     "startRevotePleaTimerBtn",
+    "revotePleaOrderControl",
+    "revotePleaOrderSelect",
+    "revotePleaSpeakerName",
     "voteSummary",
     "voteRecordList",
     "revoteNotice",
@@ -494,6 +498,10 @@ function bindEvents() {
   els.clearVotesBtn?.addEventListener("click", resetVoteRecords);
   els.startRevotePleaBtn?.addEventListener("click", startPendingRevotePlea);
   els.startRevotePleaTimerBtn?.addEventListener("click", startPendingRevotePleaTimer);
+  els.revotePleaOrderSelect?.addEventListener("change", () => {
+    state.revotePleaOrderMode = els.revotePleaOrderSelect.value === "random" ? "random" : "manual";
+    renderAndStore();
+  });
   els.revoteNextBtn?.addEventListener("click", advanceRevoteAssignment);
   els.revotePleaBackBtn?.addEventListener("click", backFromRevotePleaTimer);
   els.revotePleaTimerToggleBtn?.addEventListener("click", toggleRevotePleaTimer);
@@ -2235,6 +2243,17 @@ function startPendingRevotePlea() {
   renderAndStore();
 }
 
+function getRevotePleaOrder(candidateIds, mode) {
+  const ordered = [...new Set(candidateIds)];
+  if (mode === "random") shuffle(ordered);
+  return ordered;
+}
+
+function getRevotePleaSpeakerName() {
+  if (!state.showRevotePleaTimer || state.revotePleaOrderMode !== "random") return "";
+  return findPlayer(state.revotePleaCandidateIds[state.revotePleaRoundIndex])?.name || "";
+}
+
 function startPendingRevotePleaTimer() {
   if (state.pendingRevotePleaCandidateIds.length <= 1) return;
   const candidates = state.pendingRevotePleaCandidateIds.filter((id) => {
@@ -2244,7 +2263,7 @@ function startPendingRevotePleaTimer() {
   if (candidates.length <= 1) return;
   pushUndoSnapshot("決戦弁明へ");
   state.pendingRevotePleaCandidateIds = [];
-  state.revotePleaCandidateIds = candidates;
+  state.revotePleaCandidateIds = getRevotePleaOrder(candidates, state.revotePleaOrderMode);
   state.revotePleaRoundIndex = 0;
   state.revotePleaSeconds = PLEA_TIMER_SECONDS;
   state.revotePleaRunning = false;
@@ -2734,6 +2753,7 @@ function resetGame() {
   state.allowConsecutiveGuard = false;
   state.revoteTieAction = "skip";
   state.revoteLimit = 2;
+  state.revotePleaOrderMode = "manual";
   state.allowWerewolfSelfAttack = false;
   state.allowWerewolfSkipAttack = true;
   state.screen = "setup";
@@ -3157,7 +3177,7 @@ function getVictoryMessage(winner) {
 }
 
 function fitSingleLineNames() {
-  document.querySelectorAll(".player-row strong, .round-seat strong, .seat-name, .medium-result-card strong, .dialog-name, #attackResultName").forEach((element) => {
+  document.querySelectorAll(".player-row strong, .round-seat strong, .seat-name, .medium-result-card strong, .dialog-name, #attackResultName, #revotePleaSpeakerName").forEach((element) => {
     element.style.fontSize = "";
     let currentSize = Number.parseFloat(getComputedStyle(element).fontSize);
     const maxWidth = element.clientWidth;
@@ -3545,6 +3565,10 @@ function renderVoteControls() {
     els.startRevotePleaTimerBtn.disabled = !candidates.length || revoteMode;
     els.startRevotePleaTimerBtn.textContent = "決戦弁明へ";
   }
+  if (els.revotePleaOrderControl) {
+    els.revotePleaOrderControl.hidden = state.pendingRevotePleaCandidateIds.length <= 1 || revoteMode;
+  }
+  if (els.revotePleaOrderSelect) els.revotePleaOrderSelect.value = state.revotePleaOrderMode;
   if (els.revoteNotice) {
     els.revoteNotice.hidden = !revoteMode;
     if (revoteMode) {
@@ -4049,6 +4073,12 @@ function renderRevotePleaTimerView() {
   if (!els.revotePleaTimerView) return;
   els.revotePleaTimerView.hidden = !state.showRevotePleaTimer;
   if (!state.showRevotePleaTimer) return;
+  const speakerName = getRevotePleaSpeakerName();
+  if (els.revotePleaSpeakerName) {
+    els.revotePleaSpeakerName.textContent = speakerName;
+    els.revotePleaSpeakerName.hidden = !speakerName;
+  }
+  els.revotePleaTimerView.classList.toggle("has-speaker", Boolean(speakerName));
   if (els.revotePleaTimerDisplay) {
     els.revotePleaTimerDisplay.textContent = String(Math.max(0, state.revotePleaSeconds));
     els.revotePleaTimerDisplay.classList.toggle("plea-timer-ended", state.revotePleaSeconds === 0);
@@ -6346,6 +6376,7 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     revotePleaRoundIndex: state.revotePleaRoundIndex,
     revotePleaSeconds: state.revotePleaSeconds,
     revotePleaRunning: state.revotePleaRunning,
+    revotePleaOrderMode: state.revotePleaOrderMode,
     showNightTransition: state.showNightTransition,
     nightTransitionSeconds: state.nightTransitionSeconds,
     nightTransitionOkSeconds: state.nightTransitionOkSeconds,
@@ -6595,6 +6626,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.revotePleaRoundIndex = Number.isInteger(saved.revotePleaRoundIndex) ? saved.revotePleaRoundIndex : 0;
   state.revotePleaSeconds = Number.isFinite(Number(saved.revotePleaSeconds)) ? Number(saved.revotePleaSeconds) : PLEA_TIMER_SECONDS;
   state.revotePleaRunning = false;
+  state.revotePleaOrderMode = saved.revotePleaOrderMode === "random" ? "random" : "manual";
   if (state.revotePleaCandidateIds.length) {
     state.revotePleaRoundIndex = Math.max(0, Math.min(state.revotePleaRoundIndex, state.revotePleaCandidateIds.length - 1));
   } else {
