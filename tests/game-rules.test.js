@@ -12,9 +12,14 @@ function extractFunction(name) {
   return match[0];
 }
 
+const STANDARD_ROLE_ORDER = JSON.parse(appSource.match(/^const STANDARD_ROLE_ORDER = (\[.*\]);$/m)[1]);
+const SHARED_HELPERS = ["getRoleDealOrder"];
+
 function runFunctions(names, context, expression) {
-  const source = names.map(extractFunction).join("\n");
-  const sandbox = { ...context, result: undefined };
+  const baseSource = names.map(extractFunction).join("\n");
+  const helpers = SHARED_HELPERS.filter((name) => !names.includes(name) && baseSource.includes(`${name}(`));
+  const source = [baseSource, ...helpers.map(extractFunction)].join("\n");
+  const sandbox = { STANDARD_ROLE_ORDER, ...context, result: undefined };
   vm.runInNewContext(`${source}\nresult = ${expression};`, sandbox);
   return sandbox.result;
 }
@@ -2829,4 +2834,52 @@ test("レギュセット選択中は人数1人以上の役職だけ、未選択�
   const visibleIds = (selectedId) => Array.from(runFunctions(["getRoleBreakdownVisibleRoles"], { ...context, selectedId }, "getRoleBreakdownVisibleRoles(roles, selectedId)"), (role) => role.id);
   assert.deepEqual(visibleIds("reg-12a"), ["werewolf", "seer"]);
   assert.deepEqual(visibleIds(""), ["werewolf", "traitor", "seer", "teruteru"]);
+});
+test("配役順は人狼を含め自由に並べ替えでき、旧データや不正値は初期順で補う", () => {
+  const context = { STANDARD_ROLE_ORDER: ["werewolf", "seer", "medium", "knight", "hunter", "madman", "madman_hunter", "teruteru", "cat"] };
+  const order = (expression) => Array.from(runFunctions(["getRoleDealOrder"], context, expression));
+  assert.deepEqual(order("getRoleDealOrder(undefined)"), context.STANDARD_ROLE_ORDER);
+  assert.deepEqual(order('getRoleDealOrder(["seer", "werewolf", "seer", "unknown"])'),
+    ["seer", "werewolf", "medium", "knight", "hunter", "madman", "madman_hunter", "teruteru", "cat"]);
+  const counts = { werewolf: 2, madman: 1, seer: 1, knight: 1, villager: 3 };
+  const queue = runFunctions(["getRoleDealQueue", "getRoleDealOrder"], { ...context, counts },
+    'getRoleDealQueue(counts, ["seer", "knight", "madman", "werewolf"])');
+  assert.deepEqual(Array.from(queue), ["seer", "knight", "madman", "werewolf"]);
+});
+
+test("配役順の移動は使用中の役職どうしで入れ替え、端では動かない", () => {
+  const context = {
+    STANDARD_ROLE_ORDER: ["werewolf", "seer", "medium", "knight", "hunter", "madman", "madman_hunter", "teruteru", "cat"],
+    counts: { werewolf: 1, seer: 1, knight: 1 },
+  };
+  const functions = ["getMovedRoleDealOrder", "getRoleDealQueue", "getRoleDealOrder"];
+  const moved = (expression) => Array.from(runFunctions(functions, context, `getRoleDealQueue(counts, ${expression})`));
+  assert.deepEqual(moved('getMovedRoleDealOrder(undefined, counts, "werewolf", 1)'), ["seer", "werewolf", "knight"]);
+  assert.deepEqual(moved('getMovedRoleDealOrder(undefined, counts, "seer", 1)'), ["werewolf", "knight", "seer"]);
+  assert.deepEqual(moved('getMovedRoleDealOrder(undefined, counts, "werewolf", -1)'), ["werewolf", "seer", "knight"]);
+  assert.deepEqual(moved('getMovedRoleDealOrder(undefined, counts, "medium", 1)'), ["werewolf", "seer", "knight"]);
+});
+
+test("預言者が人狼より先なら初日白の参加者は人狼に配役できない", () => {
+  const players = [{ id: "A", name: "A", roleId: "" }, { id: "B", name: "B", roleId: "" }];
+  const state = { roleDealQueue: ["seer", "werewolf"], roleDealIndex: 1, roleDealSelectedPlayerIds: [], roleDealSeerWhitePlayerId: "A", seerInitialWhiteEnabled: true };
+  const context = { state, players, renderAndStore: () => {}, addLog: () => {} };
+  const functions = ["assignCurrentRole", "isRoleDealSeerWhiteLocked"];
+  runFunctions(functions, context, "assignCurrentRole(players[0])");
+  assert.equal(players[0].roleId, "");
+  runFunctions(functions, context, "assignCurrentRole(players[1])");
+  assert.equal(players[1].roleId, "werewolf");
+  assert.equal(runFunctions(["isRoleDealSeerWhiteLocked"], {}, 'isRoleDealSeerWhiteLocked("knight", "A", "A")'), false);
+  assert.equal(runFunctions(["isRoleDealSeerWhiteLocked"], {}, 'isRoleDealSeerWhiteLocked("werewolf", "A", "")'), false);
+});
+
+test("配役順はレギュセットへ保存され、旧レギュセットは初期順になる", () => {
+  const context = {
+    STANDARD_ROLE_ORDER: ["werewolf", "seer", "medium", "knight", "hunter", "madman", "madman_hunter", "teruteru", "cat"],
+    LEGACY_DEFAULT_REGULATION_IDS: new Set(),
+    raw: [{ id: "a", name: "A", roleDealOrder: ["seer", "werewolf"] }, { id: "b", name: "B" }],
+  };
+  const regs = runFunctions(["normalizeRegulations", "getRevoteRule", "getRoleDealOrder"], context, "normalizeRegulations(raw)");
+  assert.deepEqual(Array.from(regs[0].roleDealOrder).slice(0, 2), ["seer", "werewolf"]);
+  assert.deepEqual(Array.from(regs[1].roleDealOrder), context.STANDARD_ROLE_ORDER);
 });

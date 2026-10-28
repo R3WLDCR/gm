@@ -1227,6 +1227,77 @@ body.teruteru-victory-view .victory-banner.victory-teruteru.victory-reveal-winne
   color: var(--ink);
 }
 
+/* 配役順 */
+.role-deal-order-section {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.role-deal-order-title {
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 900;
+}
+
+.role-deal-order-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.role-deal-order-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: white;
+}
+
+.role-deal-order-name {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 0 2px;
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.role-deal-order-name small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.role-deal-order-move {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-height: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: white;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.role-deal-order-move:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 .game-rule-settings legend {
   padding: 0 5px;
   color: var(--muted);

@@ -25,7 +25,7 @@ const STORAGE_KEY = "werewolf-gm-state";
 const SYNC_META_KEY = "werewolf-gm-sync-meta-v1";
 const DEVICE_ID_KEY = "werewolf-gm-device-id";
 const SYNC_DELAY_MS = 3000;
-const APP_VERSION = "v1.57.2";
+const APP_VERSION = "v1.58.0";
 const LARGE_STATE_DB_NAME = "werewolf-gm-data";
 const LARGE_STATE_DB_VERSION = 1;
 const LARGE_STATE_STORE_NAME = "state";
@@ -75,6 +75,7 @@ const state = {
   enabledRoleIds: [...DEFAULT_ENABLED_ROLE_IDS],
   regulations: [],
   selectedRegulationId: "",
+  roleDealOrder: [...STANDARD_ROLE_ORDER],
   seerInitialWhiteEnabled: true,
   allowConsecutiveGuard: false,
   revoteTieAction: "skip",
@@ -160,6 +161,7 @@ const state = {
   roleDealIndex: 0,
   roleDealSelectedPlayerIds: [],
   seerBlinkPlayerId: "",
+  roleDealSeerWhitePlayerId: "",
   seerCheckResults: {},
   actionRoleIndex: ACTION_ROLE_ORDER.length,
   actionComplete: false,
@@ -255,6 +257,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     "deleteRegulationBtn",
     "roleBreakdownList",
     "roleBreakdownSummary",
+    "roleDealOrderList",
     "allowWerewolfSelfAttackInput",
     "allowWerewolfSkipAttackInput",
     "progressBadge",
@@ -437,6 +440,11 @@ function bindEvents() {
   ].forEach((input) => {
     input?.addEventListener("change", updateGameRules);
   });
+  els.roleDealOrderList?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-role-deal-move]");
+    if (!button) return;
+    moveRoleDealOrder(button.dataset.roleId, Number(button.dataset.roleDealMove));
+  });
   els.saveRegulationBtn?.addEventListener("click", handleSaveRegulationClick);
   els.regulationSelect?.addEventListener("change", handleRegulationSelectChange);
   els.deleteRegulationBtn?.addEventListener("click", handleDeleteRegulationClick);
@@ -602,6 +610,7 @@ function startRoundTable() {
   state.roleDealIndex = 0;
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
+  state.roleDealSeerWhitePlayerId = "";
   state.seerCheckResults = {};
   state.exiledPlayerIds = [];
   state.attackedPlayerIds = [];
@@ -908,6 +917,7 @@ function normalizeRegulations(raw) {
     tournamentName: reg.tournamentName == null ? null : String(reg.tournamentName).trim().slice(0, 80),
     playerCount: Number.isInteger(Number(reg.playerCount)) ? Math.max(3, Number(reg.playerCount)) : 12,
     roles: reg.roles && typeof reg.roles === "object" ? { ...reg.roles } : {},
+    roleDealOrder: getRoleDealOrder(reg.roleDealOrder),
     seerInitialWhiteEnabled: reg.seerInitialWhiteEnabled !== false,
     allowConsecutiveGuard: reg.allowConsecutiveGuard === true,
     ...getRevoteRule(reg),
@@ -935,6 +945,7 @@ function applyRegulation(regulationOrId) {
   });
 
   state.enabledRoleIds = getEnabledRoleIdsFromCounts(state.roles);
+  state.roleDealOrder = getRoleDealOrder(reg.roleDealOrder);
 
   state.seerInitialWhiteEnabled = reg.seerInitialWhiteEnabled !== false;
   state.allowConsecutiveGuard = reg.allowConsecutiveGuard === true;
@@ -962,6 +973,7 @@ function saveCurrentAsRegulation(name, customPlayerCount) {
     tournamentName,
     playerCount: count,
     roles: rolesMap,
+    roleDealOrder: getRoleDealOrder(state.roleDealOrder),
     seerInitialWhiteEnabled: state.seerInitialWhiteEnabled,
     allowConsecutiveGuard: state.allowConsecutiveGuard,
     ...getRevoteRule(),
@@ -1234,11 +1246,43 @@ function startRoleDeal() {
   state.players.forEach((player) => {
     if (isActivePlayer(player)) player.roleId = "";
   });
-  state.roleDealQueue = STANDARD_ROLE_ORDER.filter((id) => (counts[id] || 0) > 0);
+  state.roleDealQueue = getRoleDealQueue(counts, state.roleDealOrder);
   state.roleDealIndex = 0;
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
+  state.roleDealSeerWhitePlayerId = "";
   state.screen = "deal";
+  renderAndStore();
+}
+
+function getRoleDealOrder(order) {
+  const saved = Array.isArray(order) ? order : [];
+  const next = saved.filter((id, index) => STANDARD_ROLE_ORDER.includes(id) && saved.indexOf(id) === index);
+  STANDARD_ROLE_ORDER.forEach((id) => {
+    if (!next.includes(id)) next.push(id);
+  });
+  return next;
+}
+
+function getRoleDealQueue(counts, order) {
+  return getRoleDealOrder(order).filter((id) => (counts[id] || 0) > 0);
+}
+
+function getMovedRoleDealOrder(order, counts, roleId, delta) {
+  const next = getRoleDealOrder(order);
+  const queue = getRoleDealQueue(counts, next);
+  const target = queue[queue.indexOf(roleId) + delta];
+  if (!queue.includes(roleId) || !target) return next;
+  const from = next.indexOf(roleId);
+  const to = next.indexOf(target);
+  [next[from], next[to]] = [next[to], next[from]];
+  return next;
+}
+
+function moveRoleDealOrder(roleId, delta) {
+  const counts = Object.fromEntries(state.roles.map((role) => [role.id, Number(role.count) || 0]));
+  state.roleDealOrder = getMovedRoleDealOrder(state.roleDealOrder, counts, roleId, delta);
+  state.selectedRegulationId = "";
   renderAndStore();
 }
 
@@ -2749,6 +2793,7 @@ function resetGame() {
   state.players = [];
   state.roles = DEFAULT_ROLES.map((role) => ({ ...role }));
   state.enabledRoleIds = [...DEFAULT_ENABLED_ROLE_IDS];
+  state.roleDealOrder = [...STANDARD_ROLE_ORDER];
   state.seerInitialWhiteEnabled = true;
   state.allowConsecutiveGuard = false;
   state.revoteTieAction = "skip";
@@ -2777,6 +2822,7 @@ function resetGame() {
   state.roleDealIndex = 0;
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
+  state.roleDealSeerWhitePlayerId = "";
   state.seerCheckResults = {};
   state.actionRoleIndex = ACTION_ROLE_ORDER.length;
   state.actionComplete = false;
@@ -2790,6 +2836,7 @@ function resetGame() {
   state.roleDealIndex = 0;
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
+  state.roleDealSeerWhitePlayerId = "";
   state.seerCheckResults = {};
   state.actionRoleIndex = ACTION_ROLE_ORDER.length;
   state.actionComplete = false;
@@ -2867,6 +2914,7 @@ function resetToFirstNight() {
   state.nightStartGuardedPlayerId = "";
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
+  state.roleDealSeerWhitePlayerId = "";
   state.seerCheckResults = {};
   state.lastDayTimerMinutes = 0;
   getActivePlayers().forEach((player) => {
@@ -2941,6 +2989,22 @@ function renderGameRuleInputs() {
   if (els.allowWerewolfSkipAttackInput) els.allowWerewolfSkipAttackInput.checked = state.allowWerewolfSkipAttack;
   if (typeof renderRegulationPresets === "function") renderRegulationPresets();
   if (typeof renderRoleBreakdown === "function") renderRoleBreakdown();
+  if (typeof renderRoleDealOrder === "function") renderRoleDealOrder();
+}
+
+function renderRoleDealOrder() {
+  if (!els.roleDealOrderList) return;
+  const counts = Object.fromEntries(state.roles.map((role) => [role.id, Number(role.count) || 0]));
+  const queue = getRoleDealQueue(counts, state.roleDealOrder);
+  els.roleDealOrderList.innerHTML = queue.map((roleId, index) => {
+    const name = escapeHtml(getRole(roleId)?.name || roleId);
+    return `
+      <li class="role-deal-order-item ${getRoleColorClass(roleId)}">
+        <button class="role-deal-order-move" type="button" data-role-deal-move="-1" data-role-id="${roleId}" aria-label="${name}を前へ" ${index === 0 ? "disabled" : ""}>‹</button>
+        <span class="role-deal-order-name"><small>${index + 1}</small>${name}</span>
+        <button class="role-deal-order-move" type="button" data-role-deal-move="1" data-role-id="${roleId}" aria-label="${name}を後へ" ${index === queue.length - 1 ? "disabled" : ""}>›</button>
+      </li>`;
+  }).join("");
 }
 
 function renderRegulationPresets() {
@@ -4402,6 +4466,8 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
     const actionRoleId = actionMode ? getCurrentActionRoleId() : "";
     const status = getSeatStatus(player, actionRoleId);
     const seerRandomWhite = !hideRoles && isSeerRandomWhiteTarget(player);
+    const seerWhiteLocked = dealMode && !hideRoles
+      && isRoleDealSeerWhiteLocked(state.roleDealQueue[state.roleDealIndex], player.id, state.roleDealSeerWhitePlayerId);
     const actionDisabled = actionMode && !canSelectActionTarget(getCurrentActionRoleId(), player);
     const voteAssignment = voteMode ? getVoteAssignmentForVoter(player.id) : null;
     const voteSelfDisabled = voteMode && !revoteTargetSelectMode && isRevoteAssignmentMode() && player.id === getCurrentRevoteTargetId();
@@ -4410,7 +4476,7 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
     const voteCount = voteMode ? state.votes[player.id] || 0 : 0;
     const seat = document.createElement("button");
     seat.type = "button";
-    seat.className = `round-seat ${player.alive ? "" : "dead"} ${actionDisabled ? "action-disabled" : ""} ${voteSelfDisabled ? "vote-self-disabled" : ""} ${revoteTargetSelectMode ? "revote-target-option" : ""} ${status ? `status-${status.type}` : ""} ${state.exiledPlayerIds.includes(player.id) ? "exiled" : ""} ${isTopVoted ? (isVoteDecision ? "vote-top-final" : "vote-top-current") : ""} ${isTopVoted ? "has-vote-leader" : ""} ${voteMode && state.voteSelectedPlayerId === player.id ? "vote-selected" : ""} ${voteAssignment ? "vote-assigned" : ""} ${voteAssignment?.targetId === getCurrentRevoteTargetId() ? "vote-assigned-current" : ""} ${!hideRoles && player.roleId ? "assigned" : ""} ${hideRoles ? "" : getRoleColorClass(player.roleId)} ${seerRandomWhite ? "seer-blink" : ""} ${
+    seat.className = `round-seat ${player.alive ? "" : "dead"} ${actionDisabled ? "action-disabled" : ""} ${voteSelfDisabled ? "vote-self-disabled" : ""} ${revoteTargetSelectMode ? "revote-target-option" : ""} ${status ? `status-${status.type}` : ""} ${state.exiledPlayerIds.includes(player.id) ? "exiled" : ""} ${isTopVoted ? (isVoteDecision ? "vote-top-final" : "vote-top-current") : ""} ${isTopVoted ? "has-vote-leader" : ""} ${voteMode && state.voteSelectedPlayerId === player.id ? "vote-selected" : ""} ${voteAssignment ? "vote-assigned" : ""} ${voteAssignment?.targetId === getCurrentRevoteTargetId() ? "vote-assigned-current" : ""} ${!hideRoles && player.roleId ? "assigned" : ""} ${hideRoles ? "" : getRoleColorClass(player.roleId)} ${seerRandomWhite ? "seer-blink" : ""} ${seerWhiteLocked ? "action-disabled" : ""} ${
       state.roleDealSelectedPlayerIds.includes(player.id) ? "selected" : ""
     }`;
     seat.disabled = actionDisabled;
@@ -4423,7 +4489,7 @@ function renderRoundTableInto(container, { hideRoles, voteMode = false, actionMo
       <strong>${escapeHtml(player.name)}</strong>
       <small>${role ? escapeHtml(role.name) : revoteTargetSelectMode ? "決戦候補" : voteAssignment ? `→ ${escapeHtml(voteAssignment.targetName)}` : hideRoles ? "" : "未配役"}</small>
       ${status ? `<span class="seat-status-badge">${status.label}</span>` : ""}
-      ${seerRandomWhite ? '<span class="seat-status-badge seer-white-badge">初日白</span>' : ""}
+      ${seerRandomWhite || seerWhiteLocked ? '<span class="seat-status-badge seer-white-badge">初日白</span>' : ""}
     `;
     if (actionMode) {
       seat.addEventListener("click", () => handleActionTarget(player));
@@ -5217,6 +5283,7 @@ function prepareNextMatch() {
   state.roleDealIndex = 0;
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
+  state.roleDealSeerWhitePlayerId = "";
   state.seerCheckResults = {};
   state.actionRoleIndex = ACTION_ROLE_ORDER.length;
   state.actionComplete = false;
@@ -5288,6 +5355,7 @@ function assignCurrentRole(player) {
   const roleId = state.roleDealQueue[state.roleDealIndex];
   if (!roleId) return;
   if (player.roleId && player.roleId !== roleId) return;
+  if (isRoleDealSeerWhiteLocked(roleId, player.id, state.roleDealSeerWhitePlayerId)) return;
   if (roleId === "seer" && state.seerInitialWhiteEnabled && state.roleDealSelectedPlayerIds.length && !state.roleDealSelectedPlayerIds.includes(player.id)) {
     state.seerBlinkPlayerId = player.id;
     addLog(`${player.name}: 初日白に変更`);
@@ -5316,9 +5384,14 @@ function assignCurrentRole(player) {
   renderAndStore();
 }
 
+function isRoleDealSeerWhiteLocked(roleId, playerId, seerWhitePlayerId) {
+  return roleId === "werewolf" && Boolean(seerWhitePlayerId) && playerId === seerWhitePlayerId;
+}
+
 function confirmCurrentRole() {
   const roleId = state.roleDealQueue[state.roleDealIndex];
   if (!roleId) return;
+  if (roleId === "seer") state.roleDealSeerWhitePlayerId = getSeerBlinkPlayerId();
   state.roleDealIndex += 1;
   state.roleDealSelectedPlayerIds = [];
   state.seerBlinkPlayerId = "";
@@ -5340,6 +5413,7 @@ function backRoleDeal() {
   getActivePlayers().forEach((player) => {
     if (player.roleId === previousRoleId) player.roleId = "";
   });
+  if (previousRoleId === "seer") state.roleDealSeerWhitePlayerId = "";
   renderAndStore();
 }
 
@@ -6337,6 +6411,7 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     enabledRoleIds: state.enabledRoleIds,
     regulations: state.regulations,
     selectedRegulationId: state.selectedRegulationId,
+    roleDealOrder: getRoleDealOrder(state.roleDealOrder),
     ...getRevoteRule(),
     revoteRound: state.revoteRound,
     lastNoExileDay: state.lastNoExileDay,
@@ -6418,6 +6493,7 @@ function getStatePayload({ includeUndoHistory = true, includeLogRestorePoints = 
     roleDealIndex: state.roleDealIndex,
     roleDealSelectedPlayerIds: state.roleDealSelectedPlayerIds,
     seerBlinkPlayerId: state.seerBlinkPlayerId,
+    roleDealSeerWhitePlayerId: state.roleDealSeerWhitePlayerId,
     seerCheckResults: state.seerCheckResults,
     actionRoleIndex: state.actionRoleIndex,
     actionComplete: state.actionComplete,
@@ -6575,6 +6651,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.regulations = normalizeRegulations(saved.regulations);
   const selectedRegulationId = typeof saved.selectedRegulationId === "string" ? saved.selectedRegulationId : "";
   state.selectedRegulationId = state.regulations.some((reg) => reg.id === selectedRegulationId) ? selectedRegulationId : "";
+  state.roleDealOrder = getRoleDealOrder(saved.roleDealOrder);
   state.seerInitialWhiteEnabled = saved.seerInitialWhiteEnabled !== false;
   state.allowConsecutiveGuard = saved.allowConsecutiveGuard === true;
   Object.assign(state, getRevoteRule(saved));
@@ -6738,6 +6815,7 @@ function applySavedState(saved, { resetActionScreen = false } = {}) {
   state.roleDealIndex = saved.roleDealIndex || 0;
   state.roleDealSelectedPlayerIds = saved.roleDealSelectedPlayerIds || (saved.roleDealSelectedPlayerId ? [saved.roleDealSelectedPlayerId] : []);
   state.seerBlinkPlayerId = saved.seerBlinkPlayerId || "";
+  state.roleDealSeerWhitePlayerId = saved.roleDealSeerWhitePlayerId || "";
   state.seerCheckResults = saved.seerCheckResults && typeof saved.seerCheckResults === "object"
     ? Object.fromEntries(Object.entries(saved.seerCheckResults).map(([playerId, result]) => [playerId, getSeerResultLabel(result)]))
     : {};
