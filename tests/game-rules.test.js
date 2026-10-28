@@ -2817,3 +2817,16 @@ test("レギュレーション一覧はセレクトボックスに人数別に�
   assert.equal(fakeDeleteBtn.hidden, true);
   assert.equal(selectChildren[1].label, "7人");
 });
+
+test("レギュセット選択中は人数1人以上の役職だけ、未選択では全役職を役職内訳に表示する", () => {
+  const roles = [
+    { id: "werewolf", team: "人狼陣営", count: 2 },
+    { id: "traitor", team: "人狼陣営", count: 0 },
+    { id: "seer", team: "市民陣営", count: 1 },
+    { id: "teruteru", team: "第3陣営", count: 0 },
+  ];
+  const context = { roles };
+  const visibleIds = (selectedId) => Array.from(runFunctions(["getRoleBreakdownVisibleRoles"], { ...context, selectedId }, "getRoleBreakdownVisibleRoles(roles, selectedId)"), (role) => role.id);
+  assert.deepEqual(visibleIds("reg-12a"), ["werewolf", "seer"]);
+  assert.deepEqual(visibleIds(""), ["werewolf", "traitor", "seer", "teruteru"]);
+});
