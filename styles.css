@@ -1581,6 +1581,8 @@ textarea:focus {
   min-width: 0;
   width: 100%;
   display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -4432,20 +4434,29 @@ body.timer-fullscreen-view .table-panel.timer-focus #timerDisplay {
   }
 
   .player-row {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+    grid-template-areas:
+      "toggle name edit order trash"
+      ". stats stats stats stats";
+    row-gap: 2px;
+    padding: 6px 8px;
   }
 
-  .player-stats {
-    grid-column: 2 / -1;
+  .player-row .participation-toggle { grid-area: toggle; }
+  .player-row strong { grid-area: name; }
+  .player-row .player-stats {
+    grid-area: stats;
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 12px;
   }
+  .player-row .player-edit-button { grid-area: edit; }
+  .player-row .player-order-actions { grid-area: order; }
+  .player-row .trash-button { grid-area: trash; }
 
   .participation-stats,
   .win-stats {
     white-space: normal;
-  }
-
-  .player-order-actions {
-    grid-column: 1 / 3;
   }
 }
 
