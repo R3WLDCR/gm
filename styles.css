@@ -1581,9 +1581,12 @@ textarea:focus {
   min-width: 0;
   width: 100%;
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: var(--ink);
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
 }
 
 .player-row.inactive {
